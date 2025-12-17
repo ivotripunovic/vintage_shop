@@ -121,7 +121,7 @@ flake8
 
 ## Tech Stack (Final Decision)
 
-- **Backend**: Django 4.2
+- **Backend**: Django 5.2
 - **Database**: SQLite (dev) / PostgreSQL (production)
 - **Frontend**: Django Templates + Tailwind CSS (CDN)
 - **Task Queue**: APScheduler

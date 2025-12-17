@@ -21,7 +21,7 @@
 
 ## Backend Framework
 
-**Decision**: Django 4.2+
+**Decision**: Django 5.2+
 
 - Monolithic application
 - Built-in ORM (Django ORM with PostgreSQL)

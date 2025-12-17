@@ -81,7 +81,7 @@ vintage_shop/
 
 ## Tech Stack
 
-- **Backend**: Django 4.2
+- **Backend**: Django 5.2
 - **Database**: PostgreSQL
 - **Frontend**: Django Templates + Tailwind CSS
 - **Task Queue**: APScheduler
