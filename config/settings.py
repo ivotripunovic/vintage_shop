@@ -184,3 +184,7 @@ LOGGING = {
 
 # Create logs directory
 os.makedirs(BASE_DIR / "logs", exist_ok=True)
+
+# Site Configuration
+SITE_DOMAIN = config("SITE_DOMAIN", default="http://localhost:8000")
+DEFAULT_FROM_EMAIL = config("DEFAULT_FROM_EMAIL", default="noreply@vintageshop.local")

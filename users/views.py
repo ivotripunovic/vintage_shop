@@ -78,7 +78,7 @@ def login_view(request):
                     request,
                     f'Please verify your email. Check {user.email} for verification link.'
                 )
-                return redirect('verify-email-resend', email=user.email)
+                return redirect(f'verify-email-resend?email={user.email}')
             
             login(request, user, backend='django.contrib.auth.backends.ModelBackend')
             
