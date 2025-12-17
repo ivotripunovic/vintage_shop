@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+
+{% block title %}Home - Vintage Shop{% endblock %}
+
+{% block content %}
+<!-- Hero Section -->
+<div class="bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg shadow-lg p-12 mb-12">
+    <h1 class="text-5xl font-bold mb-4">Welcome to Vintage Shop</h1>
+    <p class="text-xl mb-8">Find unique second-hand items from trusted sellers worldwide.</p>
+    <div class="flex gap-4">
+        <a href="{% url 'register' %}" class="bg-white text-blue-600 px-8 py-3 rounded-lg font-bold hover:bg-gray-100">
+            Start Buying
+        </a>
+        <a href="{% url 'register' %}" class="border-2 border-white text-white px-8 py-3 rounded-lg font-bold hover:bg-white hover:text-blue-600">
+            Become a Seller
+        </a>
+    </div>
+</div>
+
+<!-- Features -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
+    <div class="bg-white rounded-lg shadow-md p-8">
+        <div class="text-4xl mb-4">🛍️</div>
+        <h3 class="text-xl font-bold mb-2">Browse Items</h3>
+        <p class="text-gray-600">
+            Discover thousands of unique second-hand items from multiple sellers in one place.
+        </p>
+    </div>
+    
+    <div class="bg-white rounded-lg shadow-md p-8">
+        <div class="text-4xl mb-4">💰</div>
+        <h3 class="text-xl font-bold mb-2">Great Prices</h3>
+        <p class="text-gray-600">
+            Find incredible deals on quality items. Save money while shopping sustainably.
+        </p>
+    </div>
+    
+    <div class="bg-white rounded-lg shadow-md p-8">
+        <div class="text-4xl mb-4">🛡️</div>
+        <h3 class="text-xl font-bold mb-2">Safe & Secure</h3>
+        <p class="text-gray-600">
+            Buyer and seller protection built-in. Shop with confidence on our platform.
+        </p>
+    </div>
+</div>
+
+<!-- For Sellers -->
+<div class="bg-gradient-to-r from-green-50 to-blue-50 rounded-lg shadow-md p-12 mb-12">
+    <h2 class="text-3xl font-bold mb-4">Want to Sell Items?</h2>
+    <p class="text-gray-700 mb-6 max-w-2xl">
+        Vintage Shop makes it easy to sell your items. Set up your shop, list products, and start earning.
+    </p>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div>
+            <h4 class="font-bold text-lg mb-2">✓ Simple Setup</h4>
+            <p class="text-gray-600 text-sm">Create your account and shop in minutes</p>
+        </div>
+        <div>
+            <h4 class="font-bold text-lg mb-2">✓ Easy Listing</h4>
+            <p class="text-gray-600 text-sm">Add products with photos and descriptions easily</p>
+        </div>
+        <div>
+            <h4 class="font-bold text-lg mb-2">✓ Affordable</h4>
+            <p class="text-gray-600 text-sm">Only $9.99/month for unlimited listings</p>
+        </div>
+    </div>
+    <a href="{% url 'register' %}" class="bg-green-600 text-white px-8 py-3 rounded-lg font-bold hover:bg-green-700">
+        Register as Seller
+    </a>
+</div>
+
+<!-- Call to Action -->
+<div class="bg-white rounded-lg shadow-md p-12 text-center">
+    <h2 class="text-3xl font-bold mb-4">
+        {% if user.is_authenticated %}
+            Welcome back, {{ user.first_name|default:user.email }}!
+        {% else %}
+            Ready to Get Started?
+        {% endif %}
+    </h2>
+    <p class="text-gray-700 mb-6">
+        {% if user.is_authenticated %}
+            Explore our marketplace or manage your account.
+        {% else %}
+            Join thousands of buyers and sellers on Vintage Shop.
+        {% endif %}
+    </p>
+    <div class="flex gap-4 justify-center">
+        {% if user.is_authenticated %}
+            <a href="{% url 'account-settings' %}" class="bg-blue-600 text-white px-8 py-3 rounded-lg font-bold hover:bg-blue-700">
+                Account Settings
+            </a>
+        {% else %}
+            <a href="{% url 'login' %}" class="bg-blue-600 text-white px-8 py-3 rounded-lg font-bold hover:bg-blue-700">
+                Login
+            </a>
+            <a href="{% url 'register' %}" class="border-2 border-blue-600 text-blue-600 px-8 py-3 rounded-lg font-bold hover:bg-blue-50">
+                Register
+            </a>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

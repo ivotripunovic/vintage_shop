@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+
+{% block title %}Account Settings - Vintage Shop{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto">
+    <h1 class="text-4xl font-bold mb-8">Account Settings</h1>
+    
+    <div class="bg-white rounded-lg shadow-md p-8">
+        <!-- User Info -->
+        <div class="mb-8">
+            <h2 class="text-2xl font-bold mb-4">Profile Information</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <p class="text-gray-600 text-sm">Email</p>
+                    <p class="text-lg font-medium">{{ user.email }}</p>
+                </div>
+                <div>
+                    <p class="text-gray-600 text-sm">Name</p>
+                    <p class="text-lg font-medium">{{ user.get_full_name|default:user.email }}</p>
+                </div>
+                <div>
+                    <p class="text-gray-600 text-sm">Member Since</p>
+                    <p class="text-lg font-medium">{{ user.date_joined|date:"F j, Y" }}</p>
+                </div>
+                <div>
+                    <p class="text-gray-600 text-sm">Email Verified</p>
+                    <p class="text-lg font-medium">
+                        {% if user.email_verified %}
+                            <span class="text-green-600">✓ Yes</span>
+                        {% else %}
+                            <span class="text-red-600">✗ No</span>
+                        {% endif %}
+                    </p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Account Type -->
+        <div class="mb-8 pb-8 border-b">
+            <h2 class="text-2xl font-bold mb-4">Account Type</h2>
+            <div class="space-y-2">
+                {% if user.is_buyer %}
+                    <p class="text-lg">
+                        <span class="text-green-600">✓</span>
+                        Buyer Account (Can purchase items)
+                    </p>
+                {% endif %}
+                {% if user.is_seller %}
+                    <p class="text-lg">
+                        <span class="text-green-600">✓</span>
+                        Seller Account (Can sell items)
+                    </p>
+                {% endif %}
+                {% if not user.is_buyer and not user.is_seller %}
+                    <p class="text-lg text-gray-600">No account type configured</p>
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- Security -->
+        <div class="mb-8">
+            <h2 class="text-2xl font-bold mb-4">Security</h2>
+            <div class="space-y-4">
+                <div>
+                    <p class="text-gray-600 mb-2">Password</p>
+                    <a href="{% url 'password-change' %}" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
+                        Change Password
+                    </a>
+                </div>
+                {% if not user.email_verified %}
+                    <div>
+                        <p class="text-gray-600 mb-2">Email Verification</p>
+                        <p class="text-sm text-gray-500 mb-2">Your email is not verified yet.</p>
+                        <a href="{% url 'verify-email-resend' %}" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
+                            Verify Email
+                        </a>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- Danger Zone -->
+        <div class="bg-red-50 border border-red-200 rounded-lg p-4">
+            <h3 class="text-lg font-bold text-red-600 mb-2">Danger Zone</h3>
+            <p class="text-gray-600 mb-4">
+                Delete your account. This action cannot be undone.
+            </p>
+            <button class="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700" onclick="alert('Not implemented yet')">
+                Delete Account
+            </button>
+        </div>
+    </div>
+    
+    <!-- Logout Button -->
+    <div class="mt-8 text-center">
+        <a href="{% url 'logout' %}" class="bg-gray-600 text-white px-6 py-2 rounded-lg hover:bg-gray-700">
+            Logout
+        </a>
+    </div>
+</div>
+{% endblock %}
