@@ -140,11 +140,27 @@ def seller_dashboard_view(request):
         messages.error(request, 'You are not authorized to access this page.')
         return redirect('home')
     
-    try:
-        seller = request.user.seller_profile
-    except Seller.DoesNotExist:
-        messages.error(request, 'Seller profile not found. Please complete registration.')
-        return redirect('seller_register')
+    # Get or create seller profile (should exist via signal, but handle just in case)
+    seller, created = Seller.objects.get_or_create(
+        user=request.user,
+        defaults={
+            'shop_name': request.user.email.split('@')[0],
+            'shop_slug': request.user.email.split('@')[0].replace('.', '-'),
+        }
+    )
+    
+    # If newly created, also create subscription
+    if created and not seller.active_subscription:
+        start_date = now().date()
+        renewal_date = start_date + timedelta(days=30)
+        SellerSubscription.objects.create(
+            seller=seller,
+            plan_type='monthly',
+            start_date=start_date,
+            renewal_date=renewal_date,
+            status='active',
+            amount=9.99
+        )
     
     # Get seller statistics
     total_products = seller.products.count()
@@ -180,11 +196,14 @@ def seller_settings_view(request):
         messages.error(request, 'You are not authorized to access this page.')
         return redirect('home')
     
-    try:
-        seller = request.user.seller_profile
-    except Seller.DoesNotExist:
-        messages.error(request, 'Seller profile not found.')
-        return redirect('seller_register')
+    # Get or create seller profile
+    seller, created = Seller.objects.get_or_create(
+        user=request.user,
+        defaults={
+            'shop_name': request.user.email.split('@')[0],
+            'shop_slug': request.user.email.split('@')[0].replace('.', '-'),
+        }
+    )
     
     if request.method == "POST":
         form = SellerAccountSettingsForm(request.POST, request.FILES, instance=seller, user=request.user)
@@ -217,11 +236,14 @@ def seller_products_list_view(request):
         messages.error(request, 'You are not authorized to access this page.')
         return redirect('home')
     
-    try:
-        seller = request.user.seller_profile
-    except Seller.DoesNotExist:
-        messages.error(request, 'Seller profile not found.')
-        return redirect('seller_register')
+    # Get or create seller profile
+    seller, created = Seller.objects.get_or_create(
+        user=request.user,
+        defaults={
+            'shop_name': request.user.email.split('@')[0],
+            'shop_slug': request.user.email.split('@')[0].replace('.', '-'),
+        }
+    )
     
     # Get filter parameters
     status_filter = request.GET.get('status')
