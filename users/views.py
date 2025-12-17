@@ -13,7 +13,7 @@ from django.core.mail import send_mail
 from django.conf import settings
 from django.urls import reverse
 
-from .models import User
+from .models import User, VerificationToken
 from .forms import (
     UserRegistrationForm,
     UserLoginForm,
@@ -21,6 +21,8 @@ from .forms import (
     UserPasswordSetForm,
     UserPasswordChangeForm,
 )
+from django.utils import timezone
+from datetime import timedelta
 
 
 @csrf_protect
@@ -78,7 +80,7 @@ def login_view(request):
                     request,
                     f'Please verify your email. Check {user.email} for verification link.'
                 )
-                return redirect(f'verify-email-resend?email={user.email}')
+                return redirect('verify-email-resend')
             
             login(request, user, backend='django.contrib.auth.backends.ModelBackend')
             
@@ -143,29 +145,28 @@ def password_reset_request_view(request):
 @require_http_methods(["GET", "POST"])
 def password_reset_confirm_view(request, token):
     """Confirm password reset with token."""
-    # For MVP, we use a simple token approach stored in session
-    # In production, use django-rest-auth or django-allauth for better security
-    
-    token_data = request.session.get('password_reset_token')
-    if not token_data or token_data.get('token') != token:
+    try:
+        token_obj = VerificationToken.objects.get(
+            token=token,
+            token_type=VerificationToken.TOKEN_TYPE_PASSWORD
+        )
+    except VerificationToken.DoesNotExist:
         messages.error(request, 'Invalid or expired password reset link.')
         return redirect('password-reset-request')
     
-    user_id = token_data.get('user_id')
-    try:
-        user = User.objects.get(id=user_id)
-    except User.DoesNotExist:
-        messages.error(request, 'User not found.')
+    if not token_obj.is_valid():
+        messages.error(request, 'Invalid or expired password reset link.')
         return redirect('password-reset-request')
+    
+    user = token_obj.user
     
     if request.method == 'POST':
         form = UserPasswordSetForm(user, request.POST)
         if form.is_valid():
             form.save()
             
-            # Clear token
-            if 'password_reset_token' in request.session:
-                del request.session['password_reset_token']
+            # Mark token as used
+            token_obj.mark_used()
             
             messages.success(request, 'Your password has been reset. Please login.')
             return redirect('login')
@@ -182,28 +183,27 @@ def password_reset_confirm_view(request, token):
 @require_http_methods(["GET", "POST"])
 def verify_email_view(request, token):
     """Verify email with token."""
-    # For MVP, store verification token in session
-    # In production, use a token model or JWT
-    
-    token_data = request.session.get('email_verification_token')
-    if not token_data or token_data.get('token') != token:
+    try:
+        token_obj = VerificationToken.objects.get(
+            token=token,
+            token_type=VerificationToken.TOKEN_TYPE_EMAIL
+        )
+    except VerificationToken.DoesNotExist:
         messages.error(request, 'Invalid or expired verification link.')
         return redirect('home')
     
-    user_id = token_data.get('user_id')
-    try:
-        user = User.objects.get(id=user_id)
-    except User.DoesNotExist:
-        messages.error(request, 'User not found.')
+    if not token_obj.is_valid():
+        messages.error(request, 'Invalid or expired verification link.')
         return redirect('home')
     
     # Mark email as verified
+    user = token_obj.user
     user.email_verified = True
+    user.email_verified_at = timezone.now()
     user.save()
     
-    # Clear token
-    if 'email_verification_token' in request.session:
-        del request.session['email_verification_token']
+    # Mark token as used
+    token_obj.mark_used()
     
     messages.success(request, 'Email verified! You can now login.')
     return redirect('login')
@@ -269,9 +269,13 @@ def send_verification_email(user):
     """Send email verification link to user."""
     token = get_random_string(50)
     
-    # Store token in session (for MVP)
-    # In production, create a token model or use JWT
-    # For now, we'll use a simple approach with the token in the URL
+    # Create token in database
+    VerificationToken.objects.create(
+        user=user,
+        token=token,
+        token_type=VerificationToken.TOKEN_TYPE_EMAIL,
+        expires_at=timezone.now() + timedelta(hours=24)
+    )
     
     verification_url = f"{settings.SITE_DOMAIN}/auth/verify-email/{token}/"
     
@@ -299,9 +303,6 @@ Vintage Shop Team
             [user.email],
             fail_silently=False,
         )
-        
-        # For MVP, we'll store the token validation in a simple way
-        # In production, use a proper token model
     except Exception as e:
         print(f"Error sending verification email: {e}")
 
@@ -309,6 +310,14 @@ Vintage Shop Team
 def send_password_reset_email(user):
     """Send password reset link to user."""
     token = get_random_string(50)
+    
+    # Create token in database
+    VerificationToken.objects.create(
+        user=user,
+        token=token,
+        token_type=VerificationToken.TOKEN_TYPE_PASSWORD,
+        expires_at=timezone.now() + timedelta(hours=1)
+    )
     
     reset_url = f"{settings.SITE_DOMAIN}/auth/reset-password/{token}/"
     

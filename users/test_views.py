@@ -200,7 +200,6 @@ class TestLoginView(TestCase):
         
         self.assertEqual(response.status_code, 200)
 
-    @pytest.mark.skip(reason="verify-email-resend URL not configured yet")
     def test_login_unverified_email_prevents_login(self):
         """Test login with unverified email prevents login."""
         unverified_user = User.objects.create_user(
@@ -346,7 +345,6 @@ class TestPasswordChangeView(TestCase):
         self.user.refresh_from_db()
         self.assertTrue(self.user.check_password('NewPass123!'))
 
-    @pytest.mark.skip(reason="password_change.html template not created yet")
     def test_password_change_validates_old_password(self):
         """Test password change validates old password."""
         self.client.force_login(self.user)
