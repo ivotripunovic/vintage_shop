@@ -1,0 +1,109 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ product.title }}{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+    <div class="max-w-4xl mx-auto">
+        <a href="{% url 'seller_products_list' %}" class="text-blue-600 hover:text-blue-700 text-sm mb-8 inline-block">← Back to Products</a>
+
+        <div class="bg-white rounded-lg shadow-md overflow-hidden">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8 p-8">
+                <!-- Images -->
+                <div>
+                    <div class="bg-gray-200 rounded-lg h-96 flex items-center justify-center">
+                        {% if images %}
+                            <img src="{{ images.0.image.url }}" alt="{{ product.title }}" class="w-full h-full object-cover">
+                        {% else %}
+                            <svg class="w-24 h-24 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                        {% endif %}
+                    </div>
+
+                    {% if images.count > 1 %}
+                    <div class="mt-4 grid grid-cols-4 gap-2">
+                        {% for image in images %}
+                        <div class="bg-gray-200 rounded h-20 cursor-pointer hover:opacity-75">
+                            <img src="{{ image.image.url }}" alt="{{ image.alt_text }}" class="w-full h-full object-cover rounded">
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                </div>
+
+                <!-- Details -->
+                <div>
+                    <div class="mb-4 flex items-center justify-between">
+                        <h1 class="text-3xl font-bold text-gray-900">{{ product.title }}</h1>
+                        <span class="px-3 py-1 rounded-full text-white text-sm font-semibold {% if product.status == 'published' %}bg-green-600{% elif product.status == 'draft' %}bg-yellow-600{% else %}bg-gray-600{% endif %}">
+                            {{ product.get_status_display }}
+                        </span>
+                    </div>
+
+                    <div class="text-3xl font-bold text-gray-900 mb-6">${{ product.price }}</div>
+
+                    <div class="space-y-4 mb-8 pb-8 border-b">
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">Category:</span>
+                            <span class="text-gray-900">{% if product.category %}{{ product.category.name }}{% else %}Uncategorized{% endif %}</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">Condition:</span>
+                            <span class="text-gray-900">{% if product.condition %}{{ product.condition.name }}{% else %}Not specified{% endif %}</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">Stock:</span>
+                            <span class="text-gray-900">{{ product.stock }} available</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">Images:</span>
+                            <span class="text-gray-900">{{ images.count }}</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">Created:</span>
+                            <span class="text-gray-900">{{ product.created_at|date:'M d, Y g:i a' }}</span>
+                        </div>
+                    </div>
+
+                    <div class="mb-8">
+                        <h3 class="text-lg font-semibold text-gray-900 mb-3">Description</h3>
+                        <p class="text-gray-700 whitespace-pre-wrap">{{ product.description }}</p>
+                    </div>
+
+                    {% if is_owner %}
+                    <div class="space-y-3">
+                        <a href="{% url 'product_edit' product.id %}" class="block w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition duration-200 text-center">
+                            Edit Product
+                        </a>
+                        <a href="{% url 'product_images' product.id %}" class="block w-full bg-purple-600 hover:bg-purple-700 text-white font-medium py-2 px-4 rounded-lg transition duration-200 text-center">
+                            Manage Images
+                        </a>
+                        
+                        {% if product.status == 'draft' %}
+                        <form method="post" action="{% url 'product_publish' product.id %}" class="inline-block w-full">
+                            {% csrf_token %}
+                            <button type="submit" class="w-full bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-lg transition duration-200">
+                                Publish Product
+                            </button>
+                        </form>
+                        {% elif product.status == 'published' %}
+                        <form method="post" action="{% url 'product_unpublish' product.id %}" class="inline-block w-full">
+                            {% csrf_token %}
+                            <button type="submit" class="w-full bg-yellow-600 hover:bg-yellow-700 text-white font-medium py-2 px-4 rounded-lg transition duration-200">
+                                Unpublish Product
+                            </button>
+                        </form>
+                        {% endif %}
+
+                        <a href="{% url 'product_delete' product.id %}" class="block w-full bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded-lg transition duration-200 text-center">
+                            Delete Product
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

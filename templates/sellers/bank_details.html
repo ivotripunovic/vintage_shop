@@ -1,0 +1,82 @@
+{% extends 'base.html' %}
+
+{% block title %}Bank Details{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+    <div class="max-w-2xl mx-auto bg-white rounded-lg shadow-md p-8">
+        <div class="mb-8">
+            <h2 class="text-3xl font-bold text-gray-900">Add Bank Details</h2>
+            <p class="text-gray-600 mt-2">We'll use these details to send you monthly payments</p>
+        </div>
+
+        <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6 text-blue-800 text-sm">
+            <strong>Your information is secure:</strong> Bank details are stored securely and never shared with buyers.
+        </div>
+
+        {% if messages %}
+            {% for message in messages %}
+                <div class="mb-4 p-4 rounded-lg bg-blue-50 text-blue-800">
+                    {{ message }}
+                </div>
+            {% endfor %}
+        {% endif %}
+
+        <form method="post" class="space-y-6">
+            {% csrf_token %}
+
+            {% if form.non_field_errors %}
+                <div class="bg-red-50 border border-red-200 rounded-lg p-4 text-red-700">
+                    {% for error in form.non_field_errors %}
+                        <p>{{ error }}</p>
+                    {% endfor %}
+                </div>
+            {% endif %}
+
+            <div>
+                <label for="{{ form.bank_account_holder.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">Account Holder Name</label>
+                {{ form.bank_account_holder }}
+                {% if form.bank_account_holder.errors %}
+                    <span class="text-red-600 text-sm">{{ form.bank_account_holder.errors.0 }}</span>
+                {% endif %}
+                <p class="text-gray-500 text-sm mt-1">Full name as it appears on your bank account</p>
+            </div>
+
+            <div>
+                <label for="{{ form.bank_name.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">Bank Name</label>
+                {{ form.bank_name }}
+                {% if form.bank_name.errors %}
+                    <span class="text-red-600 text-sm">{{ form.bank_name.errors.0 }}</span>
+                {% endif %}
+                <p class="text-gray-500 text-sm mt-1">Name of your bank</p>
+            </div>
+
+            <div>
+                <label for="{{ form.bank_account_number.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">Account Number or IBAN</label>
+                {{ form.bank_account_number }}
+                {% if form.bank_account_number.errors %}
+                    <span class="text-red-600 text-sm">{{ form.bank_account_number.errors.0 }}</span>
+                {% endif %}
+                <p class="text-gray-500 text-sm mt-1">Your IBAN (preferred) or account number</p>
+            </div>
+
+            <div class="bg-gray-50 rounded-lg p-4">
+                <h3 class="font-medium text-gray-900 mb-2">Monthly Subscription</h3>
+                <p class="text-gray-600 text-sm">Your seller account includes:</p>
+                <ul class="list-disc list-inside text-gray-600 text-sm mt-2 space-y-1">
+                    <li>Unlimited product listings</li>
+                    <li>Monthly seller fee: $9.99</li>
+                    <li>Full access to seller dashboard</li>
+                    <li>Email support</li>
+                </ul>
+            </div>
+
+            <div class="flex gap-4">
+                <button type="submit" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition duration-200">
+                    Complete Setup
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

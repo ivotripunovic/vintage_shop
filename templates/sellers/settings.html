@@ -1,0 +1,127 @@
+{% extends 'base.html' %}
+
+{% block title %}Account Settings{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+    <div class="max-w-2xl mx-auto">
+        <h1 class="text-3xl font-bold text-gray-900 mb-8">Account Settings</h1>
+
+        {% if messages %}
+            {% for message in messages %}
+                <div class="mb-6 p-4 rounded-lg bg-blue-50 text-blue-800">
+                    {{ message }}
+                </div>
+            {% endfor %}
+        {% endif %}
+
+        <!-- Shop Settings Form -->
+        <div class="bg-white rounded-lg shadow-md p-8 mb-8">
+            <h2 class="text-2xl font-bold text-gray-900 mb-6">Shop Information</h2>
+
+            <form method="post" enctype="multipart/form-data" class="space-y-6">
+                {% csrf_token %}
+
+                {% if form.non_field_errors %}
+                    <div class="bg-red-50 border border-red-200 rounded-lg p-4 text-red-700">
+                        {% for error in form.non_field_errors %}
+                            <p>{{ error }}</p>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+
+                <div>
+                    <label for="{{ form.email.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
+                    {{ form.email }}
+                    {% if form.email.errors %}
+                        <span class="text-red-600 text-sm">{{ form.email.errors.0 }}</span>
+                    {% endif %}
+                </div>
+
+                <div>
+                    <label for="{{ form.shop_name.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">Shop Name</label>
+                    {{ form.shop_name }}
+                    {% if form.shop_name.errors %}
+                        <span class="text-red-600 text-sm">{{ form.shop_name.errors.0 }}</span>
+                    {% endif %}
+                </div>
+
+                <div>
+                    <label for="{{ form.shop_description.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">Shop Description</label>
+                    {{ form.shop_description }}
+                    {% if form.shop_description.errors %}
+                        <span class="text-red-600 text-sm">{{ form.shop_description.errors.0 }}</span>
+                    {% endif %}
+                </div>
+
+                <div>
+                    <label for="{{ form.location.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">Location</label>
+                    {{ form.location }}
+                    {% if form.location.errors %}
+                        <span class="text-red-600 text-sm">{{ form.location.errors.0 }}</span>
+                    {% endif %}
+                </div>
+
+                <div>
+                    <label for="{{ form.shop_image.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">Shop Image</label>
+                    {{ form.shop_image }}
+                    {% if form.shop_image.errors %}
+                        <span class="text-red-600 text-sm">{{ form.shop_image.errors.0 }}</span>
+                    {% endif %}
+                    {% if seller.shop_image %}
+                        <div class="mt-2">
+                            <p class="text-sm text-gray-600 mb-2">Current image:</p>
+                            <img src="{{ seller.shop_image.url }}" alt="{{ seller.shop_name }}" class="h-24 w-24 object-cover rounded-lg">
+                        </div>
+                    {% endif %}
+                </div>
+
+                <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition duration-200">
+                    Save Changes
+                </button>
+            </form>
+        </div>
+
+        <!-- Subscription Info -->
+        {% if subscription %}
+        <div class="bg-white rounded-lg shadow-md p-8 mb-8">
+            <h2 class="text-2xl font-bold text-gray-900 mb-6">Subscription</h2>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="border rounded-lg p-4">
+                    <p class="text-gray-600 text-sm">Plan Type</p>
+                    <p class="text-lg font-semibold text-gray-900 mt-1">{{ subscription.plan_type|title }}</p>
+                </div>
+                <div class="border rounded-lg p-4">
+                    <p class="text-gray-600 text-sm">Monthly Fee</p>
+                    <p class="text-lg font-semibold text-gray-900 mt-1">${{ subscription.amount }}</p>
+                </div>
+                <div class="border rounded-lg p-4">
+                    <p class="text-gray-600 text-sm">Next Renewal</p>
+                    <p class="text-lg font-semibold text-gray-900 mt-1">{{ subscription.renewal_date|date:'M d, Y' }}</p>
+                </div>
+            </div>
+
+            <div class="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg text-sm text-gray-700">
+                <p><strong>Note:</strong> Your subscription started on {{ subscription.start_date|date:'M d, Y' }} and renews automatically every month.</p>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Danger Zone -->
+        <div class="bg-red-50 border border-red-200 rounded-lg p-8">
+            <h2 class="text-2xl font-bold text-red-600 mb-4">Danger Zone</h2>
+            <p class="text-gray-700 mb-6">These actions cannot be undone.</p>
+
+            <div class="space-y-4">
+                <div>
+                    <a href="{% url 'seller_settings' %}" class="text-red-600 hover:text-red-700 font-medium">
+                        Delete Account
+                    </a>
+                    <p class="text-sm text-gray-600 mt-1">Permanently delete your account and all associated data.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

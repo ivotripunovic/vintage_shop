@@ -17,6 +17,12 @@ urlpatterns = [
     # Authentication
     path("auth/", include("users.urls")),
     
+    # Sellers
+    path("seller/", include("sellers.urls")),
+    
+    # Products
+    path("products/", include("products.urls")),
+    
     # Home & Core
     path("", views.home_view, name="home"),
 ]

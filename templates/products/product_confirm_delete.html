@@ -1,0 +1,33 @@
+{% extends 'base.html' %}
+
+{% block title %}Delete Product{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+    <div class="max-w-md mx-auto bg-white rounded-lg shadow-md p-8">
+        <div class="text-center">
+            <svg class="mx-auto h-12 w-12 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4v2m0-10.5l-.75 1.5m0 3l.75 1.5M9 12h6M9 5h6M9 19h6" />
+            </svg>
+            <h2 class="mt-4 text-2xl font-bold text-gray-900">Delete Product?</h2>
+        </div>
+
+        <div class="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+            <p class="text-gray-700 font-semibold">{{ product.title }}</p>
+            <p class="text-red-600 text-sm mt-2">This action cannot be undone.</p>
+        </div>
+
+        <div class="mt-6 space-y-3">
+            <form method="post" class="w-full">
+                {% csrf_token %}
+                <button type="submit" class="w-full bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded-lg transition duration-200">
+                    Yes, Delete Product
+                </button>
+            </form>
+            <a href="{% url 'product_detail' product.id %}" class="block w-full bg-gray-300 hover:bg-gray-400 text-gray-900 font-medium py-2 px-4 rounded-lg transition duration-200 text-center">
+                Cancel
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}
