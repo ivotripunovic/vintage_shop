@@ -1,0 +1,139 @@
+{% extends "base.html" %}
+
+{% block title %}Browse Shops - Vintage Shop{% endblock %}
+
+{% block content %}
+<div class="mb-8">
+    <h1 class="text-4xl font-bold mb-6">Browse Shops</h1>
+    
+    <!-- Search and Sort -->
+    <form method="get" class="bg-white rounded-lg shadow-md p-6 mb-8">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+            <!-- Search -->
+            <div class="md:col-span-2">
+                <label for="search" class="block text-sm font-semibold mb-2">Search Shops</label>
+                <input 
+                    type="text" 
+                    id="search" 
+                    name="q" 
+                    value="{{ search_query }}"
+                    placeholder="Search by shop name, description, or location..."
+                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+            </div>
+            
+            <!-- Sort By -->
+            <div>
+                <label for="sort" class="block text-sm font-semibold mb-2">Sort By</label>
+                <select 
+                    id="sort" 
+                    name="sort"
+                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                    <option value="-created_at" {% if sort_by == "-created_at" %}selected{% endif %}>Newest Shops</option>
+                    <option value="name" {% if sort_by == "name" %}selected{% endif %}>Shop Name A-Z</option>
+                    <option value="-products" {% if sort_by == "-products" %}selected{% endif %}>Most Products</option>
+                </select>
+            </div>
+        </div>
+        
+        <button type="submit" class="bg-blue-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-blue-700">
+            Search
+        </button>
+        {% if search_query %}
+            <a href="{% url 'shops_browse' %}" class="ml-4 text-blue-600 hover:text-blue-700 font-semibold">
+                Clear Search
+            </a>
+        {% endif %}
+    </form>
+</div>
+
+<!-- Shops Grid -->
+{% if sellers %}
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-12">
+        {% for seller in sellers %}
+            <div class="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow">
+                <!-- Shop Image -->
+                {% if seller.shop_image %}
+                    <div class="relative bg-gray-200 h-48 overflow-hidden">
+                        <img 
+                            src="{{ seller.shop_image.url }}" 
+                            alt="{{ seller.shop_name }}"
+                            class="w-full h-full object-cover"
+                        >
+                    </div>
+                {% else %}
+                    <div class="bg-gradient-to-r from-blue-400 to-purple-400 h-48 flex items-center justify-center">
+                        <span class="text-4xl">🏪</span>
+                    </div>
+                {% endif %}
+                
+                <!-- Shop Info -->
+                <div class="p-6">
+                    <h3 class="text-2xl font-bold mb-2">{{ seller.shop_name }}</h3>
+                    
+                    {% if seller.location %}
+                        <p class="text-gray-600 text-sm mb-3">📍 {{ seller.location }}</p>
+                    {% endif %}
+                    
+                    <p class="text-gray-600 text-sm mb-4 line-clamp-2">{{ seller.shop_description }}</p>
+                    
+                    <!-- Product Count -->
+                    <div class="bg-gray-100 rounded-lg p-3 mb-4 text-center">
+                        <p class="text-sm text-gray-600">Products Listed</p>
+                        <p class="text-2xl font-bold text-blue-600">{{ seller.published_count }}</p>
+                    </div>
+                    
+                    <!-- Visit Shop Button -->
+                    <a href="{% url 'shop_detail' seller.shop_slug %}" class="w-full bg-blue-600 text-white px-4 py-3 rounded-lg text-center font-semibold hover:bg-blue-700 block">
+                        Visit Shop
+                    </a>
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+    
+    <!-- Pagination -->
+    {% if page_obj.has_other_pages %}
+        <div class="flex justify-center items-center gap-2 mb-12">
+            {% if page_obj.has_previous %}
+                <a href="?{{ request.GET.urlencode }}&page=1" class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-100">
+                    First
+                </a>
+                <a href="?{{ request.GET.urlencode }}&page={{ page_obj.previous_page_number }}" class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-100">
+                    Previous
+                </a>
+            {% endif %}
+            
+            <span class="px-4 py-2">
+                Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+            </span>
+            
+            {% if page_obj.has_next %}
+                <a href="?{{ request.GET.urlencode }}&page={{ page_obj.next_page_number }}" class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-100">
+                    Next
+                </a>
+                <a href="?{{ request.GET.urlencode }}&page={{ page_obj.paginator.num_pages }}" class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-100">
+                    Last
+                </a>
+            {% endif %}
+        </div>
+    {% endif %}
+{% else %}
+    <div class="bg-white rounded-lg shadow-md p-12 text-center">
+        <h2 class="text-2xl font-bold mb-4">No Shops Found</h2>
+        <p class="text-gray-600 mb-6">
+            {% if search_query %}
+                Try adjusting your search.
+            {% else %}
+                No shops with available products yet. Check back soon!
+            {% endif %}
+        </p>
+        {% if search_query %}
+            <a href="{% url 'shops_browse' %}" class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700">
+                Clear Search
+            </a>
+        {% endif %}
+    </div>
+{% endif %}
+{% endblock %}

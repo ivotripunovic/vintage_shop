@@ -8,6 +8,8 @@ from django.contrib import messages
 from django.views.decorators.http import require_http_methods
 from django.db import transaction, models
 from django.http import JsonResponse, HttpResponseForbidden
+from django.core.paginator import Paginator
+from django.db.models import Q
 
 from .models import Product, ProductImage
 from .forms import ProductForm, ProductImageForm, BulkProductImageForm
@@ -276,3 +278,63 @@ def product_unpublish_view(request, product_id):
         return JsonResponse({'status': 'success', 'message': 'Product unpublished.'})
     
     return redirect('seller_products_list')
+
+
+@require_http_methods(["GET"])
+def products_browse_view(request):
+    """
+    Browse all published products (public view).
+    """
+    # Get search and filter parameters
+    search_query = request.GET.get('q', '')
+    category_filter = request.GET.get('category')
+    condition_filter = request.GET.get('condition')
+    sort_by = request.GET.get('sort', '-created_at')
+    
+    # Start with published products
+    products = Product.objects.filter(status='published')
+    
+    # Apply search
+    if search_query:
+        products = products.filter(
+            Q(title__icontains=search_query) | 
+            Q(description__icontains=search_query)
+        )
+    
+    # Apply category filter
+    if category_filter:
+        products = products.filter(category_id=category_filter)
+    
+    # Apply condition filter
+    if condition_filter:
+        products = products.filter(condition_id=condition_filter)
+    
+    # Apply sorting
+    if sort_by in ['-created_at', 'created_at', '-price', 'price', 'title']:
+        products = products.order_by(sort_by)
+    else:
+        products = products.order_by('-created_at')
+    
+    # Pagination
+    paginator = Paginator(products, 12)  # 12 products per page
+    page_number = request.GET.get('page', 1)
+    page_obj = paginator.get_page(page_number)
+    
+    # Get unique categories and conditions for filters
+    from .models import ProductCategory, ProductCondition
+    categories = ProductCategory.objects.all()
+    conditions = ProductCondition.objects.all()
+    
+    context = {
+        'page_obj': page_obj,
+        'products': page_obj.object_list,
+        'search_query': search_query,
+        'categories': categories,
+        'conditions': conditions,
+        'selected_category': category_filter,
+        'selected_condition': condition_filter,
+        'sort_by': sort_by,
+        'page_title': 'Browse Products',
+    }
+    
+    return render(request, 'products/browse.html', context)

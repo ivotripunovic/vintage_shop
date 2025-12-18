@@ -6,6 +6,9 @@ from django.urls import path
 from . import views
 
 urlpatterns = [
+    # Browse products (public)
+    path('', views.products_browse_view, name='products_browse'),
+    
     # Product CRUD
     path('create/', views.product_create_view, name='product_create'),
     path('<int:product_id>/edit/', views.product_edit_view, name='product_edit'),

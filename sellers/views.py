@@ -7,7 +7,9 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth import authenticate, login
 from django.contrib import messages
 from django.views.decorators.http import require_http_methods
-from django.db import transaction
+from django.db import transaction, models
+from django.core.paginator import Paginator
+from django.db.models import Q, Count
 from datetime import date, timedelta
 from django.utils.timezone import now
 
@@ -269,3 +271,83 @@ def seller_products_list_view(request):
     }
     
     return render(request, 'sellers/products_list.html', context)
+
+
+@require_http_methods(["GET"])
+def shops_browse_view(request):
+    """
+    Browse all active shops with published products (public view).
+    """
+    # Get search parameter
+    search_query = request.GET.get('q', '')
+    sort_by = request.GET.get('sort', '-created_at')
+    
+    # Get sellers with at least one published product
+    sellers = Seller.objects.filter(
+        status='active',
+        products__status='published'
+    ).distinct().annotate(
+        published_count=Count('products', filter=models.Q(products__status='published'))
+    )
+    
+    # Apply search
+    if search_query:
+        sellers = sellers.filter(
+            Q(shop_name__icontains=search_query) | 
+            Q(shop_description__icontains=search_query) |
+            Q(location__icontains=search_query)
+        )
+    
+    # Apply sorting
+    if sort_by == 'name':
+        sellers = sellers.order_by('shop_name')
+    elif sort_by == '-products':
+        sellers = sellers.order_by('-published_count')
+    else:
+        sellers = sellers.order_by('-created_at')
+    
+    # Pagination
+    paginator = Paginator(sellers, 12)  # 12 shops per page
+    page_number = request.GET.get('page', 1)
+    page_obj = paginator.get_page(page_number)
+    
+    context = {
+        'page_obj': page_obj,
+        'sellers': page_obj.object_list,
+        'search_query': search_query,
+        'sort_by': sort_by,
+        'page_title': 'Browse Shops',
+    }
+    
+    return render(request, 'sellers/browse.html', context)
+
+
+@require_http_methods(["GET"])
+def shop_detail_view(request, shop_slug):
+    """
+    View a specific shop with all its published products.
+    """
+    seller = get_object_or_404(
+        Seller.objects.annotate(
+            published_count=Count('products', filter=models.Q(products__status='published'))
+        ),
+        shop_slug=shop_slug,
+        status='active'
+    )
+    
+    # Get published products for this shop
+    products = seller.products.filter(status='published').order_by('-created_at')
+    
+    # Pagination
+    paginator = Paginator(products, 12)  # 12 products per page
+    page_number = request.GET.get('page', 1)
+    page_obj = paginator.get_page(page_number)
+    
+    context = {
+        'seller': seller,
+        'page_obj': page_obj,
+        'products': page_obj.object_list,
+        'page_title': seller.shop_name,
+    }
+    
+    return render(request, 'sellers/shop_detail.html', context)

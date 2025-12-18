@@ -8,11 +8,11 @@
     <h1 class="text-5xl font-bold mb-4">Welcome to Vintage Shop</h1>
     <p class="text-xl mb-8">Find unique second-hand items from trusted sellers worldwide.</p>
     <div class="flex gap-4">
-        <a href="{% url 'register' %}" class="bg-white text-blue-600 px-8 py-3 rounded-lg font-bold hover:bg-gray-100">
-            Start Buying
+        <a href="{% url 'products_browse' %}" class="bg-white text-blue-600 px-8 py-3 rounded-lg font-bold hover:bg-gray-100">
+            Browse Products
         </a>
-        <a href="{% url 'register' %}" class="border-2 border-white text-white px-8 py-3 rounded-lg font-bold hover:bg-white hover:text-blue-600">
-            Become a Seller
+        <a href="{% url 'shops_browse' %}" class="border-2 border-white text-white px-8 py-3 rounded-lg font-bold hover:bg-white hover:text-blue-600">
+            Browse Shops
         </a>
     </div>
 </div>
@@ -87,15 +87,18 @@
     </p>
     <div class="flex gap-4 justify-center">
         {% if user.is_authenticated %}
-            <a href="{% url 'account-settings' %}" class="bg-blue-600 text-white px-8 py-3 rounded-lg font-bold hover:bg-blue-700">
+            <a href="{% url 'products_browse' %}" class="bg-blue-600 text-white px-8 py-3 rounded-lg font-bold hover:bg-blue-700">
+                Browse Products
+            </a>
+            <a href="{% url 'account-settings' %}" class="border-2 border-blue-600 text-blue-600 px-8 py-3 rounded-lg font-bold hover:bg-blue-50">
                 Account Settings
             </a>
         {% else %}
-            <a href="{% url 'login' %}" class="bg-blue-600 text-white px-8 py-3 rounded-lg font-bold hover:bg-blue-700">
-                Login
+            <a href="{% url 'products_browse' %}" class="bg-blue-600 text-white px-8 py-3 rounded-lg font-bold hover:bg-blue-700">
+                Browse Products
             </a>
-            <a href="{% url 'register' %}" class="border-2 border-blue-600 text-blue-600 px-8 py-3 rounded-lg font-bold hover:bg-blue-50">
-                Register
+            <a href="{% url 'login' %}" class="border-2 border-blue-600 text-blue-600 px-8 py-3 rounded-lg font-bold hover:bg-blue-50">
+                Login
             </a>
         {% endif %}
     </div>
