@@ -5,12 +5,8 @@ This document explains how to add and manage translations for the Vintage Shop m
 ## Supported Languages
 
 Currently, the following languages are configured:
-- **English** (en) - Default
-- **Spanish** (es)
-- **French** (fr)
-- **German** (de)
-- **Italian** (it)
-- **Portuguese** (pt)
+- **Serbian** (sr) - Default / Primary
+- **English** (en) - Secondary
 
 Users can switch languages using the language selector (🌐) in the navigation menu.
 
