@@ -1,5 +1,5 @@
-<!DOCTYPE html>
-<html lang="en">
+{% load i18n %}<!DOCTYPE html>
+<html lang="{{ LANGUAGE_CODE }}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -64,6 +64,28 @@
                     {% endif %}
                 </div>
 
+                <!-- Language Selector (Desktop) -->
+                <div class="hidden md:block relative group">
+                    <button class="text-gray-700 hover:text-blue-600 flex items-center text-sm">
+                        🌐 {{ LANGUAGE_CODE|upper }}
+                        <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+                        </svg>
+                    </button>
+                    <div class="hidden group-hover:block absolute right-0 mt-0 w-32 bg-white rounded-lg shadow-xl z-10">
+                        {% get_available_languages as languages %}
+                        {% for code, name in languages %}
+                            <form method="post" action="{% url 'set_language' %}" style="display: inline;">
+                                {% csrf_token %}
+                                <input type="hidden" name="language" value="{{ code }}">
+                                <button type="submit" class="block w-full text-left px-4 py-2 text-gray-700 hover:bg-blue-50 {% if code == LANGUAGE_CODE %}bg-blue-100 font-semibold{% endif %}">
+                                    {{ name }}
+                                </button>
+                            </form>
+                        {% endfor %}
+                    </div>
+                </div>
+
                 <!-- Mobile Menu Button -->
                 <button onclick="toggleMenu()" class="md:hidden text-gray-700 hover:text-blue-600">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -96,6 +118,21 @@
                     <a href="{% url 'login' %}" class="block px-4 py-2 text-gray-700 hover:bg-blue-50 rounded">Login</a>
                     <a href="{% url 'register' %}" class="block px-4 py-2 bg-blue-600 text-white hover:bg-blue-700 rounded">Register</a>
                 {% endif %}
+
+                <!-- Language Selector (Mobile) -->
+                <div class="px-4 py-2 border-t border-gray-200">
+                    <p class="font-semibold text-gray-900 mb-2">🌐 Language</p>
+                    {% get_available_languages as languages %}
+                    {% for code, name in languages %}
+                        <form method="post" action="{% url 'set_language' %}">
+                            {% csrf_token %}
+                            <input type="hidden" name="language" value="{{ code }}">
+                            <button type="submit" class="block w-full text-left px-4 py-2 text-gray-700 hover:bg-blue-50 rounded ml-2 {% if code == LANGUAGE_CODE %}bg-blue-100 font-semibold{% endif %}">
+                                {{ name }}
+                            </button>
+                        </form>
+                    {% endfor %}
+                </div>
             </div>
         </div>
     </nav>

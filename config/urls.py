@@ -8,12 +8,19 @@ from django.contrib import admin
 from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
+from django.conf.urls.i18n import i18n_patterns
 from . import views
 
+# Non-i18n patterns (language-independent)
 urlpatterns = [
     # Admin
     path("admin/", admin.site.urls),
-    
+    # Language switching
+    path("i18n/", include("django.conf.urls.i18n")),
+]
+
+# i18n patterns (language-dependent routes)
+urlpatterns += i18n_patterns(
     # Authentication
     path("auth/", include("users.urls")),
     
@@ -25,7 +32,9 @@ urlpatterns = [
     
     # Home & Core
     path("", views.home_view, name="home"),
-]
+    
+    prefix_default_language=True,  # Include language prefix for default language too
+)
 
 # Serve media files in development
 if settings.DEBUG:
