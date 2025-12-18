@@ -164,11 +164,12 @@ class SellerAccountSettingsForm(forms.ModelForm):
             }),
         }
 
-    def __init__(self, user, *args, **kwargs):
+    def __init__(self, *args, user=None, **kwargs):
         """Initialize form with user instance."""
         self.user = user
         super().__init__(*args, **kwargs)
-        self.fields['email'].initial = user.email
+        if user:
+            self.fields['email'].initial = user.email
 
     def clean_email(self):
         """Validate that new email is unique if changed."""
