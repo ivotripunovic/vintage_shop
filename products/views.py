@@ -281,6 +281,92 @@ def product_unpublish_view(request, product_id):
 
 
 @require_http_methods(["GET"])
+def product_public_detail_view(request, product_id):
+    """
+    Public product detail page (for buyers).
+    Shows product images, description, price, seller info, and related products.
+    """
+    product = get_object_or_404(Product, id=product_id, status='published')
+    
+    # Get product images
+    images = product.images.all().order_by('order')
+    
+    # Get related products (same seller, published, excluding current product)
+    related_products = (
+        product.seller.products
+        .filter(status='published')
+        .exclude(id=product.id)
+        .order_by('-created_at')[:6]
+    )
+    
+    context = {
+        'product': product,
+        'images': images,
+        'related_products': related_products,
+        'page_title': product.title,
+    }
+    
+    return render(request, 'products/product_public_detail.html', context)
+
+
+@require_http_methods(["GET"])
+def category_products_view(request, category_id):
+    """
+    Browse products in a specific category (public view).
+    """
+    from .models import ProductCategory
+    
+    category = get_object_or_404(ProductCategory, id=category_id)
+    
+    # Get search and filter parameters
+    search_query = request.GET.get('q', '')
+    condition_filter = request.GET.get('condition')
+    sort_by = request.GET.get('sort', '-created_at')
+    
+    # Start with published products in this category
+    products = Product.objects.filter(status='published', category=category)
+    
+    # Apply search
+    if search_query:
+        products = products.filter(
+            Q(title__icontains=search_query) | 
+            Q(description__icontains=search_query)
+        )
+    
+    # Apply condition filter
+    if condition_filter:
+        products = products.filter(condition_id=condition_filter)
+    
+    # Apply sorting
+    if sort_by in ['-created_at', 'created_at', '-price', 'price', 'title']:
+        products = products.order_by(sort_by)
+    else:
+        products = products.order_by('-created_at')
+    
+    # Pagination
+    paginator = Paginator(products, 12)
+    page_number = request.GET.get('page', 1)
+    page_obj = paginator.get_page(page_number)
+    
+    # Get conditions for filter
+    from .models import ProductCondition
+    conditions = ProductCondition.objects.all()
+    
+    context = {
+        'category': category,
+        'page_obj': page_obj,
+        'products': page_obj.object_list,
+        'search_query': search_query,
+        'conditions': conditions,
+        'selected_condition': condition_filter,
+        'sort_by': sort_by,
+        'page_title': f'{category.name} Products',
+    }
+    
+    return render(request, 'products/category.html', context)
+
+
+@require_http_methods(["GET"])
 def products_browse_view(request):
     """
     Browse all published products (public view).

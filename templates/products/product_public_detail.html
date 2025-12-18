@@ -1,0 +1,267 @@
+{% extends "base.html" %}
+
+{% block title %}{{ product.title }} - Vintage Shop{% endblock %}
+
+{% block content %}
+<div class="mb-8">
+    <!-- Breadcrumb -->
+    <nav class="text-sm text-gray-600 mb-8">
+        <a href="{% url 'products_browse' %}" class="hover:text-gray-800">Products</a>
+        {% if product.category %}
+            <span class="mx-2">/</span>
+            <a href="{% url 'products_browse' %}?category={{ product.category.id }}" class="hover:text-gray-800">
+                {{ product.category.name }}
+            </a>
+        {% endif %}
+        <span class="mx-2">/</span>
+        <span class="text-gray-800 font-semibold">{{ product.title }}</span>
+    </nav>
+    
+    <!-- Product Content -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-12">
+        <!-- Product Images -->
+        <div>
+            {% if images %}
+                <!-- Main Image -->
+                <div class="bg-gray-100 rounded-lg overflow-hidden mb-4">
+                    <img 
+                        id="mainImage" 
+                        src="{{ images.0.image.url }}" 
+                        alt="{{ images.0.alt_text }}"
+                        class="w-full h-96 object-cover cursor-zoom-in"
+                    >
+                </div>
+                
+                <!-- Thumbnails -->
+                {% if images.count > 1 %}
+                    <div class="grid grid-cols-5 gap-2">
+                        {% for image in images %}
+                            <img 
+                                src="{{ image.image.url }}" 
+                                alt="{{ image.alt_text }}"
+                                class="w-full h-20 object-cover rounded-lg cursor-pointer border-2 {% if forloop.first %}border-blue-600{% else %}border-gray-200 hover:border-gray-400{% endif %}"
+                                onclick="changeMainImage('{{ image.image.url }}', '{{ image.alt_text }}')"
+                            >
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            {% else %}
+                <div class="bg-gray-200 rounded-lg h-96 flex items-center justify-center">
+                    <span class="text-gray-400 text-xl">No Images Available</span>
+                </div>
+            {% endif %}
+        </div>
+        
+        <!-- Product Info -->
+        <div>
+            <!-- Title -->
+            <h1 class="text-4xl font-bold mb-4">{{ product.title }}</h1>
+            
+            <!-- Rating and Stock Status -->
+            <div class="flex items-center gap-6 mb-6">
+                <div class="flex items-center gap-2">
+                    {% if product.stock > 0 %}
+                        <span class="inline-block bg-green-100 text-green-800 px-4 py-2 rounded-full text-sm font-semibold">
+                            In Stock ({{ product.stock }})
+                        </span>
+                    {% else %}
+                        <span class="inline-block bg-red-100 text-red-800 px-4 py-2 rounded-full text-sm font-semibold">
+                            Out of Stock
+                        </span>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <!-- Price -->
+            <div class="bg-blue-50 rounded-lg p-6 mb-6">
+                <p class="text-gray-600 text-sm mb-2">Price</p>
+                <p class="text-5xl font-bold text-blue-600">${{ product.price }}</p>
+            </div>
+            
+            <!-- Product Details -->
+            <div class="bg-gray-50 rounded-lg p-6 mb-6">
+                <h3 class="text-lg font-bold mb-4">Product Details</h3>
+                <div class="space-y-3">
+                    {% if product.category %}
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">Category:</span>
+                            <span class="font-semibold">{{ product.category.name }}</span>
+                        </div>
+                    {% endif %}
+                    
+                    {% if product.condition %}
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">Condition:</span>
+                            <span class="font-semibold">{{ product.condition.name }}</span>
+                        </div>
+                    {% endif %}
+                    
+                    <div class="flex justify-between">
+                        <span class="text-gray-600">Listed:</span>
+                        <span class="font-semibold">{{ product.created_at|date:"M d, Y" }}</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Description -->
+            <div class="mb-8">
+                <h3 class="text-lg font-bold mb-4">Description</h3>
+                <p class="text-gray-700 leading-relaxed whitespace-pre-wrap">{{ product.description }}</p>
+            </div>
+            
+            <!-- Seller Information -->
+            <div class="bg-white border-2 border-gray-200 rounded-lg p-6 mb-6">
+                <h3 class="text-lg font-bold mb-4">Seller Information</h3>
+                <div class="flex items-start gap-4">
+                    {% if product.seller.shop_image %}
+                        <img 
+                            src="{{ product.seller.shop_image.url }}" 
+                            alt="{{ product.seller.shop_name }}"
+                            class="w-20 h-20 object-cover rounded-lg"
+                        >
+                    {% else %}
+                        <div class="w-20 h-20 bg-gradient-to-r from-blue-400 to-purple-400 rounded-lg flex items-center justify-center text-2xl">
+                            🏪
+                        </div>
+                    {% endif %}
+                    
+                    <div class="flex-1">
+                        <h4 class="text-xl font-bold mb-2">{{ product.seller.shop_name }}</h4>
+                        {% if product.seller.location %}
+                            <p class="text-gray-600 text-sm mb-3">📍 {{ product.seller.location }}</p>
+                        {% endif %}
+                        <a href="{% url 'shop_detail' product.seller.shop_slug %}" class="inline-block bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 text-sm font-semibold">
+                            Visit Shop
+                        </a>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Action Buttons -->
+            <div class="flex gap-4">
+                {% if product.stock > 0 %}
+                    <button 
+                        type="button" 
+                        onclick="addToCart({{ product.id }})"
+                        class="flex-1 bg-blue-600 text-white px-8 py-4 rounded-lg font-bold text-lg hover:bg-blue-700 transition-colors"
+                    >
+                        🛒 Add to Cart
+                    </button>
+                    <button 
+                        type="button" 
+                        onclick="toggleWishlist({{ product.id }})"
+                        id="wishlistBtn"
+                        class="flex-1 bg-gray-200 text-gray-800 px-8 py-4 rounded-lg font-bold text-lg hover:bg-gray-300 transition-colors"
+                    >
+                        ❤️ Wishlist
+                    </button>
+                {% else %}
+                    <button 
+                        type="button" 
+                        disabled
+                        class="flex-1 bg-gray-300 text-gray-600 px-8 py-4 rounded-lg font-bold text-lg cursor-not-allowed"
+                    >
+                        Out of Stock
+                    </button>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Related Products -->
+{% if related_products %}
+    <div class="mt-16 pt-16 border-t border-gray-200">
+        <h2 class="text-3xl font-bold mb-8">More from {{ product.seller.shop_name }}</h2>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {% for related in related_products %}
+                <div class="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow">
+                    <!-- Product Image -->
+                    {% if related.images.exists %}
+                        <div class="relative bg-gray-200 h-64 overflow-hidden">
+                            <img 
+                                src="{{ related.images.first.image.url }}" 
+                                alt="{{ related.images.first.alt_text }}"
+                                class="w-full h-full object-cover"
+                            >
+                        </div>
+                    {% else %}
+                        <div class="bg-gray-200 h-64 flex items-center justify-center">
+                            <span class="text-gray-400">No Image</span>
+                        </div>
+                    {% endif %}
+                    
+                    <!-- Product Info -->
+                    <div class="p-6">
+                        <h3 class="text-lg font-bold mb-2 truncate">{{ related.title }}</h3>
+                        
+                        <p class="text-gray-600 text-sm mb-4 line-clamp-2">{{ related.description }}</p>
+                        
+                        <!-- Details -->
+                        <div class="flex justify-between items-center mb-4 text-sm text-gray-600">
+                            {% if related.category %}
+                                <span class="bg-gray-100 px-3 py-1 rounded-full text-xs">
+                                    {{ related.category.name }}
+                                </span>
+                            {% endif %}
+                            {% if related.condition %}
+                                <span class="text-gray-700">{{ related.condition.name }}</span>
+                            {% endif %}
+                        </div>
+                        
+                        <!-- Price and Actions -->
+                        <div class="flex justify-between items-center">
+                            <span class="text-2xl font-bold text-blue-600">${{ related.price }}</span>
+                            <a href="{% url 'product_detail' related.id %}" class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700">
+                                View
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+{% endif %}
+
+<script>
+function changeMainImage(imageSrc, imageAlt) {
+    document.getElementById('mainImage').src = imageSrc;
+    document.getElementById('mainImage').alt = imageAlt;
+    
+    // Update thumbnail borders
+    document.querySelectorAll('.grid img').forEach(img => {
+        if (img.src === imageSrc) {
+            img.classList.remove('border-gray-200', 'hover:border-gray-400');
+            img.classList.add('border-blue-600');
+        } else {
+            img.classList.remove('border-blue-600');
+            img.classList.add('border-gray-200', 'hover:border-gray-400');
+        }
+    });
+}
+
+function addToCart(productId) {
+    // Placeholder for cart functionality
+    alert('Cart feature coming soon! Product ID: ' + productId);
+    // TODO: Implement actual cart functionality
+}
+
+function toggleWishlist(productId) {
+    // Placeholder for wishlist functionality
+    const btn = document.getElementById('wishlistBtn');
+    btn.classList.toggle('bg-red-100');
+    btn.classList.toggle('text-red-800');
+    // TODO: Implement actual wishlist functionality with backend
+}
+</script>
+
+<style>
+.line-clamp-2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+</style>
+{% endblock %}

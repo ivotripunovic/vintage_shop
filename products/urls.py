@@ -9,11 +9,17 @@ urlpatterns = [
     # Browse products (public)
     path('', views.products_browse_view, name='products_browse'),
     
-    # Product CRUD
+    # Category browsing (public)
+    path('category/<int:category_id>/', views.category_products_view, name='category_products'),
+    
+    # Product detail (public)
+    path('<int:product_id>/', views.product_public_detail_view, name='product_detail'),
+    
+    # Product CRUD (seller only)
     path('create/', views.product_create_view, name='product_create'),
     path('<int:product_id>/edit/', views.product_edit_view, name='product_edit'),
     path('<int:product_id>/delete/', views.product_delete_view, name='product_delete'),
-    path('<int:product_id>/', views.product_detail_view, name='product_detail'),
+    path('<int:product_id>/seller/', views.product_detail_view, name='product_seller_detail'),
     
     # Images
     path('<int:product_id>/images/', views.product_images_view, name='product_images'),
