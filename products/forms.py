@@ -168,4 +168,6 @@ class BulkProductImageForm(forms.Form):
             if file_ext not in valid_extensions:
                 raise ValidationError(f'{file.name}: Only {", ".join(valid_extensions)} files are allowed.')
         
+        # Store the validated files in cleaned_data
+        cleaned_data['images'] = files
         return cleaned_data
