@@ -116,7 +116,7 @@ AUTH_PASSWORD_VALIDATORS = [
 # Internationalization
 LANGUAGE_CODE = "sr"  # Serbian as default language
 TIME_ZONE = "UTC"
-USE_I18N = True
+USE_I18N = False
 USE_TZ = True
 
 # Supported languages (Serbian first, English second)
