@@ -280,7 +280,11 @@ class ProductDetailViewTests(TestCase):
         )
         self.assertContains(response, self.product.title)
         self.assertContains(response, self.product.description)
-        self.assertContains(response, str(self.product.price))
+        # Price is formatted with locale, so check for both period and comma versions
+        self.assertTrue(
+            b'49.99' in response.content or b'49,99' in response.content,
+            f"Neither '49.99' nor '49,99' found in response"
+        )
 
     def test_product_detail_shows_seller_info(self):
         """Test that product detail shows seller information."""
