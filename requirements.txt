@@ -1,5 +1,5 @@
 # Django & Core
-Django==5.2.9
+Django==5.2.10
 psycopg2-binary==2.9.11
 python-decouple==3.8
 
@@ -11,10 +11,10 @@ crispy-tailwind==1.0.3
 djangorestframework==3.16.1
 
 # Images
-Pillow==12.0.0
+Pillow==12.1.0
 
 # Task Scheduling
-APScheduler==3.11.1
+APScheduler==3.11.2
 
 # Email
 sendgrid==6.12.5
@@ -23,12 +23,15 @@ sendgrid==6.12.5
 pytest==9.0.2
 pytest-django==4.11.1
 pytest-cov==7.0.0
-pytest-xdist==3.6.1
+pytest-xdist==3.8.0
 
 # Code Quality
-black==25.12.0
+black==26.1.0
 flake8==7.3.0
 isort==7.0.0
+
+# Production Server
+gunicorn==24.1.1
 
 # Security & Utilities
 django-environ==0.12.0

@@ -76,3 +76,24 @@ URLs use i18n patterns with language prefix (Serbian default, English secondary)
 - View tests (`test_views.py` files) are auto-marked as `slow` by `conftest.py`.
 - Tests run in parallel (`-n auto`) with `--reuse-db` for speed.
 - Test settings use MD5 password hasher (~100x faster), in-memory cache, logging disabled.
+
+### Deployment
+
+Production runs on a VPS with Gunicorn + Nginx on Ubuntu 22.04+. Scripts live in `deploy/`.
+
+- **Stack**: Gunicorn (Unix socket) → Nginx (reverse proxy + static files) → Let's Encrypt SSL
+- **Service**: systemd unit at `/etc/systemd/system/vintage_shop.service`, runs as `vintage_shop` user
+- **Config**: `deploy/gunicorn.conf.py` (2 workers, tuned for 1GB RAM VPS)
+
+```bash
+# Initial server setup (run once as root)
+sudo bash deploy/setup.sh <domain> <db_password>
+
+# Routine deployment (run as vintage_shop user)
+bash deploy/deploy.sh
+
+# Service management
+sudo systemctl status vintage_shop
+sudo systemctl restart vintage_shop
+journalctl -u vintage_shop -f   # view logs
+```
