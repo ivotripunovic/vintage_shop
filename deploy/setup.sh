@@ -20,7 +20,7 @@ fi
 DOMAIN="$1"
 DB_PASSWORD="$2"
 APP_USER="vintage_shop"
-APP_DIR="/home/${APP_USER}/vintage_shop"
+APP_DIR="/opt/vintage_shop"
 REPO_URL="$(git remote get-url origin 2>/dev/null || echo 'https://github.com/OWNER/vintage_shop.git')"
 
 echo "==> Setting up Vintage Shop on ${DOMAIN}"
@@ -47,7 +47,7 @@ ufw --force enable
 
 echo "==> Creating ${APP_USER} system user..."
 if ! id "${APP_USER}" &>/dev/null; then
-    useradd --system --create-home --shell /bin/bash --group www-data "${APP_USER}"
+    useradd --system --no-create-home --shell /bin/bash --group www-data "${APP_USER}"
 fi
 
 # --- 4. PostgreSQL --------------------------------------------------------
@@ -63,6 +63,8 @@ sudo -u postgres psql -tc "SELECT 1 FROM pg_catalog.pg_database WHERE datname='$
 
 echo "==> Cloning repository..."
 if [ ! -d "${APP_DIR}" ]; then
+    mkdir -p "${APP_DIR}"
+    chown "${APP_USER}:www-data" "${APP_DIR}"
     sudo -u "${APP_USER}" git clone "${REPO_URL}" "${APP_DIR}"
 else
     echo "    Repository already exists, pulling latest..."

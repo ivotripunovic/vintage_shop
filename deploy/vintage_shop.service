@@ -7,9 +7,9 @@ Requires=postgresql.service
 User=vintage_shop
 Group=www-data
 RuntimeDirectory=vintage_shop
-WorkingDirectory=/home/vintage_shop/vintage_shop
-EnvironmentFile=/home/vintage_shop/vintage_shop/.env
-ExecStart=/home/vintage_shop/vintage_shop/venv/bin/gunicorn config.wsgi:application -c /home/vintage_shop/vintage_shop/deploy/gunicorn.conf.py
+WorkingDirectory=/opt/vintage_shop
+EnvironmentFile=/opt/vintage_shop/.env
+ExecStart=/opt/vintage_shop/venv/bin/gunicorn config.wsgi:application -c /opt/vintage_shop/deploy/gunicorn.conf.py
 ExecReload=/bin/kill -s HUP $MAINPID
 KillMode=mixed
 Restart=on-failure
@@ -17,10 +17,10 @@ RestartSec=5
 
 # Security hardening
 ProtectSystem=strict
-ProtectHome=read-only
-ReadWritePaths=/home/vintage_shop/vintage_shop/media
-ReadWritePaths=/home/vintage_shop/vintage_shop/logs
-ReadWritePaths=/home/vintage_shop/vintage_shop/staticfiles
+ProtectHome=true
+ReadWritePaths=/opt/vintage_shop/media
+ReadWritePaths=/opt/vintage_shop/logs
+ReadWritePaths=/opt/vintage_shop/staticfiles
 ReadWritePaths=/run/vintage_shop
 PrivateTmp=true
 NoNewPrivileges=true

@@ -8,7 +8,7 @@
 
 set -euo pipefail
 
-APP_DIR="/home/vintage_shop/vintage_shop"
+APP_DIR="/opt/vintage_shop"
 
 cd "${APP_DIR}"
 
