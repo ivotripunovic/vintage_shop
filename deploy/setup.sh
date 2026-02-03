@@ -153,7 +153,7 @@ systemctl reload nginx
 # --- 13. SSL certificate --------------------------------------------------
 
 echo "==> Obtaining SSL certificate..."
-certbot --nginx -d "${DOMAIN}" -d "www.${DOMAIN}" --non-interactive --agree-tos --redirect \
+certbot --nginx -d "${DOMAIN}" --non-interactive --agree-tos --redirect \
     --register-unsafely-without-email || \
     echo "    WARNING: Certbot failed. Run manually: certbot --nginx -d ${DOMAIN}"
 
