@@ -142,9 +142,9 @@ chmod 440 /etc/sudoers.d/vintage_shop
 
 echo "==> Configuring Nginx..."
 sed "s/DOMAIN_PLACEHOLDER/${DOMAIN}/g" "${APP_DIR}/deploy/nginx.conf" \
-    > "/etc/nginx/sites-available/vintage_shop"
+    > "/etc/nginx/sites-available/vintage_shop.conf"
 
-ln -sf /etc/nginx/sites-available/vintage_shop /etc/nginx/sites-enabled/vintage_shop
+ln -sf /etc/nginx/sites-available/vintage_shop.conf /etc/nginx/sites-enabled/vintage_shop.conf
 rm -f /etc/nginx/sites-enabled/default
 
 nginx -t
