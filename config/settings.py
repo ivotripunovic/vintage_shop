@@ -66,6 +66,7 @@ TEMPLATES = [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
+                "core.context_processors.site_settings",
             ],
         },
     },
@@ -187,4 +188,5 @@ os.makedirs(BASE_DIR / "logs", exist_ok=True)
 
 # Site Configuration
 SITE_DOMAIN = config("SITE_DOMAIN", default="http://localhost:8000")
+SITE_NAME = config("SITE_NAME", default="Vintage Shop")
 DEFAULT_FROM_EMAIL = config("DEFAULT_FROM_EMAIL", default="noreply@vintageshop.local")

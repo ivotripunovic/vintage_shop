@@ -279,11 +279,12 @@ def send_verification_email(user):
     
     verification_url = f"{settings.SITE_DOMAIN}/auth/verify-email/{token}/"
     
-    subject = 'Verify your Vintage Shop email'
+    site_name = settings.SITE_NAME
+    subject = f'Verify your {site_name} email'
     message = f"""
 Hello {user.first_name or user.email},
 
-Welcome to Vintage Shop! Please verify your email by clicking the link below:
+Welcome to {site_name}! Please verify your email by clicking the link below:
 
 {verification_url}
 
@@ -292,7 +293,7 @@ This link will expire in 24 hours.
 If you didn't create this account, please ignore this email.
 
 Best regards,
-Vintage Shop Team
+{site_name} Team
     """
     
     try:
@@ -321,7 +322,8 @@ def send_password_reset_email(user):
     
     reset_url = f"{settings.SITE_DOMAIN}/auth/reset-password/{token}/"
     
-    subject = 'Reset your Vintage Shop password'
+    site_name = settings.SITE_NAME
+    subject = f'Reset your {site_name} password'
     message = f"""
 Hello {user.first_name or user.email},
 
@@ -334,7 +336,7 @@ This link will expire in 1 hour.
 If you didn't request a password reset, please ignore this email.
 
 Best regards,
-Vintage Shop Team
+{site_name} Team
     """
     
     try:
