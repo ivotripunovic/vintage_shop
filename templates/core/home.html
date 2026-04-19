@@ -12,19 +12,6 @@
     overflow: hidden;
 }
 </style>
-<!-- Hero Section -->
-<div class="bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg shadow-lg p-12 mb-12">
-    <h1 class="text-5xl font-bold mb-4">Welcome to Vintage Shop</h1>
-    <p class="text-xl mb-8">Find unique second-hand items from trusted sellers worldwide.</p>
-    <div class="flex gap-4">
-        <a href="{% url 'products_browse' %}" class="bg-white text-blue-600 px-8 py-3 rounded-lg font-bold hover:bg-gray-100">
-            Browse Products
-        </a>
-        <a href="{% url 'shops_browse' %}" class="border-2 border-white text-white px-8 py-3 rounded-lg font-bold hover:bg-white hover:text-blue-600">
-            Browse Shops
-        </a>
-    </div>
-</div>
 
 <!-- Featured Products Section -->
 {% if featured_products %}
