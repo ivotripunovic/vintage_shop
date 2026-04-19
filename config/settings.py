@@ -46,7 +46,6 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
-    "django.middleware.locale.LocaleMiddleware",  # i18n language selection
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
@@ -114,21 +113,10 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 # Internationalization
-LANGUAGE_CODE = "sr"  # Serbian as default language
+LANGUAGE_CODE = "en-us"
 TIME_ZONE = "UTC"
 USE_I18N = False
 USE_TZ = True
-
-# Supported languages (Serbian first, English second)
-LANGUAGES = [
-    ('sr', 'Српски'),
-    ('en', 'English'),
-]
-
-# Locale paths
-LOCALE_PATHS = [
-    BASE_DIR / "locale",
-]
 
 # Static files (CSS, JavaScript, Images)
 STATIC_URL = "/static/"
