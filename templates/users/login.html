@@ -1,71 +1,44 @@
 {% extends "base.html" %}
-
-{% block title %}Login - {{ SITE_NAME }}{% endblock %}
+{% block title %}Sign In — {{ SITE_NAME }}{% endblock %}
 
 {% block content %}
-<div class="max-w-md mx-auto bg-white rounded-lg shadow-md p-8">
-    <h1 class="text-3xl font-bold mb-6 text-center">Login</h1>
-    
-    <form method="post" class="space-y-4">
+
+<div class="max-w-sm mx-auto py-12">
+    <h1 class="font-serif text-4xl font-light text-center mb-10">Sign In</h1>
+
+    <form method="post" class="space-y-5">
         {% csrf_token %}
-        
+
         {% if form.non_field_errors %}
-            <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-                {% for error in form.non_field_errors %}
-                    <p>{{ error }}</p>
-                {% endfor %}
-            </div>
+        <div class="border border-red-200 p-4">
+            {% for error in form.non_field_errors %}<p class="text-xs text-red-600">{{ error }}</p>{% endfor %}
+        </div>
         {% endif %}
-        
-        <!-- Email -->
+
         <div>
-            <label for="{{ form.email.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">
-                Email Address
-            </label>
+            <label for="{{ form.email.id_for_label }}" class="block text-xs uppercase tracking-widest text-stone-500 mb-2">Email</label>
             {{ form.email }}
-            {% if form.email.errors %}
-                <p class="text-red-600 text-sm mt-1">{{ form.email.errors.0 }}</p>
-            {% endif %}
+            {% if form.email.errors %}<p class="text-xs text-red-600 mt-1">{{ form.email.errors.0 }}</p>{% endif %}
         </div>
-        
-        <!-- Password -->
+
         <div>
-            <label for="{{ form.password.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">
-                Password
-            </label>
+            <label for="{{ form.password.id_for_label }}" class="block text-xs uppercase tracking-widest text-stone-500 mb-2">Password</label>
             {{ form.password }}
-            {% if form.password.errors %}
-                <p class="text-red-600 text-sm mt-1">{{ form.password.errors.0 }}</p>
-            {% endif %}
+            {% if form.password.errors %}<p class="text-xs text-red-600 mt-1">{{ form.password.errors.0 }}</p>{% endif %}
         </div>
-        
-        <!-- Remember Me -->
-        <div class="flex items-center">
+
+        <div class="flex items-center gap-2">
             {{ form.remember_me }}
-            <label for="{{ form.remember_me.id_for_label }}" class="text-sm text-gray-700">
-                Remember me
-            </label>
+            <label for="{{ form.remember_me.id_for_label }}" class="text-xs text-stone-400">Remember me</label>
         </div>
-        
-        <!-- Submit -->
-        <button type="submit" class="w-full bg-blue-600 text-white py-2 rounded-lg font-medium hover:bg-blue-700 transition">
-            Login
-        </button>
+
+        <button type="submit" class="w-full bg-stone-900 text-white text-xs uppercase tracking-widest py-3.5 hover:bg-stone-700 transition-colors">Sign In</button>
     </form>
-    
-    <!-- Links -->
-    <div class="mt-6 space-y-4">
-        <div class="text-center">
-            <a href="{% url 'password-reset-request' %}" class="text-blue-600 hover:text-blue-700 text-sm">
-                Forgot password?
-            </a>
-        </div>
-        <div class="text-center text-gray-600 text-sm">
-            Don't have an account?
-            <a href="{% url 'register' %}" class="text-blue-600 hover:text-blue-700 font-medium">
-                Register here
-            </a>
-        </div>
+
+    <div class="mt-8 space-y-3 text-center">
+        <a href="{% url 'password-reset-request' %}" class="block text-xs uppercase tracking-widest text-stone-400 hover:text-stone-900 transition-colors">Forgot Password</a>
+        <p class="text-xs text-stone-400">No account? <a href="{% url 'register' %}" class="text-stone-900 hover:text-stone-600 transition-colors">Register</a></p>
     </div>
 </div>
+
 {% endblock %}
