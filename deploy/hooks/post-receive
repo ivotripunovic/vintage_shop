@@ -19,6 +19,7 @@ echo "--> Checking out latest code..."
 GIT_WORK_TREE="${APP_DIR}" git checkout -f main
 
 cd "${APP_DIR}"
+echo "${APP_DIR} DEBUG" 
 
 if [ ! -f "./venv/bin/pip" ]; then
     echo "--> Creating virtual environment..."
