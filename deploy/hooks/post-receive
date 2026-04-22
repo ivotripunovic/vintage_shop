@@ -20,6 +20,11 @@ GIT_WORK_TREE="${APP_DIR}" git checkout -f main
 
 cd "${APP_DIR}"
 
+if [ ! -f "./venv/bin/pip" ]; then
+    echo "--> Creating virtual environment..."
+    python3 -m venv ./venv
+fi
+
 echo "--> Installing dependencies..."
 ./venv/bin/pip install -r requirements.txt --quiet
 
