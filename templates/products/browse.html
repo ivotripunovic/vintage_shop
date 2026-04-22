@@ -1,57 +1,56 @@
 {% extends "base.html" %}
-{% block title %}Shop — {{ SITE_NAME }}{% endblock %}
+{% block title %}Prodavnica — {{ SITE_NAME }}{% endblock %}
 
 {% block content %}
 
-<div class="mb-8">
-    <h1 class="font-serif text-4xl font-light mb-1">Prodavnica</h1>
-    {% if products.paginator.count %}<p class="text-xs uppercase tracking-widest text-stone-400">{{ products.paginator.count }} artikala</p>{% endif %}
+<div class="mb-8 flex items-baseline justify-between">
+    <div>
+        <h1 class="font-serif text-4xl font-light mb-1">Prodavnica</h1>
+        {% if products.paginator.count %}<p class="text-xs uppercase tracking-widest text-stone-400">{{ products.paginator.count }} artikala</p>{% endif %}
+    </div>
 </div>
 
-<form method="get" class="border border-neutral-200 p-6 mb-10">
-    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-        <div>
-            <label class="block text-xs uppercase tracking-widest text-stone-500 mb-2">Pretraga</label>
-            <input type="text" name="q" value="{{ search_query }}" placeholder="Pretraži...">
-        </div>
-        <div>
-            <label class="block text-xs uppercase tracking-widest text-stone-500 mb-2">Kategorija</label>
-            <select name="category" onchange="if(this.value) window.location.href='/products/category/' + this.value + '/'; else window.location.href='{% url 'products_browse' %}';">
-                <option value="">Sve</option>
-                {% for category in categories %}
-                    <option value="{{ category.id }}" {% if selected_category == category.id|stringformat:"s" %}selected{% endif %}>{{ category.name }}</option>
-                    {% for sub in category.children.all %}
-                        <option value="{{ sub.id }}" {% if selected_category == sub.id|stringformat:"s" %}selected{% endif %}>&nbsp;&nbsp;{{ sub.name }}</option>
-                    {% endfor %}
-                {% endfor %}
-            </select>
-        </div>
-        <div>
-            <label class="block text-xs uppercase tracking-widest text-stone-500 mb-2">Stanje</label>
-            <select name="condition">
-                <option value="">Sve</option>
-                {% for condition in conditions %}
-                    <option value="{{ condition.id }}" {% if selected_condition == condition.id|stringformat:"s" %}selected{% endif %}>{{ condition.name }}</option>
-                {% endfor %}
-            </select>
-        </div>
-        <div>
-            <label class="block text-xs uppercase tracking-widest text-stone-500 mb-2">Sortiraj</label>
-            <select name="sort">
-                <option value="-created_at" {% if sort_by == "-created_at" %}selected{% endif %}>Najnovije</option>
-                <option value="created_at" {% if sort_by == "created_at" %}selected{% endif %}>Najstarije</option>
-                <option value="-price" {% if sort_by == "-price" %}selected{% endif %}>Cena: od više ka nižoj</option>
-                <option value="price" {% if sort_by == "price" %}selected{% endif %}>Cena: od niže ka višoj</option>
-                <option value="title" {% if sort_by == "title" %}selected{% endif %}>Naziv A–Ž</option>
-            </select>
-        </div>
+{% if search_query or selected_category or selected_condition %}
+<div class="flex flex-wrap gap-2 mb-6">
+    {% if search_query %}
+    <span class="inline-flex items-center gap-2 border border-neutral-200 px-3 py-1.5 text-xs text-stone-600">
+        „{{ search_query }}"
+        <a href="?{% if selected_category %}category={{ selected_category }}&{% endif %}{% if selected_condition %}condition={{ selected_condition }}&{% endif %}sort={{ sort_by }}" class="text-stone-400 hover:text-stone-900">✕</a>
+    </span>
+    {% endif %}
+    {% if selected_condition %}
+    <span class="inline-flex items-center gap-2 border border-neutral-200 px-3 py-1.5 text-xs text-stone-600">
+        Stanje: {{ selected_condition }}
+        <a href="?{% if search_query %}q={{ search_query }}&{% endif %}sort={{ sort_by }}" class="text-stone-400 hover:text-stone-900">✕</a>
+    </span>
+    {% endif %}
+    <a href="{% url 'products_browse' %}" class="text-xs uppercase tracking-widest text-stone-400 hover:text-stone-900 transition-colors self-center ml-2">Obriši sve</a>
+</div>
+{% endif %}
+
+<form method="get" class="flex flex-wrap gap-4 mb-10 items-end">
+    {% if search_query %}<input type="hidden" name="q" value="{{ search_query }}">{% endif %}
+    {% if selected_category %}<input type="hidden" name="category" value="{{ selected_category }}">{% endif %}
+    <div>
+        <label class="block text-xs uppercase tracking-widest text-stone-500 mb-2">Stanje</label>
+        <select name="condition">
+            <option value="">Sve</option>
+            {% for condition in conditions %}
+                <option value="{{ condition.id }}" {% if selected_condition == condition.id|stringformat:"s" %}selected{% endif %}>{{ condition.name }}</option>
+            {% endfor %}
+        </select>
     </div>
-    <div class="flex items-center gap-6">
-        <button type="submit" class="text-xs uppercase tracking-widest bg-stone-900 text-white px-6 py-2.5 hover:bg-stone-700 transition-colors">Primeni</button>
-        {% if search_query or selected_category or selected_condition %}
-            <a href="{% url 'products_browse' %}" class="text-xs uppercase tracking-widest text-stone-400 hover:text-stone-900 transition-colors">Obriši</a>
-        {% endif %}
+    <div>
+        <label class="block text-xs uppercase tracking-widest text-stone-500 mb-2">Sortiraj</label>
+        <select name="sort">
+            <option value="-created_at" {% if sort_by == "-created_at" %}selected{% endif %}>Najnovije</option>
+            <option value="created_at" {% if sort_by == "created_at" %}selected{% endif %}>Najstarije</option>
+            <option value="-price" {% if sort_by == "-price" %}selected{% endif %}>Cena: od više ka nižoj</option>
+            <option value="price" {% if sort_by == "price" %}selected{% endif %}>Cena: od niže ka višoj</option>
+            <option value="title" {% if sort_by == "title" %}selected{% endif %}>Naziv A–Ž</option>
+        </select>
     </div>
+    <button type="submit" class="text-xs uppercase tracking-widest bg-stone-900 text-white px-6 py-2.5 hover:bg-stone-700 transition-colors">Primeni</button>
 </form>
 
 {% if products %}
@@ -91,8 +90,8 @@
 {% else %}
     <div class="border border-neutral-200 p-16 text-center">
         <h2 class="font-serif text-2xl font-light mb-3">Nisu pronađeni artikli</h2>
-        <p class="text-xs text-stone-400 mb-6">{% if search_query or selected_category or selected_condition %}Try adjusting your filters.{% else %}Check back soon.{% endif %}</p>
-        {% if search_query or selected_category or selected_condition %}
+        <p class="text-xs text-stone-400 mb-6">{% if search_query or selected_condition %}Pokušajte da promenite filtere.{% else %}Proverite uskoro.{% endif %}</p>
+        {% if search_query or selected_condition %}
             <a href="{% url 'products_browse' %}" class="text-xs uppercase tracking-widest bg-stone-900 text-white px-6 py-2.5 hover:bg-stone-700 transition-colors inline-block">Obriši filtere</a>
         {% endif %}
     </div>

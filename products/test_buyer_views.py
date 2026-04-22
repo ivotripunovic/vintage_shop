@@ -201,7 +201,7 @@ class CategoryProductsViewTests(TestCase):
         )
         other_product = Product.objects.create(
             seller=self.seller,
-            title='Book',
+            title='Other Category Product',
             description='A book',
             price=15.99,
             category=other_category,
