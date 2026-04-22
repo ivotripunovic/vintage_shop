@@ -8,9 +8,9 @@
 
 set -euo pipefail
 
-APP_USER="vintage_shop"
+APP_USER="deploy"
 APP_DIR="/opt/vintage_shop"
-REPO_DIR="/home/${APP_USER}/repo.git"
+REPO_DIR="/var/repo/vintage_shop.git"
 
 # --- 1. Create bare repo -------------------------------------------------
 
