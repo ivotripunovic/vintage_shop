@@ -317,14 +317,16 @@ def category_products_view(request, category_id):
     from .models import ProductCategory
     
     category = get_object_or_404(ProductCategory, id=category_id)
-    
+
     # Get search and filter parameters
     search_query = request.GET.get('q', '')
     condition_filter = request.GET.get('condition')
     sort_by = request.GET.get('sort', '-created_at')
-    
-    # Start with published products in this category
-    products = Product.objects.filter(status='published', category=category)
+
+    # Include products from this category and all its subcategories
+    products = Product.objects.filter(
+        status='published', category_id__in=category.get_all_ids()
+    )
     
     # Apply search
     if search_query:
@@ -408,7 +410,7 @@ def products_browse_view(request):
     
     # Get unique categories and conditions for filters
     from .models import ProductCategory, ProductCondition
-    categories = ProductCategory.objects.all()
+    categories = ProductCategory.objects.filter(parent=None).prefetch_related('children')
     conditions = ProductCondition.objects.all()
     
     context = {

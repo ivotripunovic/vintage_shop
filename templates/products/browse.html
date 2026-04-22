@@ -20,6 +20,9 @@
                 <option value="">Sve</option>
                 {% for category in categories %}
                     <option value="{{ category.id }}" {% if selected_category == category.id|stringformat:"s" %}selected{% endif %}>{{ category.name }}</option>
+                    {% for sub in category.children.all %}
+                        <option value="{{ sub.id }}" {% if selected_category == sub.id|stringformat:"s" %}selected{% endif %}>&nbsp;&nbsp;{{ sub.name }}</option>
+                    {% endfor %}
                 {% endfor %}
             </select>
         </div>

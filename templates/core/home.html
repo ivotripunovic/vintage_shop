@@ -35,9 +35,18 @@
     <h2 class="font-serif text-3xl font-light mb-8">Kupuj po kategoriji</h2>
     <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
         {% for category in categories %}
-        <a href="{% url 'category_products' category.id %}" class="group block border border-neutral-200 p-6 hover:border-stone-400 transition-colors text-center">
-            <p class="text-xs uppercase tracking-widest text-stone-600 group-hover:text-stone-900 transition-colors">{{ category.name }}</p>
-        </a>
+        <div class="border border-neutral-200 hover:border-stone-400 transition-colors p-6">
+            <a href="{% url 'category_products' category.id %}" class="group block mb-3">
+                <p class="text-xs uppercase tracking-widest text-stone-700 group-hover:text-stone-900 transition-colors">{{ category.name }}</p>
+            </a>
+            {% if category.children.all %}
+            <ul class="space-y-1">
+                {% for sub in category.children.all %}
+                <li><a href="{% url 'category_products' sub.id %}" class="text-xs text-stone-400 hover:text-stone-700 transition-colors">{{ sub.name }}</a></li>
+                {% endfor %}
+            </ul>
+            {% endif %}
+        </div>
         {% endfor %}
     </div>
 </section>

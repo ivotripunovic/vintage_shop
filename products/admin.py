@@ -6,7 +6,8 @@ from .models import Product, ProductImage, ProductCategory, ProductCondition
 
 @admin.register(ProductCategory)
 class ProductCategoryAdmin(admin.ModelAdmin):
-    list_display = ["name", "slug"]
+    list_display = ["name", "parent", "slug"]
+    list_filter = ["parent"]
     prepopulated_fields = {"slug": ("name",)}
 
 

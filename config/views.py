@@ -11,8 +11,8 @@ def home_view(request):
     # Get featured products (latest published products)
     featured_products = Product.objects.filter(status='published').order_by('-created_at')[:6]
     
-    # Get all categories
-    categories = ProductCategory.objects.all()
+    # Get top-level categories with their subcategories
+    categories = ProductCategory.objects.filter(parent=None).prefetch_related('children')
     
     context = {
         'page_title': 'Home',

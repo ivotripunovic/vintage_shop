@@ -8,11 +8,18 @@ from core.models import TimeStampedModel, SoftDeleteModel
 
 
 class ProductCategory(models.Model):
-    """Product categories/classifications."""
+    """Product categories/classifications. parent=None means top-level category."""
 
     name = models.CharField(max_length=255, unique=True)
     slug = models.SlugField(unique=True)
     description = models.TextField(blank=True)
+    parent = models.ForeignKey(
+        "self",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="children",
+    )
 
     class Meta:
         ordering = ["name"]
@@ -20,7 +27,20 @@ class ProductCategory(models.Model):
         verbose_name_plural = "Product Categories"
 
     def __str__(self):
+        if self.parent:
+            return f"{self.parent.name} › {self.name}"
         return self.name
+
+    @property
+    def is_top_level(self):
+        return self.parent_id is None
+
+    def get_all_ids(self):
+        """Return this category's id plus all descendant ids."""
+        ids = [self.id]
+        for child in self.children.all():
+            ids.extend(child.get_all_ids())
+        return ids
 
 
 class ProductCondition(models.Model):
