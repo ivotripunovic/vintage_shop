@@ -1,22 +1,22 @@
 {% extends "base.html" %}
-{% block title %}My Products — {{ SITE_NAME }}{% endblock %}
+{% block title %}Moji proizvodi — {{ SITE_NAME }}{% endblock %}
 
 {% block content %}
 
 <div class="mb-8 flex justify-between items-start">
     <div>
-        <h1 class="font-serif text-4xl font-light">My Products</h1>
-        <p class="text-xs uppercase tracking-widest text-stone-400 mt-2">Manage your listings</p>
+        <h1 class="font-serif text-4xl font-light">Moji proizvodi</h1>
+        <p class="text-xs uppercase tracking-widest text-stone-400 mt-2">Upravljajte vašim oglasima</p>
     </div>
-    <a href="{% url 'product_create' %}" class="text-xs uppercase tracking-widest bg-stone-900 text-white px-5 py-2.5 hover:bg-stone-700 transition-colors">+ Add Product</a>
+    <a href="{% url 'product_create' %}" class="text-xs uppercase tracking-widest bg-stone-900 text-white px-5 py-2.5 hover:bg-stone-700 transition-colors">+ Dodaj proizvod</a>
 </div>
 
 <div class="flex border-b border-neutral-200 mb-8">
-    <a href="{% url 'seller_products_list' %}" class="px-4 py-3 text-xs uppercase tracking-widest {% if current_status == 'all' %}text-stone-900 border-b-2 border-stone-900{% else %}text-stone-400 hover:text-stone-600{% endif %} transition-colors">All ({{ status_counts.all }})</a>
-    <a href="{% url 'seller_products_list' %}?status=published" class="px-4 py-3 text-xs uppercase tracking-widest {% if current_status == 'published' %}text-stone-900 border-b-2 border-stone-900{% else %}text-stone-400 hover:text-stone-600{% endif %} transition-colors">Published ({{ status_counts.published }})</a>
-    <a href="{% url 'seller_products_list' %}?status=draft" class="px-4 py-3 text-xs uppercase tracking-widest {% if current_status == 'draft' %}text-stone-900 border-b-2 border-stone-900{% else %}text-stone-400 hover:text-stone-600{% endif %} transition-colors">Drafts ({{ status_counts.draft }})</a>
-    <a href="{% url 'seller_products_list' %}?status=sold" class="px-4 py-3 text-xs uppercase tracking-widest {% if current_status == 'sold' %}text-stone-900 border-b-2 border-stone-900{% else %}text-stone-400 hover:text-stone-600{% endif %} transition-colors">Sold ({{ status_counts.sold }})</a>
-    <a href="{% url 'seller_products_list' %}?status=archived" class="px-4 py-3 text-xs uppercase tracking-widest {% if current_status == 'archived' %}text-stone-900 border-b-2 border-stone-900{% else %}text-stone-400 hover:text-stone-600{% endif %} transition-colors">Archived ({{ status_counts.archived }})</a>
+    <a href="{% url 'seller_products_list' %}" class="px-4 py-3 text-xs uppercase tracking-widest {% if current_status == 'all' %}text-stone-900 border-b-2 border-stone-900{% else %}text-stone-400 hover:text-stone-600{% endif %} transition-colors">Sve ({{ status_counts.all }})</a>
+    <a href="{% url 'seller_products_list' %}?status=published" class="px-4 py-3 text-xs uppercase tracking-widest {% if current_status == 'published' %}text-stone-900 border-b-2 border-stone-900{% else %}text-stone-400 hover:text-stone-600{% endif %} transition-colors">Objavljeno ({{ status_counts.published }})</a>
+    <a href="{% url 'seller_products_list' %}?status=draft" class="px-4 py-3 text-xs uppercase tracking-widest {% if current_status == 'draft' %}text-stone-900 border-b-2 border-stone-900{% else %}text-stone-400 hover:text-stone-600{% endif %} transition-colors">Nacrti ({{ status_counts.draft }})</a>
+    <a href="{% url 'seller_products_list' %}?status=sold" class="px-4 py-3 text-xs uppercase tracking-widest {% if current_status == 'sold' %}text-stone-900 border-b-2 border-stone-900{% else %}text-stone-400 hover:text-stone-600{% endif %} transition-colors">Prodato ({{ status_counts.sold }})</a>
+    <a href="{% url 'seller_products_list' %}?status=archived" class="px-4 py-3 text-xs uppercase tracking-widest {% if current_status == 'archived' %}text-stone-900 border-b-2 border-stone-900{% else %}text-stone-400 hover:text-stone-600{% endif %} transition-colors">Arhivirano ({{ status_counts.archived }})</a>
 </div>
 
 {% if products %}
@@ -42,26 +42,26 @@
                 <h3 class="text-sm text-stone-900 truncate mb-1">{{ product.title }}</h3>
                 <div class="flex justify-between text-xs text-stone-400 mb-3">
                     <span>${{ product.price }}</span>
-                    <span>{{ product.stock }} in stock</span>
+                    <span>{{ product.stock }} na stanju</span>
                 </div>
 
                 <div class="space-y-2">
                     {% if product.status == 'draft' %}
                         <form method="post" action="{% url 'product_publish' product.id %}">
                             {% csrf_token %}
-                            <button type="submit" class="w-full text-xs uppercase tracking-widest bg-stone-900 text-white py-2 hover:bg-stone-700 transition-colors">Publish</button>
+                            <button type="submit" class="w-full text-xs uppercase tracking-widest bg-stone-900 text-white py-2 hover:bg-stone-700 transition-colors">Objavi</button>
                         </form>
                     {% elif product.status == 'published' %}
                         <form method="post" action="{% url 'product_unpublish' product.id %}">
                             {% csrf_token %}
-                            <button type="submit" class="w-full text-xs uppercase tracking-widest border border-stone-900 text-stone-900 py-2 hover:bg-neutral-50 transition-colors">Unpublish</button>
+                            <button type="submit" class="w-full text-xs uppercase tracking-widest border border-stone-900 text-stone-900 py-2 hover:bg-neutral-50 transition-colors">Povuci iz objave</button>
                         </form>
                     {% endif %}
 
                     <div class="flex gap-2">
-                        <a href="{% url 'product_edit' product.id %}" class="flex-1 text-center text-xs uppercase tracking-widest border border-neutral-200 text-stone-500 py-2 hover:border-stone-400 hover:text-stone-900 transition-colors">Edit</a>
-                        <a href="{% url 'product_images' product.id %}" class="flex-1 text-center text-xs uppercase tracking-widest border border-neutral-200 text-stone-500 py-2 hover:border-stone-400 hover:text-stone-900 transition-colors">Images</a>
-                        <a href="{% url 'product_delete' product.id %}" class="flex-1 text-center text-xs uppercase tracking-widest border border-red-200 text-red-500 py-2 hover:border-red-400 transition-colors">Delete</a>
+                        <a href="{% url 'product_edit' product.id %}" class="flex-1 text-center text-xs uppercase tracking-widest border border-neutral-200 text-stone-500 py-2 hover:border-stone-400 hover:text-stone-900 transition-colors">Uredi</a>
+                        <a href="{% url 'product_images' product.id %}" class="flex-1 text-center text-xs uppercase tracking-widest border border-neutral-200 text-stone-500 py-2 hover:border-stone-400 hover:text-stone-900 transition-colors">Slike</a>
+                        <a href="{% url 'product_delete' product.id %}" class="flex-1 text-center text-xs uppercase tracking-widest border border-red-200 text-red-500 py-2 hover:border-red-400 transition-colors">Obriši</a>
                     </div>
                 </div>
             </div>
@@ -70,9 +70,9 @@
     </div>
 {% else %}
     <div class="border border-neutral-200 p-16 text-center">
-        <p class="font-serif text-2xl font-light mb-3">No products</p>
+        <p class="font-serif text-2xl font-light mb-3">Nema proizvoda</p>
         <p class="text-xs uppercase tracking-widest text-stone-400 mb-6">{% if current_status != 'all' %}No products with this status.{% else %}You haven't created any products yet.{% endif %}</p>
-        <a href="{% url 'product_create' %}" class="text-xs uppercase tracking-widest bg-stone-900 text-white px-6 py-2.5 hover:bg-stone-700 transition-colors inline-block">Create Product</a>
+        <a href="{% url 'product_create' %}" class="text-xs uppercase tracking-widest bg-stone-900 text-white px-6 py-2.5 hover:bg-stone-700 transition-colors inline-block">Kreiraj proizvod</a>
     </div>
 {% endif %}
 

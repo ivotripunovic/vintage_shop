@@ -3,7 +3,7 @@
 
 {% block content %}
 
-<a href="{% url 'seller_products_list' %}" class="text-xs uppercase tracking-widest text-stone-400 hover:text-stone-900 transition-colors mb-8 inline-block">← Products</a>
+<a href="{% url 'seller_products_list' %}" class="text-xs uppercase tracking-widest text-stone-400 hover:text-stone-900 transition-colors mb-8 inline-block">← Proizvodi</a>
 
 <div class="grid grid-cols-1 md:grid-cols-2 gap-12">
     <div>
@@ -12,7 +12,7 @@
                 <img src="{{ images.0.image.url }}" alt="{{ product.title }}" class="w-full h-full object-cover">
             {% else %}
                 <div class="w-full h-full flex items-center justify-center">
-                    <span class="text-xs uppercase tracking-widest text-neutral-400">No Images</span>
+                    <span class="text-xs uppercase tracking-widest text-neutral-400">Nema slika</span>
                 </div>
             {% endif %}
         </div>
@@ -38,36 +38,36 @@
         <p class="text-3xl font-light text-stone-900 mb-6">${{ product.price }}</p>
 
         <div class="border-t border-neutral-200 py-5 space-y-3 mb-6">
-            <div class="flex justify-between"><span class="text-xs uppercase tracking-widest text-stone-400">Category</span><span class="text-xs text-stone-800">{% if product.category %}{{ product.category.name }}{% else %}—{% endif %}</span></div>
-            <div class="flex justify-between"><span class="text-xs uppercase tracking-widest text-stone-400">Condition</span><span class="text-xs text-stone-800">{% if product.condition %}{{ product.condition.name }}{% else %}—{% endif %}</span></div>
-            <div class="flex justify-between"><span class="text-xs uppercase tracking-widest text-stone-400">Stock</span><span class="text-xs text-stone-800">{{ product.stock }}</span></div>
-            <div class="flex justify-between"><span class="text-xs uppercase tracking-widest text-stone-400">Images</span><span class="text-xs text-stone-800">{{ images.count }}</span></div>
-            <div class="flex justify-between"><span class="text-xs uppercase tracking-widest text-stone-400">Created</span><span class="text-xs text-stone-800">{{ product.created_at|date:"M d, Y" }}</span></div>
+            <div class="flex justify-between"><span class="text-xs uppercase tracking-widest text-stone-400">Kategorija</span><span class="text-xs text-stone-800">{% if product.category %}{{ product.category.name }}{% else %}—{% endif %}</span></div>
+            <div class="flex justify-between"><span class="text-xs uppercase tracking-widest text-stone-400">Stanje</span><span class="text-xs text-stone-800">{% if product.condition %}{{ product.condition.name }}{% else %}—{% endif %}</span></div>
+            <div class="flex justify-between"><span class="text-xs uppercase tracking-widest text-stone-400">Zalihe</span><span class="text-xs text-stone-800">{{ product.stock }}</span></div>
+            <div class="flex justify-between"><span class="text-xs uppercase tracking-widest text-stone-400">Slike</span><span class="text-xs text-stone-800">{{ images.count }}</span></div>
+            <div class="flex justify-between"><span class="text-xs uppercase tracking-widest text-stone-400">Kreirano</span><span class="text-xs text-stone-800">{{ product.created_at|date:"M d, Y" }}</span></div>
         </div>
 
         <div class="border-t border-neutral-200 py-5 mb-6">
-            <p class="text-xs uppercase tracking-widest text-stone-400 mb-3">Description</p>
+            <p class="text-xs uppercase tracking-widest text-stone-400 mb-3">Opis</p>
             <p class="text-sm text-stone-600 leading-relaxed whitespace-pre-wrap">{{ product.description }}</p>
         </div>
 
         {% if is_owner %}
         <div class="space-y-2">
-            <a href="{% url 'product_edit' product.id %}" class="block w-full text-center text-xs uppercase tracking-widest bg-stone-900 text-white py-3 hover:bg-stone-700 transition-colors">Edit Product</a>
-            <a href="{% url 'product_images' product.id %}" class="block w-full text-center text-xs uppercase tracking-widest border border-stone-900 text-stone-900 py-3 hover:bg-neutral-50 transition-colors">Manage Images</a>
+            <a href="{% url 'product_edit' product.id %}" class="block w-full text-center text-xs uppercase tracking-widest bg-stone-900 text-white py-3 hover:bg-stone-700 transition-colors">Uredi proizvod</a>
+            <a href="{% url 'product_images' product.id %}" class="block w-full text-center text-xs uppercase tracking-widest border border-stone-900 text-stone-900 py-3 hover:bg-neutral-50 transition-colors">Upravljaj slikama</a>
 
             {% if product.status == 'draft' %}
             <form method="post" action="{% url 'product_publish' product.id %}">
                 {% csrf_token %}
-                <button type="submit" class="w-full text-xs uppercase tracking-widest bg-emerald-700 text-white py-3 hover:bg-emerald-800 transition-colors">Publish Product</button>
+                <button type="submit" class="w-full text-xs uppercase tracking-widest bg-emerald-700 text-white py-3 hover:bg-emerald-800 transition-colors">Objavi proizvod</button>
             </form>
             {% elif product.status == 'published' %}
             <form method="post" action="{% url 'product_unpublish' product.id %}">
                 {% csrf_token %}
-                <button type="submit" class="w-full text-xs uppercase tracking-widest border border-amber-600 text-amber-700 py-3 hover:bg-amber-50 transition-colors">Unpublish Product</button>
+                <button type="submit" class="w-full text-xs uppercase tracking-widest border border-amber-600 text-amber-700 py-3 hover:bg-amber-50 transition-colors">Povuci iz objave</button>
             </form>
             {% endif %}
 
-            <a href="{% url 'product_delete' product.id %}" class="block w-full text-center text-xs uppercase tracking-widest border border-red-300 text-red-600 py-3 hover:bg-red-50 transition-colors">Delete Product</a>
+            <a href="{% url 'product_delete' product.id %}" class="block w-full text-center text-xs uppercase tracking-widest border border-red-300 text-red-600 py-3 hover:bg-red-50 transition-colors">Obriši proizvod</a>
         </div>
         {% endif %}
     </div>

@@ -1,25 +1,25 @@
 {% extends "base.html" %}
-{% block title %}Verify Email — {{ SITE_NAME }}{% endblock %}
+{% block title %}Potvrdi email — {{ SITE_NAME }}{% endblock %}
 
 {% block content %}
 
 <div class="max-w-sm mx-auto py-12">
-    <h1 class="font-serif text-4xl font-light text-center mb-3">Verify Your Email</h1>
-    <p class="text-xs text-stone-400 text-center mb-10">Enter your email and we'll send you a verification link.</p>
+    <h1 class="font-serif text-4xl font-light text-center mb-3">Potvrdi vaš email</h1>
+    <p class="text-xs text-stone-400 text-center mb-10">Unesite vaš email i poslaćemo vam link za verifikaciju.</p>
 
     <form method="post" class="space-y-5">
         {% csrf_token %}
 
         <div>
             <label for="email" class="block text-xs uppercase tracking-widest text-stone-500 mb-2">Email</label>
-            <input type="email" id="email" name="email" required placeholder="your@email.com">
+            <input type="email" id="email" name="email" required placeholder="vas@email.com">
         </div>
 
-        <button type="submit" class="w-full bg-stone-900 text-white text-xs uppercase tracking-widest py-3.5 hover:bg-stone-700 transition-colors">Send Verification Link</button>
+        <button type="submit" class="w-full bg-stone-900 text-white text-xs uppercase tracking-widest py-3.5 hover:bg-stone-700 transition-colors">Pošalji link za verifikaciju</button>
     </form>
 
     <p class="text-center mt-6 text-xs text-stone-400">
-        <a href="{% url 'login' %}" class="hover:text-stone-900 transition-colors">Back to Sign In</a>
+        <a href="{% url 'login' %}" class="hover:text-stone-900 transition-colors">Nazad na prijavu</a>
     </p>
 </div>
 

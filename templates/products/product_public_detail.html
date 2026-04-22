@@ -4,7 +4,7 @@
 {% block content %}
 
 <nav class="text-xs uppercase tracking-widest text-stone-400 mb-8 flex gap-2 flex-wrap">
-    <a href="{% url 'products_browse' %}" class="hover:text-stone-900 transition-colors">Shop</a>
+    <a href="{% url 'products_browse' %}" class="hover:text-stone-900 transition-colors">Prodavnica</a>
     {% if product.category %}
         <span>/</span>
         <a href="{% url 'products_browse' %}?category={{ product.category.id }}" class="hover:text-stone-900 transition-colors">{{ product.category.name }}</a>
@@ -29,7 +29,7 @@
             {% endif %}
         {% else %}
             <div class="aspect-square bg-neutral-100 flex items-center justify-center">
-                <span class="text-xs uppercase tracking-widest text-neutral-400">No Images</span>
+                <span class="text-xs uppercase tracking-widest text-neutral-400">Nema slika</span>
             </div>
         {% endif %}
     </div>
@@ -40,51 +40,51 @@
         <p class="text-3xl font-light text-stone-900 mb-4">${{ product.price }}</p>
 
         <p class="text-xs uppercase tracking-widest mb-6 {% if product.stock > 0 %}text-emerald-700{% else %}text-red-600{% endif %}">
-            {% if product.stock > 0 %}In Stock ({{ product.stock }}){% else %}Out of Stock{% endif %}
+            {% if product.stock > 0 %}Na stanju ({{ product.stock }}){% else %}Nema na stanju{% endif %}
         </p>
 
         <div class="border-t border-neutral-200 py-5 space-y-3">
             {% if product.condition %}
             <div class="flex justify-between">
-                <span class="text-xs uppercase tracking-widest text-stone-400">Condition</span>
+                <span class="text-xs uppercase tracking-widest text-stone-400">Stanje</span>
                 <span class="text-xs uppercase tracking-widest text-stone-800">{{ product.condition.name }}</span>
             </div>
             {% endif %}
             <div class="flex justify-between">
-                <span class="text-xs uppercase tracking-widest text-stone-400">Listed</span>
+                <span class="text-xs uppercase tracking-widest text-stone-400">Objavljeno</span>
                 <span class="text-xs uppercase tracking-widest text-stone-800">{{ product.created_at|date:"M d, Y" }}</span>
             </div>
         </div>
 
         <div class="border-t border-neutral-200 py-5">
-            <p class="text-xs uppercase tracking-widest text-stone-400 mb-3">Description</p>
+            <p class="text-xs uppercase tracking-widest text-stone-400 mb-3">Opis</p>
             <p class="text-sm text-stone-600 leading-relaxed whitespace-pre-wrap">{{ product.description }}</p>
         </div>
 
         <div class="border-t border-neutral-200 py-5">
-            <p class="text-xs uppercase tracking-widest text-stone-400 mb-4">Seller</p>
+            <p class="text-xs uppercase tracking-widest text-stone-400 mb-4">Prodavac</p>
             <div class="flex items-center gap-4">
                 {% if product.seller.shop_image %}
                     <img src="{{ product.seller.shop_image.url }}" alt="{{ product.seller.shop_name }}" class="w-14 h-14 object-cover">
                 {% else %}
                     <div class="w-14 h-14 bg-neutral-200 flex items-center justify-center">
-                        <span class="text-xs text-neutral-400">Shop</span>
+                        <span class="text-xs text-neutral-400">Prodavnica</span>
                     </div>
                 {% endif %}
                 <div>
                     <p class="text-sm text-stone-900 mb-1">{{ product.seller.shop_name }}</p>
                     {% if product.seller.location %}<p class="text-xs text-stone-400 mb-2">{{ product.seller.location }}</p>{% endif %}
-                    <a href="{% url 'shop_detail' product.seller.shop_slug %}" class="text-xs uppercase tracking-widest text-stone-400 hover:text-stone-900 transition-colors">Visit Shop</a>
+                    <a href="{% url 'shop_detail' product.seller.shop_slug %}" class="text-xs uppercase tracking-widest text-stone-400 hover:text-stone-900 transition-colors">Poseti prodavnicu</a>
                 </div>
             </div>
         </div>
 
         <div class="border-t border-neutral-200 pt-5 flex gap-3">
             {% if product.stock > 0 %}
-                <button type="button" onclick="addToCart({{ product.id }})" class="flex-1 bg-stone-900 text-white text-xs uppercase tracking-widest py-4 hover:bg-stone-700 transition-colors">Add to Cart</button>
-                <button type="button" onclick="toggleWishlist({{ product.id }})" id="wishlistBtn" class="border border-stone-900 text-stone-900 text-xs uppercase tracking-widest px-6 py-4 hover:bg-neutral-50 transition-colors">Save</button>
+                <button type="button" onclick="addToCart({{ product.id }})" class="flex-1 bg-stone-900 text-white text-xs uppercase tracking-widest py-4 hover:bg-stone-700 transition-colors">Dodaj u korpu</button>
+                <button type="button" onclick="toggleWishlist({{ product.id }})" id="wishlistBtn" class="border border-stone-900 text-stone-900 text-xs uppercase tracking-widest px-6 py-4 hover:bg-neutral-50 transition-colors">Sačuvaj</button>
             {% else %}
-                <button disabled class="flex-1 border border-neutral-200 text-stone-400 text-xs uppercase tracking-widest py-4 cursor-not-allowed">Unavailable</button>
+                <button disabled class="flex-1 border border-neutral-200 text-stone-400 text-xs uppercase tracking-widest py-4 cursor-not-allowed">Nedostupno</button>
             {% endif %}
         </div>
     </div>
@@ -93,8 +93,8 @@
 {% if related_products %}
 <div class="border-t border-neutral-200 pt-12">
     <div class="flex justify-between items-baseline mb-8">
-        <h2 class="font-serif text-2xl font-light">More from {{ product.seller.shop_name }}</h2>
-        <a href="{% url 'shop_detail' product.seller.shop_slug %}" class="text-xs uppercase tracking-widest text-stone-400 hover:text-stone-900 transition-colors">View Shop</a>
+        <h2 class="font-serif text-2xl font-light">Još iz {{ product.seller.shop_name }}</h2>
+        <a href="{% url 'shop_detail' product.seller.shop_slug %}" class="text-xs uppercase tracking-widest text-stone-400 hover:text-stone-900 transition-colors">Pogledaj prodavnicu</a>
     </div>
     <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
         {% for related in related_products %}
@@ -103,7 +103,7 @@
                 {% if related.images.exists %}
                     <img src="{{ related.images.first.image.url }}" alt="{{ related.images.first.alt_text }}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
                 {% else %}
-                    <div class="w-full h-full flex items-center justify-center"><span class="text-xs uppercase tracking-widest text-neutral-400">No Image</span></div>
+                    <div class="w-full h-full flex items-center justify-center"><span class="text-xs uppercase tracking-widest text-neutral-400">Nema slike</span></div>
                 {% endif %}
             </div>
             <h3 class="text-sm text-stone-900 mb-1 truncate">{{ related.title }}</h3>
@@ -125,7 +125,7 @@ function changeMainImage(src, alt, thumb) {
     thumb.classList.remove('border-transparent');
     thumb.classList.add('border-stone-900');
 }
-function addToCart(id) { alert('Cart coming soon. Product #' + id); }
+function addToCart(id) { alert('Korpa uskoro. Proizvod #' + id); }
 function toggleWishlist(id) {
     const btn = document.getElementById('wishlistBtn');
     btn.classList.toggle('bg-stone-900');

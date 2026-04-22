@@ -1,52 +1,52 @@
 {% extends "base.html" %}
-{% block title %}Dashboard — {{ SITE_NAME }}{% endblock %}
+{% block title %}Kontrolna tabla — {{ SITE_NAME }}{% endblock %}
 
 {% block content %}
 
 <div class="mb-8 flex justify-between items-start">
     <div>
-        <h1 class="font-serif text-4xl font-light">Dashboard</h1>
+        <h1 class="font-serif text-4xl font-light">Kontrolna tabla</h1>
         <p class="text-xs uppercase tracking-widest text-stone-400 mt-2">{{ seller.shop_name }}</p>
     </div>
-    <a href="{% url 'product_create' %}" class="text-xs uppercase tracking-widest bg-stone-900 text-white px-5 py-2.5 hover:bg-stone-700 transition-colors">+ Add Product</a>
+    <a href="{% url 'product_create' %}" class="text-xs uppercase tracking-widest bg-stone-900 text-white px-5 py-2.5 hover:bg-stone-700 transition-colors">+ Dodaj proizvod</a>
 </div>
 
 <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
     <div class="border border-neutral-200 p-6">
-        <p class="text-xs uppercase tracking-widest text-stone-400 mb-2">Total</p>
+        <p class="text-xs uppercase tracking-widest text-stone-400 mb-2">Ukupno</p>
         <p class="text-3xl font-light text-stone-900">{{ total_products }}</p>
-        <a href="{% url 'seller_products_list' %}" class="text-xs uppercase tracking-widest text-stone-400 hover:text-stone-900 mt-3 inline-block transition-colors">View All</a>
+        <a href="{% url 'seller_products_list' %}" class="text-xs uppercase tracking-widest text-stone-400 hover:text-stone-900 mt-3 inline-block transition-colors">Pogledaj sve</a>
     </div>
     <div class="border border-neutral-200 p-6">
-        <p class="text-xs uppercase tracking-widest text-stone-400 mb-2">Published</p>
+        <p class="text-xs uppercase tracking-widest text-stone-400 mb-2">Objavljeno</p>
         <p class="text-3xl font-light text-emerald-700">{{ published_products }}</p>
-        <a href="{% url 'seller_products_list' %}?status=published" class="text-xs uppercase tracking-widest text-stone-400 hover:text-stone-900 mt-3 inline-block transition-colors">View</a>
+        <a href="{% url 'seller_products_list' %}?status=published" class="text-xs uppercase tracking-widest text-stone-400 hover:text-stone-900 mt-3 inline-block transition-colors">Pogledaj</a>
     </div>
     <div class="border border-neutral-200 p-6">
-        <p class="text-xs uppercase tracking-widest text-stone-400 mb-2">Drafts</p>
+        <p class="text-xs uppercase tracking-widest text-stone-400 mb-2">Nacrti</p>
         <p class="text-3xl font-light text-amber-600">{{ draft_products }}</p>
-        <a href="{% url 'seller_products_list' %}?status=draft" class="text-xs uppercase tracking-widest text-stone-400 hover:text-stone-900 mt-3 inline-block transition-colors">View</a>
+        <a href="{% url 'seller_products_list' %}?status=draft" class="text-xs uppercase tracking-widest text-stone-400 hover:text-stone-900 mt-3 inline-block transition-colors">Pogledaj</a>
     </div>
     <div class="border border-neutral-200 p-6">
-        <p class="text-xs uppercase tracking-widest text-stone-400 mb-2">Shop Status</p>
+        <p class="text-xs uppercase tracking-widest text-stone-400 mb-2">Status prodavnice</p>
         <p class="text-sm font-light mt-2 {% if seller.status == 'active' %}text-emerald-700{% else %}text-red-600{% endif %}">{{ seller.get_status_display }}</p>
     </div>
 </div>
 
 {% if subscription %}
 <div class="border border-neutral-200 p-6 mb-8">
-    <p class="text-xs uppercase tracking-widest text-stone-700 mb-5">Subscription</p>
+    <p class="text-xs uppercase tracking-widest text-stone-700 mb-5">Pretplata</p>
     <div class="grid grid-cols-3 gap-6">
         <div>
             <p class="text-xs uppercase tracking-widest text-stone-400 mb-1">Plan</p>
             <p class="text-sm text-stone-900">{{ subscription.plan_type|title }}</p>
         </div>
         <div>
-            <p class="text-xs uppercase tracking-widest text-stone-400 mb-1">Monthly</p>
+            <p class="text-xs uppercase tracking-widest text-stone-400 mb-1">Mesečno</p>
             <p class="text-sm text-stone-900">${{ subscription.amount }}</p>
         </div>
         <div>
-            <p class="text-xs uppercase tracking-widest text-stone-400 mb-1">Renews</p>
+            <p class="text-xs uppercase tracking-widest text-stone-400 mb-1">Obnavlja se</p>
             <p class="text-sm text-stone-900">{{ subscription.renewal_date|date:"M d, Y" }}</p>
         </div>
     </div>
@@ -55,8 +55,8 @@
 
 <div class="border border-neutral-200">
     <div class="flex justify-between items-center px-6 py-4 border-b border-neutral-200">
-        <p class="text-xs uppercase tracking-widest text-stone-700">Recent Products</p>
-        <a href="{% url 'seller_products_list' %}" class="text-xs uppercase tracking-widest text-stone-400 hover:text-stone-900 transition-colors">View All</a>
+        <p class="text-xs uppercase tracking-widest text-stone-700">Nedavni proizvodi</p>
+        <a href="{% url 'seller_products_list' %}" class="text-xs uppercase tracking-widest text-stone-400 hover:text-stone-900 transition-colors">Pogledaj sve</a>
     </div>
 
     {% if recent_products %}
@@ -64,11 +64,11 @@
             <table class="w-full">
                 <thead>
                     <tr class="border-b border-neutral-200">
-                        <th class="px-6 py-3 text-left text-xs uppercase tracking-widest text-stone-400 font-normal">Title</th>
-                        <th class="px-6 py-3 text-left text-xs uppercase tracking-widest text-stone-400 font-normal">Price</th>
-                        <th class="px-6 py-3 text-left text-xs uppercase tracking-widest text-stone-400 font-normal">Stock</th>
+                        <th class="px-6 py-3 text-left text-xs uppercase tracking-widest text-stone-400 font-normal">Naziv</th>
+                        <th class="px-6 py-3 text-left text-xs uppercase tracking-widest text-stone-400 font-normal">Cena</th>
+                        <th class="px-6 py-3 text-left text-xs uppercase tracking-widest text-stone-400 font-normal">Zalihe</th>
                         <th class="px-6 py-3 text-left text-xs uppercase tracking-widest text-stone-400 font-normal">Status</th>
-                        <th class="px-6 py-3 text-left text-xs uppercase tracking-widest text-stone-400 font-normal">Actions</th>
+                        <th class="px-6 py-3 text-left text-xs uppercase tracking-widest text-stone-400 font-normal">Akcije</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -81,8 +81,8 @@
                             <span class="text-xs uppercase tracking-widest {% if product.status == 'published' %}text-emerald-700{% elif product.status == 'draft' %}text-amber-600{% else %}text-stone-400{% endif %}">{{ product.get_status_display }}</span>
                         </td>
                         <td class="px-6 py-4 flex gap-4">
-                            <a href="{% url 'product_edit' product.id %}" class="text-xs uppercase tracking-widest text-stone-400 hover:text-stone-900 transition-colors">Edit</a>
-                            <a href="{% url 'product_detail' product.id %}" class="text-xs uppercase tracking-widest text-stone-400 hover:text-stone-900 transition-colors">View</a>
+                            <a href="{% url 'product_edit' product.id %}" class="text-xs uppercase tracking-widest text-stone-400 hover:text-stone-900 transition-colors">Uredi</a>
+                            <a href="{% url 'product_detail' product.id %}" class="text-xs uppercase tracking-widest text-stone-400 hover:text-stone-900 transition-colors">Pogledaj</a>
                         </td>
                     </tr>
                     {% endfor %}
@@ -91,8 +91,8 @@
         </div>
     {% else %}
         <div class="px-6 py-16 text-center">
-            <p class="text-xs uppercase tracking-widest text-stone-400">No products yet.</p>
-            <a href="{% url 'product_create' %}" class="text-xs uppercase tracking-widest text-stone-400 hover:text-stone-900 mt-3 inline-block transition-colors">Create your first product</a>
+            <p class="text-xs uppercase tracking-widest text-stone-400">Još nema proizvoda.</p>
+            <a href="{% url 'product_create' %}" class="text-xs uppercase tracking-widest text-stone-400 hover:text-stone-900 mt-3 inline-block transition-colors">Kreirajte vaš prvi proizvod</a>
         </div>
     {% endif %}
 </div>

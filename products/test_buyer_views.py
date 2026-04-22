@@ -320,7 +320,7 @@ class ProductDetailViewTests(TestCase):
         response = self.client.get(
             reverse('product_detail', args=[self.product.id])
         )
-        self.assertContains(response, 'In Stock')
+        self.assertContains(response, 'Na stanju')
 
     def test_product_detail_out_of_stock(self):
         """Test that out of stock is shown for zero stock products."""
@@ -336,4 +336,4 @@ class ProductDetailViewTests(TestCase):
         response = self.client.get(
             reverse('product_detail', args=[out_of_stock.id])
         )
-        self.assertContains(response, 'Out of Stock')
+        self.assertContains(response, 'Nema na stanju')

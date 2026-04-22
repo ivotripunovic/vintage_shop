@@ -1,11 +1,11 @@
 {% extends "base.html" %}
-{% block title %}Become a Seller — {{ SITE_NAME }}{% endblock %}
+{% block title %}Postani prodavac — {{ SITE_NAME }}{% endblock %}
 
 {% block content %}
 
 <div class="max-w-sm mx-auto py-12">
-    <h1 class="font-serif text-4xl font-light text-center mb-2">Become a Seller</h1>
-    <p class="text-xs text-stone-400 text-center mb-10">Start selling your items on our marketplace</p>
+    <h1 class="font-serif text-4xl font-light text-center mb-2">Postani prodavac</h1>
+    <p class="text-xs text-stone-400 text-center mb-10">Počnite da prodajete vaše artikle na našem tržištu</p>
 
     <form method="post" class="space-y-5">
         {% csrf_token %}
@@ -23,21 +23,21 @@
         </div>
 
         <div>
-            <label for="{{ form.password1.id_for_label }}" class="block text-xs uppercase tracking-widest text-stone-500 mb-2">Password</label>
+            <label for="{{ form.password1.id_for_label }}" class="block text-xs uppercase tracking-widest text-stone-500 mb-2">Lozinka</label>
             {{ form.password1 }}
             {% if form.password1.errors %}<p class="text-xs text-red-600 mt-1">{{ form.password1.errors.0 }}</p>{% endif %}
         </div>
 
         <div>
-            <label for="{{ form.password2.id_for_label }}" class="block text-xs uppercase tracking-widest text-stone-500 mb-2">Confirm Password</label>
+            <label for="{{ form.password2.id_for_label }}" class="block text-xs uppercase tracking-widest text-stone-500 mb-2">Potvrdi lozinku</label>
             {{ form.password2 }}
             {% if form.password2.errors %}<p class="text-xs text-red-600 mt-1">{{ form.password2.errors.0 }}</p>{% endif %}
         </div>
 
-        <button type="submit" class="w-full bg-stone-900 text-white text-xs uppercase tracking-widest py-3.5 hover:bg-stone-700 transition-colors">Create Seller Account</button>
+        <button type="submit" class="w-full bg-stone-900 text-white text-xs uppercase tracking-widest py-3.5 hover:bg-stone-700 transition-colors">Kreiraj nalog prodavca</button>
     </form>
 
-    <p class="text-center mt-6 text-xs text-stone-400">Already have an account? <a href="{% url 'login' %}" class="text-stone-900 hover:text-stone-600 transition-colors">Sign In</a></p>
+    <p class="text-center mt-6 text-xs text-stone-400">Već imate nalog? <a href="{% url 'login' %}" class="text-stone-900 hover:text-stone-600 transition-colors">Prijava</a></p>
 </div>
 
 {% endblock %}

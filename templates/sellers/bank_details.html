@@ -1,14 +1,14 @@
 {% extends "base.html" %}
-{% block title %}Bank Details — {{ SITE_NAME }}{% endblock %}
+{% block title %}Bankarski podaci — {{ SITE_NAME }}{% endblock %}
 
 {% block content %}
 
 <div class="max-w-2xl mx-auto">
-    <h1 class="font-serif text-4xl font-light mb-2">Bank Details</h1>
-    <p class="text-xs text-stone-400 mb-4">We'll use these details to send you monthly payments</p>
+    <h1 class="font-serif text-4xl font-light mb-2">Bankarski podaci</h1>
+    <p class="text-xs text-stone-400 mb-4">Koristićemo ove podatke za slanje mesečnih isplata</p>
 
     <div class="border border-neutral-200 p-4 mb-8">
-        <p class="text-xs text-stone-600">Your information is stored securely and never shared with buyers.</p>
+        <p class="text-xs text-stone-600">Vaši podaci se čuvaju bezbedno i nikada se ne dele sa kupcima.</p>
     </div>
 
     <form method="post" class="space-y-6">
@@ -21,36 +21,36 @@
         {% endif %}
 
         <div>
-            <label for="{{ form.bank_account_holder.id_for_label }}" class="block text-xs uppercase tracking-widest text-stone-500 mb-2">Account Holder Name</label>
+            <label for="{{ form.bank_account_holder.id_for_label }}" class="block text-xs uppercase tracking-widest text-stone-500 mb-2">Ime vlasnika računa</label>
             {{ form.bank_account_holder }}
             {% if form.bank_account_holder.errors %}<p class="text-xs text-red-600 mt-1">{{ form.bank_account_holder.errors.0 }}</p>{% endif %}
-            <p class="text-xs text-stone-400 mt-1">Full name as it appears on your bank account</p>
+            <p class="text-xs text-stone-400 mt-1">Puno ime kao što je navedeno na vašem bankovnom računu</p>
         </div>
 
         <div>
-            <label for="{{ form.bank_name.id_for_label }}" class="block text-xs uppercase tracking-widest text-stone-500 mb-2">Bank Name</label>
+            <label for="{{ form.bank_name.id_for_label }}" class="block text-xs uppercase tracking-widest text-stone-500 mb-2">Naziv banke</label>
             {{ form.bank_name }}
             {% if form.bank_name.errors %}<p class="text-xs text-red-600 mt-1">{{ form.bank_name.errors.0 }}</p>{% endif %}
         </div>
 
         <div>
-            <label for="{{ form.bank_account_number.id_for_label }}" class="block text-xs uppercase tracking-widest text-stone-500 mb-2">Account Number / IBAN</label>
+            <label for="{{ form.bank_account_number.id_for_label }}" class="block text-xs uppercase tracking-widest text-stone-500 mb-2">Broj računa / IBAN</label>
             {{ form.bank_account_number }}
             {% if form.bank_account_number.errors %}<p class="text-xs text-red-600 mt-1">{{ form.bank_account_number.errors.0 }}</p>{% endif %}
-            <p class="text-xs text-stone-400 mt-1">Your IBAN (preferred) or account number</p>
+            <p class="text-xs text-stone-400 mt-1">Vaš IBAN (preporučeno) ili broj računa</p>
         </div>
 
         <div class="border border-neutral-200 p-5">
-            <p class="text-xs uppercase tracking-widest text-stone-700 mb-3">Your Subscription Includes</p>
+            <p class="text-xs uppercase tracking-widest text-stone-700 mb-3">Vaša pretplata uključuje</p>
             <ul class="space-y-1 text-xs text-stone-500">
-                <li>Unlimited product listings</li>
-                <li>Monthly seller fee: $9.99</li>
-                <li>Full access to seller dashboard</li>
-                <li>Email support</li>
+                <li>Neograničeni broj oglasa</li>
+                <li>Mesečna naknada prodavca: 9,99$</li>
+                <li>Pun pristup kontrolnoj tabli prodavca</li>
+                <li>Email podrška</li>
             </ul>
         </div>
 
-        <button type="submit" class="w-full text-xs uppercase tracking-widest bg-stone-900 text-white py-3 hover:bg-stone-700 transition-colors">Complete Setup</button>
+        <button type="submit" class="w-full text-xs uppercase tracking-widest bg-stone-900 text-white py-3 hover:bg-stone-700 transition-colors">Završi podešavanje</button>
     </form>
 </div>
 

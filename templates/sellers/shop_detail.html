@@ -21,7 +21,7 @@
             <div class="flex gap-12">
                 <div>
                     <p class="text-3xl font-light text-stone-900">{{ seller.published_count }}</p>
-                    <p class="text-xs uppercase tracking-widest text-stone-400 mt-1">Active Listings</p>
+                    <p class="text-xs uppercase tracking-widest text-stone-400 mt-1">Aktivni oglasi</p>
                 </div>
                 <div>
                     <p class="text-sm {% if seller.status == 'active' %}text-emerald-700{% else %}text-red-600{% endif %}">{{ seller.get_status_display }}</p>
@@ -33,7 +33,7 @@
 </div>
 
 <div class="mb-12">
-    <h2 class="font-serif text-3xl font-light mb-8">Available Items</h2>
+    <h2 class="font-serif text-3xl font-light mb-8">Dostupni artikli</h2>
     {% if products %}
         <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 mb-12">
             {% for product in products %}
@@ -42,7 +42,7 @@
                     {% if product.images.exists %}
                         <img src="{{ product.images.first.image.url }}" alt="{{ product.images.first.alt_text }}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
                     {% else %}
-                        <div class="w-full h-full flex items-center justify-center"><span class="text-xs uppercase tracking-widest text-neutral-400">No Image</span></div>
+                        <div class="w-full h-full flex items-center justify-center"><span class="text-xs uppercase tracking-widest text-neutral-400">Nema slike</span></div>
                     {% endif %}
                 </div>
                 {% if product.category %}<p class="text-xs uppercase tracking-widest text-stone-400 mb-1">{{ product.category.name }}</p>{% endif %}
@@ -55,26 +55,26 @@
         {% if page_obj.has_other_pages %}
         <div class="flex justify-center items-center gap-2">
             {% if page_obj.has_previous %}
-                <a href="?page=1" class="px-4 py-2 border border-neutral-200 text-xs uppercase tracking-widest hover:border-stone-400">First</a>
-                <a href="?page={{ page_obj.previous_page_number }}" class="px-4 py-2 border border-neutral-200 text-xs uppercase tracking-widest hover:border-stone-400">Prev</a>
+                <a href="?page=1" class="px-4 py-2 border border-neutral-200 text-xs uppercase tracking-widest hover:border-stone-400">Prva</a>
+                <a href="?page={{ page_obj.previous_page_number }}" class="px-4 py-2 border border-neutral-200 text-xs uppercase tracking-widest hover:border-stone-400">Prethodna</a>
             {% endif %}
             <span class="px-4 py-2 text-xs text-stone-400">{{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span>
             {% if page_obj.has_next %}
-                <a href="?page={{ page_obj.next_page_number }}" class="px-4 py-2 border border-neutral-200 text-xs uppercase tracking-widest hover:border-stone-400">Next</a>
-                <a href="?page={{ page_obj.paginator.num_pages }}" class="px-4 py-2 border border-neutral-200 text-xs uppercase tracking-widest hover:border-stone-400">Last</a>
+                <a href="?page={{ page_obj.next_page_number }}" class="px-4 py-2 border border-neutral-200 text-xs uppercase tracking-widest hover:border-stone-400">Sledeća</a>
+                <a href="?page={{ page_obj.paginator.num_pages }}" class="px-4 py-2 border border-neutral-200 text-xs uppercase tracking-widest hover:border-stone-400">Poslednja</a>
             {% endif %}
         </div>
         {% endif %}
     {% else %}
         <div class="border border-neutral-200 p-16 text-center">
-            <p class="font-serif text-2xl font-light mb-2">No items available</p>
-            <p class="text-xs text-stone-400">This shop has no active listings.</p>
+            <p class="font-serif text-2xl font-light mb-2">Nema dostupnih artikala</p>
+            <p class="text-xs text-stone-400">Ova prodavnica nema aktivnih oglasa.</p>
         </div>
     {% endif %}
 </div>
 
 <div class="text-center">
-    <a href="{% url 'shops_browse' %}" class="text-xs uppercase tracking-widest text-stone-400 hover:text-stone-900 transition-colors">All Sellers</a>
+    <a href="{% url 'shops_browse' %}" class="text-xs uppercase tracking-widest text-stone-400 hover:text-stone-900 transition-colors">Svi prodavci</a>
 </div>
 
 {% endblock %}

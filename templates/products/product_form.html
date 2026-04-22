@@ -16,27 +16,27 @@
         {% endif %}
 
         <div>
-            <label for="{{ form.title.id_for_label }}" class="block text-xs uppercase tracking-widest text-stone-500 mb-2">Product Title *</label>
+            <label for="{{ form.title.id_for_label }}" class="block text-xs uppercase tracking-widest text-stone-500 mb-2">Naziv proizvoda *</label>
             {{ form.title }}
             {% if form.title.errors %}<p class="text-xs text-red-600 mt-1">{{ form.title.errors.0 }}</p>{% endif %}
-            <p class="text-xs text-stone-400 mt-1">Include brand, size, and key features.</p>
+            <p class="text-xs text-stone-400 mt-1">Unesite brend, veličinu i ključne karakteristike.</p>
         </div>
 
         <div>
-            <label for="{{ form.description.id_for_label }}" class="block text-xs uppercase tracking-widest text-stone-500 mb-2">Description *</label>
+            <label for="{{ form.description.id_for_label }}" class="block text-xs uppercase tracking-widest text-stone-500 mb-2">Opis *</label>
             {{ form.description }}
             {% if form.description.errors %}<p class="text-xs text-red-600 mt-1">{{ form.description.errors.0 }}</p>{% endif %}
-            <p class="text-xs text-stone-400 mt-1">Mention any flaws or wear.</p>
+            <p class="text-xs text-stone-400 mt-1">Navedite eventualne nedostatke ili habanje.</p>
         </div>
 
         <div class="grid grid-cols-2 gap-6">
             <div>
-                <label for="{{ form.price.id_for_label }}" class="block text-xs uppercase tracking-widest text-stone-500 mb-2">Price ($) *</label>
+                <label for="{{ form.price.id_for_label }}" class="block text-xs uppercase tracking-widest text-stone-500 mb-2">Cena ($) *</label>
                 {{ form.price }}
                 {% if form.price.errors %}<p class="text-xs text-red-600 mt-1">{{ form.price.errors.0 }}</p>{% endif %}
             </div>
             <div>
-                <label for="{{ form.stock.id_for_label }}" class="block text-xs uppercase tracking-widest text-stone-500 mb-2">Stock *</label>
+                <label for="{{ form.stock.id_for_label }}" class="block text-xs uppercase tracking-widest text-stone-500 mb-2">Zalihe *</label>
                 {{ form.stock }}
                 {% if form.stock.errors %}<p class="text-xs text-red-600 mt-1">{{ form.stock.errors.0 }}</p>{% endif %}
             </div>
@@ -44,12 +44,12 @@
 
         <div class="grid grid-cols-2 gap-6">
             <div>
-                <label for="{{ form.category.id_for_label }}" class="block text-xs uppercase tracking-widest text-stone-500 mb-2">Category</label>
+                <label for="{{ form.category.id_for_label }}" class="block text-xs uppercase tracking-widest text-stone-500 mb-2">Kategorija</label>
                 {{ form.category }}
                 {% if form.category.errors %}<p class="text-xs text-red-600 mt-1">{{ form.category.errors.0 }}</p>{% endif %}
             </div>
             <div>
-                <label for="{{ form.condition.id_for_label }}" class="block text-xs uppercase tracking-widest text-stone-500 mb-2">Condition</label>
+                <label for="{{ form.condition.id_for_label }}" class="block text-xs uppercase tracking-widest text-stone-500 mb-2">Stanje</label>
                 {{ form.condition }}
                 {% if form.condition.errors %}<p class="text-xs text-red-600 mt-1">{{ form.condition.errors.0 }}</p>{% endif %}
             </div>
@@ -59,14 +59,14 @@
             <label for="{{ form.status.id_for_label }}" class="block text-xs uppercase tracking-widest text-stone-500 mb-2">Status</label>
             {{ form.status }}
             {% if form.status.errors %}<p class="text-xs text-red-600 mt-1">{{ form.status.errors.0 }}</p>{% endif %}
-            <p class="text-xs text-stone-400 mt-1">Draft products are hidden. Publish when ready to sell.</p>
+            <p class="text-xs text-stone-400 mt-1">Nacrti su skriveni. Objavite kada ste spremni za prodaju.</p>
         </div>
 
         <div class="flex gap-4 pt-2">
             <button type="submit" class="flex-1 text-xs uppercase tracking-widest bg-stone-900 text-white py-3 hover:bg-stone-700 transition-colors">
                 {% if product %}Save Changes{% else %}Create Product{% endif %}
             </button>
-            <a href="{% url 'seller_products_list' %}" class="flex-1 text-center text-xs uppercase tracking-widest border border-neutral-200 text-stone-500 py-3 hover:border-stone-400 hover:text-stone-900 transition-colors">Cancel</a>
+            <a href="{% url 'seller_products_list' %}" class="flex-1 text-center text-xs uppercase tracking-widest border border-neutral-200 text-stone-500 py-3 hover:border-stone-400 hover:text-stone-900 transition-colors">Otkaži</a>
         </div>
     </form>
 </div>

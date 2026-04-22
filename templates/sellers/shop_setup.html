@@ -1,11 +1,11 @@
 {% extends "base.html" %}
-{% block title %}Set Up Your Shop — {{ SITE_NAME }}{% endblock %}
+{% block title %}Podesite vašu prodavnicu — {{ SITE_NAME }}{% endblock %}
 
 {% block content %}
 
 <div class="max-w-2xl mx-auto">
-    <h1 class="font-serif text-4xl font-light mb-2">Set Up Your Shop</h1>
-    <p class="text-xs text-stone-400 mb-10">Tell buyers about your shop and products</p>
+    <h1 class="font-serif text-4xl font-light mb-2">Podesite vašu prodavnicu</h1>
+    <p class="text-xs text-stone-400 mb-10">Recite kupcima o vašoj prodavnici i proizvodima</p>
 
     <form method="post" enctype="multipart/form-data" class="space-y-6">
         {% csrf_token %}
@@ -17,40 +17,40 @@
         {% endif %}
 
         <div>
-            <label for="{{ form.shop_name.id_for_label }}" class="block text-xs uppercase tracking-widest text-stone-500 mb-2">Shop Name</label>
+            <label for="{{ form.shop_name.id_for_label }}" class="block text-xs uppercase tracking-widest text-stone-500 mb-2">Naziv prodavnice</label>
             {{ form.shop_name }}
             {% if form.shop_name.errors %}<p class="text-xs text-red-600 mt-1">{{ form.shop_name.errors.0 }}</p>{% endif %}
-            <p class="text-xs text-stone-400 mt-1">The name customers will see</p>
+            <p class="text-xs text-stone-400 mt-1">Naziv koji će kupci videti</p>
         </div>
 
         <div>
-            <label for="{{ form.shop_slug.id_for_label }}" class="block text-xs uppercase tracking-widest text-stone-500 mb-2">Shop URL Slug</label>
+            <label for="{{ form.shop_slug.id_for_label }}" class="block text-xs uppercase tracking-widest text-stone-500 mb-2">URL adresa prodavnice</label>
             {{ form.shop_slug }}
             {% if form.shop_slug.errors %}<p class="text-xs text-red-600 mt-1">{{ form.shop_slug.errors.0 }}</p>{% endif %}
-            <p class="text-xs text-stone-400 mt-1">e.g. my-shop (lowercase, no spaces)</p>
+            <p class="text-xs text-stone-400 mt-1">npr. moja-prodavnica (malo slova, bez razmaka)</p>
         </div>
 
         <div>
-            <label for="{{ form.shop_description.id_for_label }}" class="block text-xs uppercase tracking-widest text-stone-500 mb-2">Shop Description</label>
+            <label for="{{ form.shop_description.id_for_label }}" class="block text-xs uppercase tracking-widest text-stone-500 mb-2">Opis prodavnice</label>
             {{ form.shop_description }}
             {% if form.shop_description.errors %}<p class="text-xs text-red-600 mt-1">{{ form.shop_description.errors.0 }}</p>{% endif %}
-            <p class="text-xs text-stone-400 mt-1">Tell buyers what makes your shop special</p>
+            <p class="text-xs text-stone-400 mt-1">Recite kupcima šta vašu prodavnicu čini posebnom</p>
         </div>
 
         <div>
-            <label for="{{ form.location.id_for_label }}" class="block text-xs uppercase tracking-widest text-stone-500 mb-2">Location</label>
+            <label for="{{ form.location.id_for_label }}" class="block text-xs uppercase tracking-widest text-stone-500 mb-2">Lokacija</label>
             {{ form.location }}
             {% if form.location.errors %}<p class="text-xs text-red-600 mt-1">{{ form.location.errors.0 }}</p>{% endif %}
-            <p class="text-xs text-stone-400 mt-1">City and country</p>
+            <p class="text-xs text-stone-400 mt-1">Grad i zemlja</p>
         </div>
 
         <div>
-            <label for="{{ form.shop_image.id_for_label }}" class="block text-xs uppercase tracking-widest text-stone-500 mb-2">Shop Image (optional)</label>
+            <label for="{{ form.shop_image.id_for_label }}" class="block text-xs uppercase tracking-widest text-stone-500 mb-2">Slika prodavnice (opciono)</label>
             {{ form.shop_image }}
             {% if form.shop_image.errors %}<p class="text-xs text-red-600 mt-1">{{ form.shop_image.errors.0 }}</p>{% endif %}
         </div>
 
-        <button type="submit" class="w-full text-xs uppercase tracking-widest bg-stone-900 text-white py-3 hover:bg-stone-700 transition-colors">Continue to Bank Details</button>
+        <button type="submit" class="w-full text-xs uppercase tracking-widest bg-stone-900 text-white py-3 hover:bg-stone-700 transition-colors">Nastavi na bankarske podatke</button>
     </form>
 </div>
 

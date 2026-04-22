@@ -1,31 +1,31 @@
 {% extends "base.html" %}
-{% block title %}Sellers — {{ SITE_NAME }}{% endblock %}
+{% block title %}Prodavci — {{ SITE_NAME }}{% endblock %}
 
 {% block content %}
 
 <div class="mb-8">
-    <h1 class="font-serif text-4xl font-light">Sellers</h1>
+    <h1 class="font-serif text-4xl font-light">Prodavci</h1>
 </div>
 
 <form method="get" class="border border-neutral-200 p-6 mb-10">
     <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
         <div class="md:col-span-2">
-            <label class="block text-xs uppercase tracking-widest text-stone-500 mb-2">Search</label>
-            <input type="text" name="q" value="{{ search_query }}" placeholder="Shop name, location...">
+            <label class="block text-xs uppercase tracking-widest text-stone-500 mb-2">Pretraga</label>
+            <input type="text" name="q" value="{{ search_query }}" placeholder="Naziv prodavnice, lokacija...">
         </div>
         <div>
-            <label class="block text-xs uppercase tracking-widest text-stone-500 mb-2">Sort</label>
+            <label class="block text-xs uppercase tracking-widest text-stone-500 mb-2">Sortiraj</label>
             <select name="sort">
-                <option value="-created_at" {% if sort_by == "-created_at" %}selected{% endif %}>Newest</option>
-                <option value="name" {% if sort_by == "name" %}selected{% endif %}>Name A–Z</option>
-                <option value="-products" {% if sort_by == "-products" %}selected{% endif %}>Most Products</option>
+                <option value="-created_at" {% if sort_by == "-created_at" %}selected{% endif %}>Najnoviji</option>
+                <option value="name" {% if sort_by == "name" %}selected{% endif %}>Naziv A–Ž</option>
+                <option value="-products" {% if sort_by == "-products" %}selected{% endif %}>Najviše proizvoda</option>
             </select>
         </div>
     </div>
     <div class="flex items-center gap-6">
-        <button type="submit" class="text-xs uppercase tracking-widest bg-stone-900 text-white px-6 py-2.5 hover:bg-stone-700 transition-colors">Search</button>
+        <button type="submit" class="text-xs uppercase tracking-widest bg-stone-900 text-white px-6 py-2.5 hover:bg-stone-700 transition-colors">Pretraga</button>
         {% if search_query %}
-            <a href="{% url 'shops_browse' %}" class="text-xs uppercase tracking-widest text-stone-400 hover:text-stone-900 transition-colors">Clear</a>
+            <a href="{% url 'shops_browse' %}" class="text-xs uppercase tracking-widest text-stone-400 hover:text-stone-900 transition-colors">Obriši</a>
         {% endif %}
     </div>
 </form>
@@ -47,7 +47,7 @@
                 <h3 class="font-serif text-xl font-light mb-1">{{ seller.shop_name }}</h3>
                 {% if seller.location %}<p class="text-xs text-stone-400 mb-2">{{ seller.location }}</p>{% endif %}
                 <p class="text-xs text-stone-500 mb-4 line-clamp-2">{{ seller.shop_description }}</p>
-                <p class="text-xs uppercase tracking-widest text-stone-400">{{ seller.published_count }} items</p>
+                <p class="text-xs uppercase tracking-widest text-stone-400">{{ seller.published_count }} artikala</p>
             </div>
         </a>
         {% endfor %}
@@ -56,19 +56,19 @@
     {% if page_obj.has_other_pages %}
     <div class="flex justify-center items-center gap-2 mb-12">
         {% if page_obj.has_previous %}
-            <a href="?{{ request.GET.urlencode }}&page=1" class="px-4 py-2 border border-neutral-200 text-xs uppercase tracking-widest hover:border-stone-400 transition-colors">First</a>
-            <a href="?{{ request.GET.urlencode }}&page={{ page_obj.previous_page_number }}" class="px-4 py-2 border border-neutral-200 text-xs uppercase tracking-widest hover:border-stone-400 transition-colors">Prev</a>
+            <a href="?{{ request.GET.urlencode }}&page=1" class="px-4 py-2 border border-neutral-200 text-xs uppercase tracking-widest hover:border-stone-400 transition-colors">Prva</a>
+            <a href="?{{ request.GET.urlencode }}&page={{ page_obj.previous_page_number }}" class="px-4 py-2 border border-neutral-200 text-xs uppercase tracking-widest hover:border-stone-400 transition-colors">Prethodna</a>
         {% endif %}
         <span class="px-4 py-2 text-xs text-stone-400">{{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span>
         {% if page_obj.has_next %}
-            <a href="?{{ request.GET.urlencode }}&page={{ page_obj.next_page_number }}" class="px-4 py-2 border border-neutral-200 text-xs uppercase tracking-widest hover:border-stone-400 transition-colors">Next</a>
-            <a href="?{{ request.GET.urlencode }}&page={{ page_obj.paginator.num_pages }}" class="px-4 py-2 border border-neutral-200 text-xs uppercase tracking-widest hover:border-stone-400 transition-colors">Last</a>
+            <a href="?{{ request.GET.urlencode }}&page={{ page_obj.next_page_number }}" class="px-4 py-2 border border-neutral-200 text-xs uppercase tracking-widest hover:border-stone-400 transition-colors">Sledeća</a>
+            <a href="?{{ request.GET.urlencode }}&page={{ page_obj.paginator.num_pages }}" class="px-4 py-2 border border-neutral-200 text-xs uppercase tracking-widest hover:border-stone-400 transition-colors">Poslednja</a>
         {% endif %}
     </div>
     {% endif %}
 {% else %}
     <div class="border border-neutral-200 p-16 text-center">
-        <h2 class="font-serif text-2xl font-light mb-3">No sellers found</h2>
+        <h2 class="font-serif text-2xl font-light mb-3">Nisu pronađeni prodavci</h2>
         <p class="text-xs text-stone-400">{% if search_query %}Try a different search.{% else %}Check back soon.{% endif %}</p>
     </div>
 {% endif %}

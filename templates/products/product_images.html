@@ -1,25 +1,25 @@
 {% extends "base.html" %}
-{% block title %}Product Images — {{ SITE_NAME }}{% endblock %}
+{% block title %}Slike proizvoda — {{ SITE_NAME }}{% endblock %}
 
 {% block content %}
 
 <div class="mb-8">
-    <a href="{% url 'seller_products_list' %}" class="text-xs uppercase tracking-widest text-stone-400 hover:text-stone-900 transition-colors mb-4 inline-block">← Products</a>
-    <h1 class="font-serif text-4xl font-light">Product Images</h1>
+    <a href="{% url 'seller_products_list' %}" class="text-xs uppercase tracking-widest text-stone-400 hover:text-stone-900 transition-colors mb-4 inline-block">← Proizvodi</a>
+    <h1 class="font-serif text-4xl font-light">Slike proizvoda</h1>
     <p class="text-xs uppercase tracking-widest text-stone-400 mt-1">{{ product.title }}</p>
 </div>
 
 <div class="grid grid-cols-1 lg:grid-cols-3 gap-10">
 
     <div class="border border-neutral-200 p-6">
-        <p class="text-xs uppercase tracking-widest text-stone-700 mb-5">Upload Images</p>
+        <p class="text-xs uppercase tracking-widest text-stone-700 mb-5">Otpremi slike</p>
         <form method="post" enctype="multipart/form-data" class="space-y-4">
             {% csrf_token %}
             <div class="border border-dashed border-neutral-300 p-8 text-center hover:border-stone-400 transition-colors">
                 <svg class="mx-auto h-8 w-8 text-neutral-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M12 4v16m8-8H4"/>
                 </svg>
-                <label for="{{ form.images.id_for_label }}" class="text-xs uppercase tracking-widest text-stone-500 hover:text-stone-900 cursor-pointer transition-colors">Select Images</label>
+                <label for="{{ form.images.id_for_label }}" class="text-xs uppercase tracking-widest text-stone-500 hover:text-stone-900 cursor-pointer transition-colors">Izaberi slike</label>
                 {{ form.images }}
             </div>
             {% if form.images.errors %}
@@ -27,13 +27,13 @@
                 {% for error in form.images.errors %}<p class="text-xs text-red-600">{{ error }}</p>{% endfor %}
             </div>
             {% endif %}
-            <p class="text-xs text-stone-400">JPG, PNG, GIF, WebP — max 5MB each</p>
-            <button type="submit" class="w-full text-xs uppercase tracking-widest bg-stone-900 text-white py-2.5 hover:bg-stone-700 transition-colors">Upload</button>
+            <p class="text-xs text-stone-400">JPG, PNG, GIF, WebP — maks 5MB po slici</p>
+            <button type="submit" class="w-full text-xs uppercase tracking-widest bg-stone-900 text-white py-2.5 hover:bg-stone-700 transition-colors">Otpremi</button>
         </form>
     </div>
 
     <div class="lg:col-span-2">
-        <p class="text-xs uppercase tracking-widest text-stone-700 mb-5">Images ({{ images.count }})</p>
+        <p class="text-xs uppercase tracking-widest text-stone-700 mb-5">Slike ({{ images.count }})</p>
 
         {% if images %}
             <div class="border border-neutral-200 divide-y divide-neutral-100">
@@ -42,27 +42,27 @@
                     <div class="flex items-center gap-4">
                         <img src="{{ image.image.url }}" alt="{{ image.alt_text }}" class="h-16 w-16 object-cover">
                         <div>
-                            <p class="text-xs uppercase tracking-widest text-stone-700">Image #{{ image.order }}</p>
+                            <p class="text-xs uppercase tracking-widest text-stone-700">Slika #{{ image.order }}</p>
                             {% if image.alt_text %}<p class="text-xs text-stone-400 mt-0.5">{{ image.alt_text }}</p>{% endif %}
                             <p class="text-xs text-stone-300 mt-0.5">{{ image.created_at|date:"M d, Y" }}</p>
                         </div>
                     </div>
                     <form method="post" action="{% url 'product_image_delete' image.id %}" onsubmit="return confirm('Delete this image?');">
                         {% csrf_token %}
-                        <button type="submit" class="text-xs uppercase tracking-widest text-red-500 hover:text-red-700 transition-colors">Delete</button>
+                        <button type="submit" class="text-xs uppercase tracking-widest text-red-500 hover:text-red-700 transition-colors">Obriši</button>
                     </form>
                 </div>
                 {% endfor %}
             </div>
-            <p class="text-xs text-stone-400 mt-4">The first image is shown as the product thumbnail.</p>
+            <p class="text-xs text-stone-400 mt-4">Prva slika se prikazuje kao minijatura proizvoda.</p>
         {% else %}
             <div class="border border-neutral-200 p-16 text-center">
-                <p class="text-xs uppercase tracking-widest text-stone-400">No images yet. Upload images using the form.</p>
+                <p class="text-xs uppercase tracking-widest text-stone-400">Još nema slika. Otpremite slike koristeći formular.</p>
             </div>
         {% endif %}
 
         <div class="mt-6">
-            <a href="{% url 'product_edit' product.id %}" class="text-xs uppercase tracking-widest text-stone-400 hover:text-stone-900 transition-colors">← Back to Product</a>
+            <a href="{% url 'product_edit' product.id %}" class="text-xs uppercase tracking-widest text-stone-400 hover:text-stone-900 transition-colors">← Nazad na proizvod</a>
         </div>
     </div>
 </div>

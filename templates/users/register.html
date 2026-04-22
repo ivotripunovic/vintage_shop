@@ -1,10 +1,10 @@
 {% extends "base.html" %}
-{% block title %}Register — {{ SITE_NAME }}{% endblock %}
+{% block title %}Registracija — {{ SITE_NAME }}{% endblock %}
 
 {% block content %}
 
 <div class="max-w-sm mx-auto py-12">
-    <h1 class="font-serif text-4xl font-light text-center mb-10">Create Account</h1>
+    <h1 class="font-serif text-4xl font-light text-center mb-10">Kreiraj nalog</h1>
 
     <form method="post" class="space-y-5">
         {% csrf_token %}
@@ -22,36 +22,36 @@
         </div>
 
         <div>
-            <label for="{{ form.first_name.id_for_label }}" class="block text-xs uppercase tracking-widest text-stone-500 mb-2">First Name</label>
+            <label for="{{ form.first_name.id_for_label }}" class="block text-xs uppercase tracking-widest text-stone-500 mb-2">Ime</label>
             {{ form.first_name }}
         </div>
 
         <div>
-            <label for="{{ form.last_name.id_for_label }}" class="block text-xs uppercase tracking-widest text-stone-500 mb-2">Last Name</label>
+            <label for="{{ form.last_name.id_for_label }}" class="block text-xs uppercase tracking-widest text-stone-500 mb-2">Prezime</label>
             {{ form.last_name }}
         </div>
 
         <div>
-            <label class="block text-xs uppercase tracking-widest text-stone-500 mb-2">I want to</label>
+            <label class="block text-xs uppercase tracking-widest text-stone-500 mb-2">Želim da</label>
             {{ form.user_type }}
         </div>
 
         <div>
-            <label for="{{ form.password1.id_for_label }}" class="block text-xs uppercase tracking-widest text-stone-500 mb-2">Password</label>
+            <label for="{{ form.password1.id_for_label }}" class="block text-xs uppercase tracking-widest text-stone-500 mb-2">Lozinka</label>
             {{ form.password1 }}
             {% if form.password1.errors %}<p class="text-xs text-red-600 mt-1">{{ form.password1.errors.0 }}</p>{% endif %}
         </div>
 
         <div>
-            <label for="{{ form.password2.id_for_label }}" class="block text-xs uppercase tracking-widest text-stone-500 mb-2">Confirm Password</label>
+            <label for="{{ form.password2.id_for_label }}" class="block text-xs uppercase tracking-widest text-stone-500 mb-2">Potvrdi lozinku</label>
             {{ form.password2 }}
             {% if form.password2.errors %}<p class="text-xs text-red-600 mt-1">{{ form.password2.errors.0 }}</p>{% endif %}
         </div>
 
-        <button type="submit" class="w-full bg-stone-900 text-white text-xs uppercase tracking-widest py-3.5 hover:bg-stone-700 transition-colors">Create Account</button>
+        <button type="submit" class="w-full bg-stone-900 text-white text-xs uppercase tracking-widest py-3.5 hover:bg-stone-700 transition-colors">Kreiraj nalog</button>
     </form>
 
-    <p class="text-center mt-6 text-xs text-stone-400">Already have an account? <a href="{% url 'login' %}" class="text-stone-900 hover:text-stone-600 transition-colors">Sign In</a></p>
+    <p class="text-center mt-6 text-xs text-stone-400">Već imate nalog? <a href="{% url 'login' %}" class="text-stone-900 hover:text-stone-600 transition-colors">Prijava</a></p>
 </div>
 
 {% endblock %}

@@ -4,49 +4,49 @@
 {% block content %}
 
 <div class="mb-8">
-    <h1 class="font-serif text-4xl font-light mb-1">Shop</h1>
-    {% if products.paginator.count %}<p class="text-xs uppercase tracking-widest text-stone-400">{{ products.paginator.count }} items</p>{% endif %}
+    <h1 class="font-serif text-4xl font-light mb-1">Prodavnica</h1>
+    {% if products.paginator.count %}<p class="text-xs uppercase tracking-widest text-stone-400">{{ products.paginator.count }} artikala</p>{% endif %}
 </div>
 
 <form method="get" class="border border-neutral-200 p-6 mb-10">
     <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
         <div>
-            <label class="block text-xs uppercase tracking-widest text-stone-500 mb-2">Search</label>
-            <input type="text" name="q" value="{{ search_query }}" placeholder="Search...">
+            <label class="block text-xs uppercase tracking-widest text-stone-500 mb-2">Pretraga</label>
+            <input type="text" name="q" value="{{ search_query }}" placeholder="Pretraži...">
         </div>
         <div>
-            <label class="block text-xs uppercase tracking-widest text-stone-500 mb-2">Category</label>
+            <label class="block text-xs uppercase tracking-widest text-stone-500 mb-2">Kategorija</label>
             <select name="category" onchange="if(this.value) window.location.href='/products/category/' + this.value + '/'; else window.location.href='{% url 'products_browse' %}';">
-                <option value="">All</option>
+                <option value="">Sve</option>
                 {% for category in categories %}
                     <option value="{{ category.id }}" {% if selected_category == category.id|stringformat:"s" %}selected{% endif %}>{{ category.name }}</option>
                 {% endfor %}
             </select>
         </div>
         <div>
-            <label class="block text-xs uppercase tracking-widest text-stone-500 mb-2">Condition</label>
+            <label class="block text-xs uppercase tracking-widest text-stone-500 mb-2">Stanje</label>
             <select name="condition">
-                <option value="">All</option>
+                <option value="">Sve</option>
                 {% for condition in conditions %}
                     <option value="{{ condition.id }}" {% if selected_condition == condition.id|stringformat:"s" %}selected{% endif %}>{{ condition.name }}</option>
                 {% endfor %}
             </select>
         </div>
         <div>
-            <label class="block text-xs uppercase tracking-widest text-stone-500 mb-2">Sort</label>
+            <label class="block text-xs uppercase tracking-widest text-stone-500 mb-2">Sortiraj</label>
             <select name="sort">
-                <option value="-created_at" {% if sort_by == "-created_at" %}selected{% endif %}>Newest</option>
-                <option value="created_at" {% if sort_by == "created_at" %}selected{% endif %}>Oldest</option>
-                <option value="-price" {% if sort_by == "-price" %}selected{% endif %}>Price: High to Low</option>
-                <option value="price" {% if sort_by == "price" %}selected{% endif %}>Price: Low to High</option>
-                <option value="title" {% if sort_by == "title" %}selected{% endif %}>Name A–Z</option>
+                <option value="-created_at" {% if sort_by == "-created_at" %}selected{% endif %}>Najnovije</option>
+                <option value="created_at" {% if sort_by == "created_at" %}selected{% endif %}>Najstarije</option>
+                <option value="-price" {% if sort_by == "-price" %}selected{% endif %}>Cena: od više ka nižoj</option>
+                <option value="price" {% if sort_by == "price" %}selected{% endif %}>Cena: od niže ka višoj</option>
+                <option value="title" {% if sort_by == "title" %}selected{% endif %}>Naziv A–Ž</option>
             </select>
         </div>
     </div>
     <div class="flex items-center gap-6">
-        <button type="submit" class="text-xs uppercase tracking-widest bg-stone-900 text-white px-6 py-2.5 hover:bg-stone-700 transition-colors">Apply</button>
+        <button type="submit" class="text-xs uppercase tracking-widest bg-stone-900 text-white px-6 py-2.5 hover:bg-stone-700 transition-colors">Primeni</button>
         {% if search_query or selected_category or selected_condition %}
-            <a href="{% url 'products_browse' %}" class="text-xs uppercase tracking-widest text-stone-400 hover:text-stone-900 transition-colors">Clear</a>
+            <a href="{% url 'products_browse' %}" class="text-xs uppercase tracking-widest text-stone-400 hover:text-stone-900 transition-colors">Obriši</a>
         {% endif %}
     </div>
 </form>
@@ -60,7 +60,7 @@
                     <img src="{{ product.images.first.image.url }}" alt="{{ product.images.first.alt_text }}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
                 {% else %}
                     <div class="w-full h-full flex items-center justify-center">
-                        <span class="text-xs uppercase tracking-widest text-neutral-400">No Image</span>
+                        <span class="text-xs uppercase tracking-widest text-neutral-400">Nema slike</span>
                     </div>
                 {% endif %}
             </div>
@@ -75,22 +75,22 @@
     {% if page_obj.has_other_pages %}
     <div class="flex justify-center items-center gap-2 mb-12">
         {% if page_obj.has_previous %}
-            <a href="?{{ request.GET.urlencode }}&page=1" class="px-4 py-2 border border-neutral-200 text-xs uppercase tracking-widest hover:border-stone-400 transition-colors">First</a>
-            <a href="?{{ request.GET.urlencode }}&page={{ page_obj.previous_page_number }}" class="px-4 py-2 border border-neutral-200 text-xs uppercase tracking-widest hover:border-stone-400 transition-colors">Prev</a>
+            <a href="?{{ request.GET.urlencode }}&page=1" class="px-4 py-2 border border-neutral-200 text-xs uppercase tracking-widest hover:border-stone-400 transition-colors">Prva</a>
+            <a href="?{{ request.GET.urlencode }}&page={{ page_obj.previous_page_number }}" class="px-4 py-2 border border-neutral-200 text-xs uppercase tracking-widest hover:border-stone-400 transition-colors">Prethodna</a>
         {% endif %}
         <span class="px-4 py-2 text-xs text-stone-400">{{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span>
         {% if page_obj.has_next %}
-            <a href="?{{ request.GET.urlencode }}&page={{ page_obj.next_page_number }}" class="px-4 py-2 border border-neutral-200 text-xs uppercase tracking-widest hover:border-stone-400 transition-colors">Next</a>
-            <a href="?{{ request.GET.urlencode }}&page={{ page_obj.paginator.num_pages }}" class="px-4 py-2 border border-neutral-200 text-xs uppercase tracking-widest hover:border-stone-400 transition-colors">Last</a>
+            <a href="?{{ request.GET.urlencode }}&page={{ page_obj.next_page_number }}" class="px-4 py-2 border border-neutral-200 text-xs uppercase tracking-widest hover:border-stone-400 transition-colors">Sledeća</a>
+            <a href="?{{ request.GET.urlencode }}&page={{ page_obj.paginator.num_pages }}" class="px-4 py-2 border border-neutral-200 text-xs uppercase tracking-widest hover:border-stone-400 transition-colors">Poslednja</a>
         {% endif %}
     </div>
     {% endif %}
 {% else %}
     <div class="border border-neutral-200 p-16 text-center">
-        <h2 class="font-serif text-2xl font-light mb-3">No items found</h2>
+        <h2 class="font-serif text-2xl font-light mb-3">Nisu pronađeni artikli</h2>
         <p class="text-xs text-stone-400 mb-6">{% if search_query or selected_category or selected_condition %}Try adjusting your filters.{% else %}Check back soon.{% endif %}</p>
         {% if search_query or selected_category or selected_condition %}
-            <a href="{% url 'products_browse' %}" class="text-xs uppercase tracking-widest bg-stone-900 text-white px-6 py-2.5 hover:bg-stone-700 transition-colors inline-block">Clear Filters</a>
+            <a href="{% url 'products_browse' %}" class="text-xs uppercase tracking-widest bg-stone-900 text-white px-6 py-2.5 hover:bg-stone-700 transition-colors inline-block">Obriši filtere</a>
         {% endif %}
     </div>
 {% endif %}

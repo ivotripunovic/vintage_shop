@@ -6,8 +6,8 @@
 {% if featured_products %}
 <section class="mb-16">
     <div class="flex justify-between items-baseline mb-8">
-        <h2 class="font-serif text-3xl font-light">New Arrivals</h2>
-        <a href="{% url 'products_browse' %}" class="text-xs uppercase tracking-widest text-stone-400 hover:text-stone-900 transition-colors">View All</a>
+        <h2 class="font-serif text-3xl font-light">Novo u ponudi</h2>
+        <a href="{% url 'products_browse' %}" class="text-xs uppercase tracking-widest text-stone-400 hover:text-stone-900 transition-colors">Pogledaj sve</a>
     </div>
     <div class="grid grid-cols-2 md:grid-cols-3 gap-6">
         {% for product in featured_products %}
@@ -17,7 +17,7 @@
                     <img src="{{ product.images.first.image.url }}" alt="{{ product.images.first.alt_text }}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
                 {% else %}
                     <div class="w-full h-full flex items-center justify-center">
-                        <span class="text-xs uppercase tracking-widest text-neutral-400">No Image</span>
+                        <span class="text-xs uppercase tracking-widest text-neutral-400">Nema slike</span>
                     </div>
                 {% endif %}
             </div>
@@ -32,7 +32,7 @@
 
 {% if categories %}
 <section class="mb-16">
-    <h2 class="font-serif text-3xl font-light mb-8">Shop by Category</h2>
+    <h2 class="font-serif text-3xl font-light mb-8">Kupuj po kategoriji</h2>
     <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
         {% for category in categories %}
         <a href="{% url 'category_products' category.id %}" class="group block border border-neutral-200 p-6 hover:border-stone-400 transition-colors text-center">
@@ -45,38 +45,38 @@
 
 <section class="border border-neutral-200 p-12 mb-16">
     <div class="max-w-xl">
-        <p class="text-xs uppercase tracking-widest text-stone-400 mb-4">For Sellers</p>
-        <h2 class="font-serif text-4xl font-light mb-5">Start Selling Today</h2>
-        <p class="text-sm text-stone-500 leading-relaxed mb-8">{{ SITE_NAME }} makes it easy to list your vintage and second-hand items. Set up your shop and start earning.</p>
+        <p class="text-xs uppercase tracking-widest text-stone-400 mb-4">Za prodavce</p>
+        <h2 class="font-serif text-4xl font-light mb-5">Počni da prodaješ danas</h2>
+        <p class="text-sm text-stone-500 leading-relaxed mb-8">{{ SITE_NAME }} olakšava listovanje vaše vintage i polovne robe. Podesite vašu prodavnicu i počnite da zarađujete.</p>
         <div class="grid grid-cols-3 gap-6 mb-8">
             <div>
-                <p class="text-xs uppercase tracking-widest text-stone-800 mb-2">Simple Setup</p>
-                <p class="text-xs text-stone-400">Create your shop in minutes</p>
+                <p class="text-xs uppercase tracking-widest text-stone-800 mb-2">Jednostavno podešavanje</p>
+                <p class="text-xs text-stone-400">Kreirajte svoju prodavnicu za nekoliko minuta</p>
             </div>
             <div>
-                <p class="text-xs uppercase tracking-widest text-stone-800 mb-2">Easy Listings</p>
-                <p class="text-xs text-stone-400">Add products with photos</p>
+                <p class="text-xs uppercase tracking-widest text-stone-800 mb-2">Jednostavni oglasi</p>
+                <p class="text-xs text-stone-400">Dodajte proizvode sa fotografijama</p>
             </div>
             <div>
-                <p class="text-xs uppercase tracking-widest text-stone-800 mb-2">Affordable</p>
-                <p class="text-xs text-stone-400">$9.99/month unlimited</p>
+                <p class="text-xs uppercase tracking-widest text-stone-800 mb-2">Pristupačno</p>
+                <p class="text-xs text-stone-400">9,99$/mesec neograničeno</p>
             </div>
         </div>
-        <a href="{% url 'register' %}" class="inline-block bg-stone-900 text-white text-xs uppercase tracking-widest px-8 py-3 hover:bg-stone-700 transition-colors">Open Your Shop</a>
+        <a href="{% url 'register' %}" class="inline-block bg-stone-900 text-white text-xs uppercase tracking-widest px-8 py-3 hover:bg-stone-700 transition-colors">Otvori svoju prodavnicu</a>
     </div>
 </section>
 
 <section class="text-center py-16 border-t border-neutral-200">
     <h2 class="font-serif text-4xl font-light mb-4">
-        {% if user.is_authenticated %}Welcome back, {{ user.first_name|default:user.email }}{% else %}Discover Something Beautiful{% endif %}
+        {% if user.is_authenticated %}Dobrodošli, {{ user.first_name|default:user.email }}{% else %}Discover Something Beautiful{% endif %}
     </h2>
     <p class="text-sm text-stone-400 mb-8">
-        {% if user.is_authenticated %}Continue exploring the marketplace.{% else %}Join thousands of buyers and sellers on {{ SITE_NAME }}.{% endif %}
+        {% if user.is_authenticated %}Continue exploring the marketplace.{% else %}Pridružite se hiljadama kupaca i prodavaca na {{ SITE_NAME }}.{% endif %}
     </p>
     <div class="flex gap-4 justify-center">
-        <a href="{% url 'products_browse' %}" class="inline-block bg-stone-900 text-white text-xs uppercase tracking-widest px-8 py-3 hover:bg-stone-700 transition-colors">Browse Products</a>
+        <a href="{% url 'products_browse' %}" class="inline-block bg-stone-900 text-white text-xs uppercase tracking-widest px-8 py-3 hover:bg-stone-700 transition-colors">Pregledaj proizvode</a>
         {% if not user.is_authenticated %}
-            <a href="{% url 'login' %}" class="inline-block border border-stone-900 text-stone-900 text-xs uppercase tracking-widest px-8 py-3 hover:bg-neutral-50 transition-colors">Sign In</a>
+            <a href="{% url 'login' %}" class="inline-block border border-stone-900 text-stone-900 text-xs uppercase tracking-widest px-8 py-3 hover:bg-neutral-50 transition-colors">Prijava</a>
         {% endif %}
     </div>
 </section>
