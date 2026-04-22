@@ -1,0 +1,48 @@
+#!/usr/bin/env bash
+#
+# Git post-receive hook — runs automatically on every `git push production main`.
+# Lives in: /home/vintage_shop/repo.git/hooks/post-receive
+#
+# GIT_DIR is set automatically by git to the bare repo path when this hook runs.
+#
+
+set -euo pipefail
+
+APP_DIR="/opt/vintage_shop"
+
+echo ""
+echo "=============================="
+echo "  Deploying Vintage Shop"
+echo "=============================="
+
+echo "--> Checking out latest code..."
+GIT_WORK_TREE="${APP_DIR}" git checkout -f main
+
+cd "${APP_DIR}"
+
+echo "--> Installing dependencies..."
+./venv/bin/pip install -r requirements.txt --quiet
+
+echo "--> Running migrations..."
+./venv/bin/python manage.py migrate --no-input
+
+echo "--> Collecting static files..."
+./venv/bin/python manage.py collectstatic --no-input --clear
+
+echo "--> Restarting service..."
+sudo systemctl restart vintage_shop
+
+echo "--> Verifying..."
+sleep 2
+if systemctl is-active --quiet vintage_shop; then
+    echo "--> Service is running."
+else
+    echo "ERROR: Service failed to start!"
+    journalctl -u vintage_shop -n 30 --no-pager
+    exit 1
+fi
+
+echo ""
+echo "  Deploy complete!"
+echo "=============================="
+echo ""
