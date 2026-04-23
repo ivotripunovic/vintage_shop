@@ -9,37 +9,58 @@
 set -euo pipefail
 
 APP_USER="deploy"
+SERVICE_USER="vintage_shop"
+SHARED_GROUP="vsapp"
 APP_DIR="/opt/vintage_shop"
 REPO_DIR="/var/repo/vintage_shop.git"
 
-# --- 1. Create bare repo -------------------------------------------------
+# --- 1. Shared group ------------------------------------------------------
+# Both the deploy user and the service user join this group so they can
+# read/write each other's files in APP_DIR.
+
+echo "==> Creating shared group '${SHARED_GROUP}'..."
+if ! getent group "${SHARED_GROUP}" > /dev/null 2>&1; then
+    groupadd "${SHARED_GROUP}"
+fi
+
+echo "==> Adding ${APP_USER} and ${SERVICE_USER} to ${SHARED_GROUP}..."
+usermod -aG "${SHARED_GROUP}" "${APP_USER}"
+usermod -aG "${SHARED_GROUP}" "${SERVICE_USER}"
+
+# --- 2. Fix APP_DIR ownership and permissions ----------------------------
+# setgid (g+s) ensures all new files/dirs inherit SHARED_GROUP automatically.
+
+echo "==> Setting group ownership and permissions on ${APP_DIR}..."
+chown -R "${APP_USER}:${SHARED_GROUP}" "${APP_DIR}"
+find "${APP_DIR}" -type d -exec chmod g+rws {} \;
+find "${APP_DIR}" -type f -exec chmod g+rw {} \;
+
+# Ensure logs directory exists and is writable by both users
+mkdir -p "${APP_DIR}/logs"
+chown "${APP_USER}:${SHARED_GROUP}" "${APP_DIR}/logs"
+chmod g+rws "${APP_DIR}/logs"
+
+# --- 3. Create bare repo --------------------------------------------------
 
 echo "==> Creating bare git repo at ${REPO_DIR}..."
-mkdir -p "${REPO_DIR}"
+mkdir -p "$(dirname "${REPO_DIR}")"
 git init --bare "${REPO_DIR}"
 
-# --- 2. Install post-receive hook ----------------------------------------
+# --- 4. Install post-receive hook -----------------------------------------
 
 echo "==> Installing post-receive hook..."
 cp "${APP_DIR}/deploy/hooks/post-receive" "${REPO_DIR}/hooks/post-receive"
 chmod +x "${REPO_DIR}/hooks/post-receive"
-
-# --- 3. Ownership ---------------------------------------------------------
-
-echo "==> Setting ownership..."
 chown -R "${APP_USER}:${APP_USER}" "${REPO_DIR}"
 
-# --- 4. Ensure sudoers allows service restart without password -----------
-# (setup.sh already adds this, but add it here as a safety net)
+# --- 5. Sudoers -----------------------------------------------------------
 
-if [ ! -f /etc/sudoers.d/vintage_shop ]; then
-    echo "==> Adding sudoers entry for service restart..."
-    cat > /etc/sudoers.d/vintage_shop <<SUDOEOF
+echo "==> Configuring sudoers for service restart..."
+cat > /etc/sudoers.d/vintage_shop <<SUDOEOF
 ${APP_USER} ALL=(ALL) NOPASSWD: /bin/systemctl restart vintage_shop
 ${APP_USER} ALL=(ALL) NOPASSWD: /bin/systemctl status vintage_shop
 SUDOEOF
-    chmod 440 /etc/sudoers.d/vintage_shop
-fi
+chmod 440 /etc/sudoers.d/vintage_shop
 
 # --- Done -----------------------------------------------------------------
 
@@ -55,6 +76,5 @@ echo ""
 echo "  git remote add production ${APP_USER}@${SERVER_IP}:${REPO_DIR}"
 echo "  git push production main"
 echo ""
-echo "Every future deploy:"
-echo "  git push production main"
+echo "NOTE: Log out and back in as ${APP_USER} for group membership to take effect."
 echo ""

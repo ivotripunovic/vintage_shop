@@ -7,15 +7,16 @@ Vintage Shop runs on a VPS with Gunicorn + Nginx. Deployments are triggered with
 The server holds a **bare git repository** that receives pushes. When you push, a `post-receive` hook fires automatically and:
 
 1. Checks out the new code to `/opt/vintage_shop`
-2. Installs any new Python dependencies
-3. Runs database migrations
-4. Collects static files
-5. Restarts Gunicorn
+2. Creates the Python virtualenv if it doesn't exist yet
+3. Installs any new Python dependencies
+4. Runs database migrations
+5. Collects static files
+6. Restarts Gunicorn
 
 ```
 git push production main
         ↓
-bare repo at /home/vintage_shop/repo.git receives push
+bare repo at /var/repo/vintage_shop.git receives push
         ↓
 hooks/post-receive fires
         ↓
@@ -24,37 +25,50 @@ checkout → pip install → migrate → collectstatic → restart
 
 ---
 
+## Users and permissions
+
+Two system users are involved:
+
+| User | Role |
+|------|------|
+| `deploy` | Pushes code, runs the hook, owns files in `/opt/vintage_shop` |
+| `vintage_shop` | Runs the Gunicorn service, writes application logs |
+
+Both users belong to a shared group **`vsapp`**. The `/opt/vintage_shop` directory is owned by `deploy:vsapp` with the setgid bit set, so every file and directory created during a deploy automatically inherits the `vsapp` group and is group-writable. This allows `vintage_shop` to write log files that `deploy` created, and vice versa.
+
+---
+
 ## First-time server setup
 
 ### Step 1 — Provision the server
 
-Run `setup.sh` once on a fresh Ubuntu 22.04+ VPS as root. This installs all system dependencies, creates the database, configures Nginx, and obtains an SSL certificate.
+Run `setup.sh` once on a fresh Ubuntu 22.04+ VPS as root.
 
 ```bash
 sudo bash deploy/setup.sh <domain> <db_password>
-
-# Example:
-sudo bash deploy/setup.sh shop.example.com secretpassword
 ```
 
 After it finishes, edit `/opt/vintage_shop/.env` and fill in any missing values (e.g. `SENDGRID_API_KEY`).
 
 ### Step 2 — Enable git push deploys
 
-Run `git-setup.sh` once on the server as root. This creates the bare repo and installs the post-receive hook.
+Run `git-setup.sh` once on the server as root. This:
+- Creates the `vsapp` shared group and adds both users to it
+- Sets group ownership and permissions on `/opt/vintage_shop`
+- Creates the bare git repo at `/var/repo/vintage_shop.git`
+- Installs the post-receive hook
+- Configures sudoers for service restart
 
 ```bash
 sudo bash deploy/git-setup.sh
 ```
 
-The script prints the exact `git remote add` command to run locally — copy it.
+The script prints the exact `git remote add` command — copy it.
 
 ### Step 3 — Add the remote locally
 
-On your local machine, run the command printed by `git-setup.sh`:
-
 ```bash
-git remote add production vintage_shop@YOUR_SERVER_IP:/home/vintage_shop/repo.git
+git remote add production deploy@YOUR_SERVER_IP:/var/repo/vintage_shop.git
 ```
 
 ### Step 4 — First push
@@ -62,8 +76,6 @@ git remote add production vintage_shop@YOUR_SERVER_IP:/home/vintage_shop/repo.gi
 ```bash
 git push production main
 ```
-
-You will see the deploy output in your terminal as the hook runs.
 
 ---
 
@@ -75,28 +87,21 @@ Every deploy is one command:
 git push production main
 ```
 
-The hook runs on the server and prints progress. A failed step aborts the deploy and exits with a non-zero code so you can see what went wrong.
+The hook output is streamed to your terminal in real time. A failed step aborts the deploy immediately.
 
 ---
 
 ## Rollback
 
-To roll back to a previous commit:
-
 ```bash
-# Find the commit you want to roll back to
-git log --oneline
-
-# Force-push that commit
+# Force-push an older commit
 git push production <commit-sha>:main --force
 ```
 
 Or on the server directly:
 
 ```bash
-cd /opt/vintage_shop
-git log --oneline          # find target commit
-GIT_DIR=/home/vintage_shop/repo.git GIT_WORK_TREE=/opt/vintage_shop git checkout -f <commit-sha>
+GIT_DIR=/var/repo/vintage_shop.git GIT_WORK_TREE=/opt/vintage_shop git checkout -f <commit-sha>
 sudo systemctl restart vintage_shop
 ```
 
@@ -105,14 +110,28 @@ sudo systemctl restart vintage_shop
 ## Service management
 
 ```bash
-# View logs
+# Application logs (Django)
+tail -f /opt/vintage_shop/logs/app.log
+tail -f /opt/vintage_shop/logs/error.log
+
+# Gunicorn / systemd logs
 journalctl -u vintage_shop -f
 
-# Check status
-sudo systemctl status vintage_shop
-
-# Restart manually
+# Restart / status
 sudo systemctl restart vintage_shop
+sudo systemctl status vintage_shop
+```
+
+---
+
+## Updating the hook
+
+The hook lives in the repo at `deploy/hooks/post-receive`. After editing it locally:
+
+```bash
+git push production main
+sudo cp /opt/vintage_shop/deploy/hooks/post-receive /var/repo/vintage_shop.git/hooks/post-receive
+sudo chmod +x /var/repo/vintage_shop.git/hooks/post-receive
 ```
 
 ---
@@ -122,20 +141,8 @@ sudo systemctl restart vintage_shop
 | File | Purpose |
 |------|---------|
 | `deploy/setup.sh` | One-time server provisioning (run as root) |
-| `deploy/git-setup.sh` | One-time bare repo setup (run as root after setup.sh) |
+| `deploy/git-setup.sh` | One-time bare repo + permissions setup (run as root after setup.sh) |
 | `deploy/hooks/post-receive` | Hook that runs on every `git push` |
 | `deploy/gunicorn.conf.py` | Gunicorn configuration |
 | `deploy/nginx.conf` | Nginx site configuration |
 | `deploy/vintage_shop.service` | Systemd service unit |
-
----
-
-## Updating the hook
-
-The hook lives in the repo at `deploy/hooks/post-receive`. After editing it locally, push the change and then re-install it on the server:
-
-```bash
-git push production main
-sudo cp /opt/vintage_shop/deploy/hooks/post-receive /home/vintage_shop/repo.git/hooks/post-receive
-sudo chmod +x /home/vintage_shop/repo.git/hooks/post-receive
-```
