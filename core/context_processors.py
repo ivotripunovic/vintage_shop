@@ -8,5 +8,6 @@ def site_settings(request):
     ).prefetch_related("children")
     return {
         "SITE_NAME": settings.SITE_NAME,
+        "CURRENCY_SYMBOL": settings.CURRENCY_SYMBOL,
         "nav_categories": nav_categories,
     }

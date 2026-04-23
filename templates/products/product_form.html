@@ -31,7 +31,7 @@
 
         <div class="grid grid-cols-2 gap-6">
             <div>
-                <label for="{{ form.price.id_for_label }}" class="block text-xs uppercase tracking-widest text-stone-500 mb-2">Cena ($) *</label>
+                <label for="{{ form.price.id_for_label }}" class="block text-xs uppercase tracking-widest text-stone-500 mb-2">Cena (RSD) *</label>
                 {{ form.price }}
                 {% if form.price.errors %}<p class="text-xs text-red-600 mt-1">{{ form.price.errors.0 }}</p>{% endif %}
             </div>

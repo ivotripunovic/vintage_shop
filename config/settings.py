@@ -211,4 +211,5 @@ os.makedirs(BASE_DIR / "logs", exist_ok=True)
 # Site Configuration
 SITE_DOMAIN = config("SITE_DOMAIN", default="http://localhost:8000")
 SITE_NAME = config("SITE_NAME", default="Vintage Shop")
+CURRENCY_SYMBOL = config("CURRENCY_SYMBOL", default="RSD")
 DEFAULT_FROM_EMAIL = config("DEFAULT_FROM_EMAIL", default="noreply@vintageshop.local")

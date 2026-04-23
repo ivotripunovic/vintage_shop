@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load currency_filters %}
 {% block title %}Kontrolna tabla — {{ SITE_NAME }}{% endblock %}
 
 {% block content %}
@@ -75,7 +76,7 @@
                     {% for product in recent_products %}
                     <tr class="border-b border-neutral-100 hover:bg-neutral-50">
                         <td class="px-6 py-4 text-sm text-stone-900">{{ product.title }}</td>
-                        <td class="px-6 py-4 text-sm text-stone-500">${{ product.price }}</td>
+                        <td class="px-6 py-4 text-sm text-stone-500">{{ product.price|rsd }}</td>
                         <td class="px-6 py-4 text-sm text-stone-500">{{ product.stock }}</td>
                         <td class="px-6 py-4">
                             <span class="text-xs uppercase tracking-widest {% if product.status == 'published' %}text-emerald-700{% elif product.status == 'draft' %}text-amber-600{% else %}text-stone-400{% endif %}">{{ product.get_status_display }}</span>
