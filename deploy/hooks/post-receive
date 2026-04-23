@@ -37,6 +37,9 @@ echo "--> Running migrations..."
 echo "--> Collecting static files..."
 ./venv/bin/python manage.py collectstatic --no-input --clear
 
+echo "--> Ensuring required directories exist..."
+mkdir -p ./media ./logs ./staticfiles
+
 echo "--> Restarting service..."
 sudo systemctl restart vintage_shop
 
