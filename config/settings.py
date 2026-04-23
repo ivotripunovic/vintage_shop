@@ -177,7 +177,7 @@ LOGGING = {
         },
         "app_file": {
             "class": "logging.handlers.RotatingFileHandler",
-            "filename": BASE_DIR / "logs" / "app.log",
+            "filename": str(BASE_DIR / "logs" / "app.log"),
             "maxBytes": 10 * 1024 * 1024,  # 10 MB
             "backupCount": 5,
             "formatter": "verbose",
@@ -185,7 +185,7 @@ LOGGING = {
         },
         "error_file": {
             "class": "logging.handlers.RotatingFileHandler",
-            "filename": BASE_DIR / "logs" / "error.log",
+            "filename": str(BASE_DIR / "logs" / "error.log"),
             "maxBytes": 10 * 1024 * 1024,  # 10 MB
             "backupCount": 5,
             "formatter": "verbose",
