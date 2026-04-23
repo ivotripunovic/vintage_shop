@@ -165,21 +165,43 @@ LOGGING = {
     "disable_existing_loggers": False,
     "formatters": {
         "verbose": {
-            "format": "{levelname} {asctime} {module} {process:d} {thread:d} {message}",
+            "format": "{levelname} {asctime} {name} {process:d} {message}",
             "style": "{",
         },
     },
     "handlers": {
-        "file": {
-            "level": "INFO",
-            "class": "logging.FileHandler",
-            "filename": BASE_DIR / "logs" / "debug.log",
+        "console": {
+            "class": "logging.StreamHandler",
             "formatter": "verbose",
+            "level": "DEBUG",
+        },
+        "app_file": {
+            "class": "logging.handlers.RotatingFileHandler",
+            "filename": BASE_DIR / "logs" / "app.log",
+            "maxBytes": 10 * 1024 * 1024,  # 10 MB
+            "backupCount": 5,
+            "formatter": "verbose",
+            "level": "INFO",
+        },
+        "error_file": {
+            "class": "logging.handlers.RotatingFileHandler",
+            "filename": BASE_DIR / "logs" / "error.log",
+            "maxBytes": 10 * 1024 * 1024,  # 10 MB
+            "backupCount": 5,
+            "formatter": "verbose",
+            "level": "ERROR",
         },
     },
     "root": {
-        "handlers": ["file"],
-        "level": "INFO",
+        "handlers": ["console"] if DEBUG else ["app_file", "error_file"],
+        "level": "DEBUG" if DEBUG else "INFO",
+    },
+    "loggers": {
+        "django.security": {
+            "handlers": ["console"] if DEBUG else ["error_file"],
+            "level": "ERROR",
+            "propagate": False,
+        },
     },
 }
 
