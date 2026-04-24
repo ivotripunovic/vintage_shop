@@ -51,9 +51,9 @@ class UserRegistrationForm(UserCreationForm):
     )
     user_type = forms.ChoiceField(
         choices=[
-            ('buyer', 'I want to buy items'),
-            ('seller', 'I want to sell items'),
-            ('both', 'Both buyer and seller'),
+            ('buyer', 'Želim da kupujem'),
+            ('seller', 'Želim da prodajem'),
+            ('both', 'Kupujem i prodajem'),
         ],
         widget=forms.RadioSelect(attrs={
             'class': 'mr-2'
