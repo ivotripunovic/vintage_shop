@@ -54,11 +54,47 @@
             outline: none;
             font-family: inherit;
         }
+
+        /* Category bar hide/show on scroll */
+        #nav-categories {
+            max-height: 120px;
+            overflow: hidden;
+            opacity: 1;
+            transition: max-height 0.3s ease, opacity 0.25s ease;
+        }
+        #nav-categories.nav-hidden {
+            max-height: 0;
+            opacity: 0;
+        }
     </style>
     <script>
         function toggleMobileMenu() {
             document.getElementById('mobile-menu').classList.toggle('hidden');
         }
+
+        (function () {
+            var lastY = 0;
+            var ticking = false;
+
+            window.addEventListener('scroll', function () {
+                if (!ticking) {
+                    requestAnimationFrame(function () {
+                        var currentY = window.scrollY;
+                        var nav = document.getElementById('nav-categories');
+                        if (nav) {
+                            if (currentY > lastY && currentY > 60) {
+                                nav.classList.add('nav-hidden');
+                            } else if (currentY < lastY) {
+                                nav.classList.remove('nav-hidden');
+                            }
+                        }
+                        lastY = currentY;
+                        ticking = false;
+                    });
+                    ticking = true;
+                }
+            }, { passive: true });
+        })();
     </script>
 </head>
 <body class="bg-white text-stone-900 font-sans antialiased">
@@ -135,7 +171,7 @@
     </div>
 
     <!-- Row 2: Category navigation -->
-    <div class="border-b border-neutral-200 hidden md:block">
+    <div id="nav-categories" class="border-b border-neutral-200 hidden md:block">
         <div class="max-w-7xl mx-auto px-6 lg:px-8 flex flex-wrap items-center justify-center gap-x-6 gap-y-0">
             {% for category in nav_categories %}
             <div class="relative group">
