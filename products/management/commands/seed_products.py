@@ -122,12 +122,12 @@ class Command(BaseCommand):
         condition_list = list(conditions.values())
         seller_count = len(sellers)
 
-        for subcategory_name, templates in PRODUCTS.items():
+        for slug, templates in PRODUCTS.items():
             try:
-                category = ProductCategory.objects.get(name=subcategory_name)
+                category = ProductCategory.objects.get(slug=slug)
             except ProductCategory.DoesNotExist:
                 self.stdout.write(self.style.WARNING(
-                    f"  Podkategorija '{subcategory_name}' nije pronađena, preskačem."
+                    f"  Kategorija sa slug '{slug}' nije pronađena, preskačem."
                 ))
                 skipped_missing += len(templates)
                 continue
@@ -149,7 +149,7 @@ class Command(BaseCommand):
                     created += 1
 
                 if attach_images and not product.images.exists():
-                    img_path = SEED_IMAGES_DIR / subcategory_name / f"{i + 1:02d}.jpg"
+                    img_path = SEED_IMAGES_DIR / slug / f"{i + 1:02d}.jpg"
                     if img_path.exists():
                         with open(img_path, "rb") as f:
                             ProductImage.objects.create(
