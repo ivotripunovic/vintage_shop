@@ -10,8 +10,8 @@ from core.models import TimeStampedModel, SoftDeleteModel
 class ProductCategory(models.Model):
     """Product categories/classifications. parent=None means top-level category."""
 
-    name = models.CharField(max_length=255, unique=True)
-    slug = models.SlugField(unique=True)
+    name = models.CharField(max_length=255)
+    slug = models.SlugField(unique=True, max_length=255)
     description = models.TextField(blank=True)
     parent = models.ForeignKey(
         "self",
@@ -20,11 +20,13 @@ class ProductCategory(models.Model):
         on_delete=models.SET_NULL,
         related_name="children",
     )
+    order = models.PositiveIntegerField(default=0)
 
     class Meta:
-        ordering = ["name"]
+        ordering = ["order", "name"]
         verbose_name = "Product Category"
         verbose_name_plural = "Product Categories"
+        unique_together = [("name", "parent")]
 
     def __str__(self):
         if self.parent:

@@ -136,11 +136,10 @@
 
     <!-- Row 2: Category navigation -->
     <div class="border-b border-neutral-200 hidden md:block">
-        <div class="max-w-7xl mx-auto px-6 lg:px-8 flex items-center justify-center gap-8">
-            <a href="{% url 'products_browse' %}" class="block py-3 text-xs uppercase tracking-widest text-stone-500 hover:text-stone-900 transition-colors whitespace-nowrap">Novo u ponudi</a>
+        <div class="max-w-7xl mx-auto px-6 lg:px-8 flex flex-wrap items-center justify-center gap-x-6 gap-y-0">
             {% for category in nav_categories %}
             <div class="relative group">
-                <a href="{% url 'category_products' category.id %}" class="block py-3 text-xs uppercase tracking-widest text-stone-500 hover:text-stone-900 transition-colors whitespace-nowrap">
+                <a href="{% url 'category_products' category.id %}" class="block py-2.5 text-xs uppercase tracking-widest text-stone-500 hover:text-stone-900 transition-colors whitespace-nowrap">
                     {{ category.name }}
                 </a>
                 {% if category.children.all %}
@@ -158,7 +157,6 @@
     <!-- Mobile menu -->
     <div id="mobile-menu" class="hidden md:hidden border-b border-neutral-200 bg-white">
         <div class="max-w-7xl mx-auto px-6 py-4 space-y-1">
-            <a href="{% url 'products_browse' %}" class="block py-2 text-xs uppercase tracking-widest text-stone-600 hover:text-stone-900">Novo u ponudi</a>
             {% for category in nav_categories %}
             <a href="{% url 'category_products' category.id %}" class="block py-2 text-xs uppercase tracking-widest text-stone-600 hover:text-stone-900">{{ category.name }}</a>
             {% for sub in category.children.all %}

@@ -3,73 +3,137 @@ from django.utils.text import slugify
 from products.models import ProductCategory
 
 
+# Hierarchy from Grupe.md
+# Strings = leaf node, dicts with "children" = intermediate node
 CATEGORIES = [
+    {"name": "Novo"},
     {
-        "name": "Nameštaj",
+        "name": "Moda",
         "children": [
-            "Sedenje",
-            "Odlaganje",
-            "Stolovi",
-            "Osvetljenje",
-            "Ukrasi za dom",
-            "Dekorativni predmeti",
+            "Garderoba ženska",
+            "Garderoba muška",
+            "Obuća",
+            "Aksesoari i nakit",
+            "Dizajnerski komadi",
+        ],
+    },
+    {
+        "name": "Kuća",
+        "children": [
+            {
+                "name": "Kuhinja & trpezarija",
+                "children": [
+                    "Porcelan i keramika",
+                    "Čaše i servisi",
+                    "Escajg",
+                    "Kristal",
+                ],
+            },
+            {
+                "name": "Rasveta",
+                "children": [
+                    "Stone lampe",
+                    "Lusteri",
+                    "Industrijska rasveta",
+                    "Retro lampe",
+                ],
+            },
+            {
+                "name": "Nameštaj",
+                "children": [
+                    "Stolice, fotelje",
+                    "Stolovi i komode",
+                    "Ormari i vitrine",
+                    "Retro / mid-century komadi",
+                ],
+            },
+        ],
+    },
+    {
+        "name": "Antikviteti",
+        "children": [
+            "Nameštaj",
+            "Dekoracija",
         ],
     },
     {
         "name": "Umetnost",
         "children": [
-            "Slike",
-            "Fotografija",
+            "Slike i crteži",
             "Skulpture",
-            "Grafike",
-            "Crteži",
+            "Fotografija",
+            "Ručni radovi",
+            "Printovi i plakati",
         ],
     },
     {
-        "name": "Nakit",
+        "name": "Tehnika i elektronika",
         "children": [
-            "Prstenje",
-            "Ogrlice",
-            "Minđuše",
-            "Narukvice",
-            "Broševi",
+            "Mobilni telefoni",
+            "Računari i oprema",
+            "TV i audio",
+            "Foto i video oprema",
+            "Kućni aparati",
+            "Gaming",
+        ],
+    },
+    {
+        "name": "Kolekcionarski predmeti",
+        "children": [
+            "Stari novac",
+            "Značke",
+            "Razglednice",
+            "Stare knjige",
             "Satovi",
         ],
     },
     {
-        "name": "Moda",
+        "name": "Sport i slobodno vreme",
         "children": [
-            "Odeća",
-            "Tašne",
-            "Obuća",
-            "Dodaci",
+            "Bicikli",
+            "Fitnes oprema",
+            "Kamp oprema",
+            "Instrumenti",
+            "Hobiji",
         ],
     },
-    {
-        "name": "Kolekcionarstvo",
-        "children": [
-            "Keramika i porcelan",
-            "Srebrnina i metal",
-            "Staklo",
-            "Tekstil",
-        ],
-    },
+    {"name": "Upcycled"},
+    {"name": "Handmade"},
+    {"name": "Editors pick"},
 ]
 
 
-def unique_slug(name, existing_slugs):
-    base = slugify(name)
-    slug = base
-    counter = 1
-    while slug in existing_slugs:
-        slug = f"{base}-{counter}"
-        counter += 1
-    existing_slugs.add(slug)
-    return slug
+def make_slug(name, parent=None):
+    """Build slug from full ancestor path: kuca-namestaj-stolice-fotelje."""
+    part = slugify(name) or "kategorija"
+    if parent and parent.slug:
+        return f"{parent.slug}-{part}"
+    return part
+
+
+def seed_node(node, parent, order, counters):
+    """Recursively create a category node and its children."""
+    name = node if isinstance(node, str) else node["name"]
+    slug = make_slug(name, parent)
+    obj, created = ProductCategory.objects.get_or_create(
+        name=name,
+        parent=parent,
+        defaults={"slug": slug, "order": order},
+    )
+    if not created and obj.order != order:
+        obj.order = order
+        obj.save(update_fields=["order"])
+    if created:
+        level = "top" if parent is None else "sub"
+        counters[level] = counters.get(level, 0) + 1
+
+    if isinstance(node, dict):
+        for i, child in enumerate(node.get("children", [])):
+            seed_node(child, obj, i, counters)
 
 
 class Command(BaseCommand):
-    help = "Seed product categories and subcategories"
+    help = "Seed product categories and subcategories from Grupe.md hierarchy"
 
     def add_arguments(self, parser):
         parser.add_argument(
@@ -83,30 +147,13 @@ class Command(BaseCommand):
             ProductCategory.objects.all().delete()
             self.stdout.write(self.style.WARNING("Cleared all existing categories."))
 
-        existing_slugs = set(ProductCategory.objects.values_list("slug", flat=True))
-        created_top = 0
-        created_sub = 0
+        counters = {}
 
-        for entry in CATEGORIES:
-            slug = unique_slug(entry["name"], existing_slugs)
-            parent, created = ProductCategory.objects.get_or_create(
-                name=entry["name"],
-                defaults={"slug": slug, "parent": None},
-            )
-            if created:
-                created_top += 1
+        for i, entry in enumerate(CATEGORIES):
+            seed_node(entry, parent=None, order=i, counters=counters)
 
-            for child_name in entry.get("children", []):
-                child_slug = unique_slug(child_name, existing_slugs)
-                _, child_created = ProductCategory.objects.get_or_create(
-                    name=child_name,
-                    defaults={"slug": child_slug, "parent": parent},
-                )
-                if child_created:
-                    created_sub += 1
-
-        self.stdout.write(
-            self.style.SUCCESS(
-                f"Done. Created {created_top} top-level categories and {created_sub} subcategories."
-            )
-        )
+        top = counters.get("top", 0)
+        sub = counters.get("sub", 0)
+        self.stdout.write(self.style.SUCCESS(
+            f"Done. Created {top} top-level and {sub} subcategories ({top + sub} total)."
+        ))
