@@ -2,6 +2,8 @@
 User authentication views (registration, login, logout, password reset).
 """
 
+import logging
+
 from django.shortcuts import render, redirect
 from django.contrib.auth import login, logout, authenticate
 from django.contrib.auth.decorators import login_required
@@ -9,9 +11,11 @@ from django.contrib import messages
 from django.views.decorators.http import require_http_methods
 from django.views.decorators.csrf import csrf_protect
 from django.utils.crypto import get_random_string
-from django.core.mail import send_mail
+from django.core.mail import send_mail, BadHeaderError
 from django.conf import settings
 from django.urls import reverse
+
+logger = logging.getLogger(__name__)
 
 from .models import User, VerificationToken
 from .forms import (
@@ -268,34 +272,31 @@ def account_settings_view(request):
 def send_verification_email(user):
     """Send email verification link to user."""
     token = get_random_string(50)
-    
-    # Create token in database
     VerificationToken.objects.create(
         user=user,
         token=token,
         token_type=VerificationToken.TOKEN_TYPE_EMAIL,
-        expires_at=timezone.now() + timedelta(hours=24)
+        expires_at=timezone.now() + timedelta(hours=24),
     )
-    
-    verification_url = f"{settings.SITE_DOMAIN}/auth/verify-email/{token}/"
-    
-    site_name = settings.SITE_NAME
-    subject = f'Verify your {site_name} email'
-    message = f"""
-Hello {user.first_name or user.email},
 
-Welcome to {site_name}! Please verify your email by clicking the link below:
+    verification_url = f"{settings.SITE_DOMAIN}/auth/verify-email/{token}/"
+    site_name = settings.SITE_NAME
+    name = user.first_name or user.email
+    subject = f"Potvrdite vašu {site_name} adresu e-pošte"
+    message = f"""Zdravo {name},
+
+Dobrodošli na {site_name}! Potvrdite vašu adresu e-pošte klikom na link ispod:
 
 {verification_url}
 
-This link will expire in 24 hours.
+Link ističe za 24 sata.
 
-If you didn't create this account, please ignore this email.
+Ako niste kreirali nalog, zanemarite ovu poruku.
 
-Best regards,
-{site_name} Team
-    """
-    
+Srdačan pozdrav,
+Tim {site_name}
+"""
+
     try:
         send_mail(
             subject,
@@ -304,41 +305,40 @@ Best regards,
             [user.email],
             fail_silently=False,
         )
-    except Exception as e:
-        print(f"Error sending verification email: {e}")
+    except BadHeaderError:
+        logger.error("Invalid header in verification email for user %s", user.pk)
+    except Exception:
+        logger.exception("Failed to send verification email to user %s", user.pk)
 
 
 def send_password_reset_email(user):
     """Send password reset link to user."""
     token = get_random_string(50)
-    
-    # Create token in database
     VerificationToken.objects.create(
         user=user,
         token=token,
         token_type=VerificationToken.TOKEN_TYPE_PASSWORD,
-        expires_at=timezone.now() + timedelta(hours=1)
+        expires_at=timezone.now() + timedelta(hours=1),
     )
-    
-    reset_url = f"{settings.SITE_DOMAIN}/auth/reset-password/{token}/"
-    
-    site_name = settings.SITE_NAME
-    subject = f'Reset your {site_name} password'
-    message = f"""
-Hello {user.first_name or user.email},
 
-Click the link below to reset your password:
+    reset_url = f"{settings.SITE_DOMAIN}/auth/reset-password/{token}/"
+    site_name = settings.SITE_NAME
+    name = user.first_name or user.email
+    subject = f"Resetovanje lozinke na {site_name}"
+    message = f"""Zdravo {name},
+
+Kliknite na link ispod da resetujete vašu lozinku:
 
 {reset_url}
 
-This link will expire in 1 hour.
+Link ističe za 1 sat.
 
-If you didn't request a password reset, please ignore this email.
+Ako niste tražili resetovanje lozinke, zanemarite ovu poruku.
 
-Best regards,
-{site_name} Team
-    """
-    
+Srdačan pozdrav,
+Tim {site_name}
+"""
+
     try:
         send_mail(
             subject,
@@ -347,5 +347,7 @@ Best regards,
             [user.email],
             fail_silently=False,
         )
-    except Exception as e:
-        print(f"Error sending password reset email: {e}")
+    except BadHeaderError:
+        logger.error("Invalid header in password reset email for user %s", user.pk)
+    except Exception:
+        logger.exception("Failed to send password reset email to user %s", user.pk)
