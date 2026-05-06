@@ -49,7 +49,7 @@ def register_view(request):
             
             messages.success(
                 request,
-                f'Account created! Check your email at {user.email} to verify your account.'
+                f'Nalog je kreiran! Proverite e-poštu na adresi {user.email} da biste verifikovali nalog.'
             )
             return redirect('login')
         else:
@@ -82,7 +82,7 @@ def login_view(request):
             if not user.email_verified:
                 messages.warning(
                     request,
-                    f'Please verify your email. Check {user.email} for verification link.'
+                    f'Molimo verifikujte e-poštu. Proverite {user.email} za link za verifikaciju.'
                 )
                 return redirect('verify-email-resend')
             
@@ -90,7 +90,7 @@ def login_view(request):
             
             # Redirect to next page or home
             next_url = request.GET.get('next', 'home')
-            messages.success(request, f'Welcome back, {user.email}!')
+            messages.success(request, f'Dobrodošli, {user.email}!')
             return redirect(next_url)
         else:
             for error in form.non_field_errors():
@@ -110,7 +110,7 @@ def login_view(request):
 def logout_view(request):
     """Logout user."""
     logout(request)
-    messages.success(request, 'You have been logged out.')
+    messages.success(request, 'Uspešno ste se odjavili.')
     return redirect('home')
 
 
@@ -129,7 +129,7 @@ def password_reset_request_view(request):
             
             messages.success(
                 request,
-                f'Password reset instructions have been sent to {user.email}.'
+                f'Uputstva za resetovanje lozinke su poslata na {user.email}.'
             )
             return redirect('login')
         else:
@@ -155,11 +155,11 @@ def password_reset_confirm_view(request, token):
             token_type=VerificationToken.TOKEN_TYPE_PASSWORD
         )
     except VerificationToken.DoesNotExist:
-        messages.error(request, 'Invalid or expired password reset link.')
+        messages.error(request, 'Link za resetovanje lozinke je nevažeći ili je istekao.')
         return redirect('password-reset-request')
-    
+
     if not token_obj.is_valid():
-        messages.error(request, 'Invalid or expired password reset link.')
+        messages.error(request, 'Link za resetovanje lozinke je nevažeći ili je istekao.')
         return redirect('password-reset-request')
     
     user = token_obj.user
@@ -172,7 +172,7 @@ def password_reset_confirm_view(request, token):
             # Mark token as used
             token_obj.mark_used()
             
-            messages.success(request, 'Your password has been reset. Please login.')
+            messages.success(request, 'Vaša lozinka je resetovana. Molimo prijavite se.')
             return redirect('login')
     else:
         form = UserPasswordSetForm(user)
@@ -193,11 +193,11 @@ def verify_email_view(request, token):
             token_type=VerificationToken.TOKEN_TYPE_EMAIL
         )
     except VerificationToken.DoesNotExist:
-        messages.error(request, 'Invalid or expired verification link.')
+        messages.error(request, 'Link za verifikaciju je nevažeći ili je istekao.')
         return redirect('home')
-    
+
     if not token_obj.is_valid():
-        messages.error(request, 'Invalid or expired verification link.')
+        messages.error(request, 'Link za verifikaciju je nevažeći ili je istekao.')
         return redirect('home')
     
     # Mark email as verified
@@ -209,7 +209,7 @@ def verify_email_view(request, token):
     # Mark token as used
     token_obj.mark_used()
     
-    messages.success(request, 'Email verified! You can now login.')
+    messages.success(request, 'E-pošta je verifikovana! Možete se prijaviti.')
     return redirect('login')
 
 
@@ -222,12 +222,12 @@ def verify_email_resend_view(request):
         try:
             user = User.objects.get(email=email)
             if user.email_verified:
-                messages.info(request, 'This email is already verified.')
+                messages.info(request, 'Ova e-pošta je već verifikovana.')
             else:
                 send_verification_email(user)
-                messages.success(request, f'Verification email sent to {email}.')
+                messages.success(request, f'Verifikacioni e-mail je poslat na {email}.')
         except User.DoesNotExist:
-            messages.error(request, 'No account found with this email.')
+            messages.error(request, 'Nije pronađen nalog sa ovom e-adresom.')
     
     context = {
         'page_title': 'Verify Email',
@@ -244,7 +244,7 @@ def password_change_view(request):
         form = UserPasswordChangeForm(request.user, request.POST)
         if form.is_valid():
             form.save()
-            messages.success(request, 'Your password has been changed.')
+            messages.success(request, 'Vaša lozinka je promenjena.')
             return redirect('account-settings')
     else:
         form = UserPasswordChangeForm(request.user)
