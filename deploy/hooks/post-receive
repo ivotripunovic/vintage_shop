@@ -11,7 +11,7 @@ set -euo pipefail
 # Ensure files created during deploy are group-writable
 umask 002
 
-APP_DIR="/opt/vintage_shop"
+APP_DIR="/srv/django/apps/vintage_shop"
 
 echo ""
 echo "=============================="

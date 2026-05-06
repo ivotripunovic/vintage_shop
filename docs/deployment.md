@@ -6,7 +6,7 @@ Vintage Shop runs on a VPS with Gunicorn + Nginx. Deployments are triggered with
 
 The server holds a **bare git repository** that receives pushes. When you push, a `post-receive` hook fires automatically and:
 
-1. Checks out the new code to `/opt/vintage_shop`
+1. Checks out the new code to `/srv/django/apps/vintage_shop`
 2. Creates the Python virtualenv if it doesn't exist yet
 3. Installs any new Python dependencies
 4. Runs database migrations
@@ -31,10 +31,10 @@ Two system users are involved:
 
 | User | Role |
 |------|------|
-| `deploy` | Pushes code, runs the hook, owns files in `/opt/vintage_shop` |
+| `deploy` | Pushes code, runs the hook, owns files in `/srv/django/apps/vintage_shop` |
 | `vintage_shop` | Runs the Gunicorn service, writes application logs |
 
-Both users belong to a shared group **`vsapp`**. The `/opt/vintage_shop` directory is owned by `deploy:vsapp` with the setgid bit set, so every file and directory created during a deploy automatically inherits the `vsapp` group and is group-writable. This allows `vintage_shop` to write log files that `deploy` created, and vice versa.
+Both users belong to a shared group **`vsapp`**. The `/srv/django/apps/vintage_shop` directory is owned by `deploy:vsapp` with the setgid bit set, so every file and directory created during a deploy automatically inherits the `vsapp` group and is group-writable. This allows `vintage_shop` to write log files that `deploy` created, and vice versa.
 
 ---
 
@@ -48,13 +48,13 @@ Run `setup.sh` once on a fresh Ubuntu 22.04+ VPS as root.
 sudo bash deploy/setup.sh <domain> <db_password>
 ```
 
-After it finishes, edit `/opt/vintage_shop/.env` and fill in any missing values (e.g. `SENDGRID_API_KEY`).
+After it finishes, edit `/srv/django/apps/vintage_shop/.env` and fill in any missing values (e.g. `SENDGRID_API_KEY`).
 
 ### Step 2 — Enable git push deploys
 
 Run `git-setup.sh` once on the server as root. This:
 - Creates the `vsapp` shared group and adds both users to it
-- Sets group ownership and permissions on `/opt/vintage_shop`
+- Sets group ownership and permissions on `/srv/django/apps/vintage_shop`
 - Creates the bare git repo at `/var/repo/vintage_shop.git`
 - Installs the post-receive hook
 - Configures sudoers for service restart
@@ -101,7 +101,7 @@ git push production <commit-sha>:main --force
 Or on the server directly:
 
 ```bash
-GIT_DIR=/var/repo/vintage_shop.git GIT_WORK_TREE=/opt/vintage_shop git checkout -f <commit-sha>
+GIT_DIR=/var/repo/vintage_shop.git GIT_WORK_TREE=/srv/django/apps/vintage_shop git checkout -f <commit-sha>
 sudo systemctl restart vintage_shop
 ```
 
@@ -111,8 +111,8 @@ sudo systemctl restart vintage_shop
 
 ```bash
 # Application logs (Django)
-tail -f /opt/vintage_shop/logs/app.log
-tail -f /opt/vintage_shop/logs/error.log
+tail -f /srv/django/apps/vintage_shop/logs/app.log
+tail -f /srv/django/apps/vintage_shop/logs/error.log
 
 # Gunicorn / systemd logs
 journalctl -u vintage_shop -f
@@ -130,7 +130,7 @@ The hook lives in the repo at `deploy/hooks/post-receive`. After editing it loca
 
 ```bash
 git push production main
-sudo cp /opt/vintage_shop/deploy/hooks/post-receive /var/repo/vintage_shop.git/hooks/post-receive
+sudo cp /srv/django/apps/vintage_shop/deploy/hooks/post-receive /var/repo/vintage_shop.git/hooks/post-receive
 sudo chmod +x /var/repo/vintage_shop.git/hooks/post-receive
 ```
 
