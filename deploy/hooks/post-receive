@@ -39,6 +39,12 @@ echo "--> Collecting static files..."
 
 echo "--> Ensuring required directories exist..."
 mkdir -p ./media ./logs ./staticfiles
+find ./staticfiles -type d -exec chmod 755 {} +
+find ./staticfiles -type f -exec chmod 644 {} +
+if [ ! -f "./staticfiles/admin/css/base.css" ]; then
+    echo "ERROR: Admin static CSS missing after collectstatic."
+    exit 1
+fi
 
 echo "--> Restarting service..."
 sudo systemctl restart vintage_shop

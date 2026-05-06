@@ -120,6 +120,13 @@ sudo -u "${APP_USER}" mkdir -p "${APP_DIR}/logs" "${APP_DIR}/media" "${APP_DIR}/
 echo "==> Running Django migrations and collectstatic..."
 sudo -u "${APP_USER}" "${APP_DIR}/venv/bin/python" "${APP_DIR}/manage.py" migrate --no-input
 sudo -u "${APP_USER}" "${APP_DIR}/venv/bin/python" "${APP_DIR}/manage.py" collectstatic --no-input --clear
+chown -R "${APP_USER}:www-data" "${APP_DIR}/staticfiles"
+find "${APP_DIR}/staticfiles" -type d -exec chmod 755 {} +
+find "${APP_DIR}/staticfiles" -type f -exec chmod 644 {} +
+if [ ! -f "${APP_DIR}/staticfiles/admin/css/base.css" ]; then
+    echo "ERROR: Admin static CSS was not collected to ${APP_DIR}/staticfiles/admin/css/base.css"
+    exit 1
+fi
 
 # --- 10. Systemd service --------------------------------------------------
 

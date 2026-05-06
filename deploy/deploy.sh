@@ -24,6 +24,12 @@ echo "==> Running migrations..."
 
 echo "==> Collecting static files..."
 "${APP_DIR}/venv/bin/python" manage.py collectstatic --no-input --clear
+find "${APP_DIR}/staticfiles" -type d -exec chmod 755 {} +
+find "${APP_DIR}/staticfiles" -type f -exec chmod 644 {} +
+if [ ! -f "${APP_DIR}/staticfiles/admin/css/base.css" ]; then
+    echo "    ERROR: Admin static CSS missing after collectstatic."
+    exit 1
+fi
 
 echo "==> Restarting Gunicorn..."
 sudo systemctl restart vintage_shop
