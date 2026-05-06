@@ -33,6 +33,7 @@ echo "--> Installing dependencies..."
 
 echo "--> Ensuring required directories exist..."
 mkdir -p ./media ./logs ./static ./staticfiles
+chmod o+rx "${APP_DIR}"
 
 echo "--> Running migrations..."
 ./venv/bin/python manage.py migrate --no-input

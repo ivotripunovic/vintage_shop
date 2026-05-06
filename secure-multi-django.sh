@@ -146,9 +146,13 @@ sysctl -p
 # ==============================
 # FILE PERMISSIONS BASELINE
 # ==============================
+#
+# Nginx runs as www-data and must be able to traverse these parent
+# directories to serve app static files from /srv/django/apps/*/staticfiles.
+# Keep owner as django, but grant group execute/read to www-data.
 
-chmod 750 /srv/django
-chmod 750 /srv/django/apps
+chgrp www-data /srv/django /srv/django/apps
+chmod 750 /srv/django /srv/django/apps
 
 # ==============================
 # DONE

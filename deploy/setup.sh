@@ -180,6 +180,10 @@ fi
 # --- 13. Nginx ------------------------------------------------------------
 
 echo "==> Configuring Nginx..."
+# Ensure Nginx (www-data) can traverse parent app directories for static/media
+chgrp www-data /srv/django /srv/django/apps "${APP_DIR}"
+chmod 750 /srv/django /srv/django/apps "${APP_DIR}"
+
 sed "s/DOMAIN_PLACEHOLDER/${DOMAIN}/g" "${APP_DIR}/deploy/nginx.conf" \
     > "/etc/nginx/sites-available/vintage_shop.conf"
 

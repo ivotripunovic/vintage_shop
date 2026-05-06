@@ -21,6 +21,7 @@ echo "==> Installing dependencies..."
 
 echo "==> Ensuring required directories exist..."
 mkdir -p "${APP_DIR}/media" "${APP_DIR}/logs" "${APP_DIR}/static" "${APP_DIR}/staticfiles"
+chmod o+rx "${APP_DIR}"
 
 echo "==> Running migrations..."
 "${APP_DIR}/venv/bin/python" manage.py migrate --no-input

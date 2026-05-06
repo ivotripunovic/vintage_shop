@@ -40,6 +40,12 @@ mkdir -p "${APP_DIR}/logs"
 chown "${APP_USER}:${SHARED_GROUP}" "${APP_DIR}/logs"
 chmod g+rws "${APP_DIR}/logs"
 
+# Ensure Nginx can traverse app directories and read static assets
+chmod o+rx /srv/django /srv/django/apps "${APP_DIR}"
+mkdir -p "${APP_DIR}/staticfiles"
+find "${APP_DIR}/staticfiles" -type d -exec chmod o+rx {} \;
+find "${APP_DIR}/staticfiles" -type f -exec chmod o+r {} \;
+
 # --- 3. Create bare repo --------------------------------------------------
 
 echo "==> Creating bare git repo at ${REPO_DIR}..."
