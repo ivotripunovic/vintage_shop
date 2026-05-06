@@ -49,20 +49,9 @@ class UserRegistrationForm(UserCreationForm):
             'placeholder': 'Confirm password'
         })
     )
-    user_type = forms.ChoiceField(
-        choices=[
-            ('buyer', 'Želim da kupujem'),
-            ('seller', 'Želim da prodajem'),
-            ('both', 'Kupujem i prodajem'),
-        ],
-        widget=forms.RadioSelect(attrs={
-            'class': 'mr-2'
-        })
-    )
-
     class Meta:
         model = User
-        fields = ('email', 'first_name', 'last_name', 'password1', 'password2', 'user_type')
+        fields = ('email', 'first_name', 'last_name', 'password1', 'password2')
 
     def clean_email(self):
         email = self.cleaned_data.get('email')
@@ -78,23 +67,11 @@ class UserRegistrationForm(UserCreationForm):
         return password2
 
     def save(self, commit=True):
-        """Save user with appropriate roles."""
         user = super().save(commit=False)
         user.email = self.cleaned_data['email']
-        user.username = self.cleaned_data['email']  # Use email as username
-        
-        # Set user type based on choice
-        user_type = self.cleaned_data.get('user_type')
-        if user_type == 'buyer':
-            user.is_buyer = True
-            user.is_seller = False
-        elif user_type == 'seller':
-            user.is_buyer = False
-            user.is_seller = True
-        else:  # both
-            user.is_buyer = True
-            user.is_seller = True
-        
+        user.username = self.cleaned_data['email']
+        user.is_buyer = True
+        user.is_seller = True
         if commit:
             user.save()
         return user

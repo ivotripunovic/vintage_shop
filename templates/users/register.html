@@ -32,11 +32,6 @@
         </div>
 
         <div>
-            <label class="block text-xs uppercase tracking-widest text-stone-500 mb-2">Želim da</label>
-            {{ form.user_type }}
-        </div>
-
-        <div>
             <label for="{{ form.password1.id_for_label }}" class="block text-xs uppercase tracking-widest text-stone-500 mb-2">Lozinka</label>
             {{ form.password1 }}
             {% if form.password1.errors %}<p class="text-xs text-red-600 mt-1">{{ form.password1.errors.0 }}</p>{% endif %}

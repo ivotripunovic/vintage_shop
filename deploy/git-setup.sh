@@ -9,14 +9,22 @@
 set -euo pipefail
 
 APP_USER="deploy"
-SERVICE_USER="vintage_shop"
+SERVICE_USER="django"
 SHARED_GROUP="vsapp"
 APP_DIR="/srv/django/apps/vintage_shop"
 REPO_DIR="/var/repo/vintage_shop.git"
 
-# --- 1. Shared group ------------------------------------------------------
+# --- 1. Users and shared group --------------------------------------------
 # Both the deploy user and the service user join this group so they can
 # read/write each other's files in APP_DIR.
+
+echo "==> Ensuring user '${APP_USER}' exists..."
+if ! id "${APP_USER}" > /dev/null 2>&1; then
+    useradd --system --shell /bin/bash --create-home "${APP_USER}"
+    echo "    Created user '${APP_USER}'."
+else
+    echo "    User '${APP_USER}' already exists."
+fi
 
 echo "==> Creating shared group '${SHARED_GROUP}'..."
 if ! getent group "${SHARED_GROUP}" > /dev/null 2>&1; then
