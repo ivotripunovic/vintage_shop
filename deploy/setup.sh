@@ -141,6 +141,14 @@ chmod 440 /etc/sudoers.d/vintage_shop
 # --- 12. SSL certificate --------------------------------------------------
 
 echo "==> Obtaining SSL certificate (before Nginx site config)..."
+
+echo "==> Verifying DNS for ${DOMAIN}..."
+if ! getent ahosts "${DOMAIN}" > /dev/null 2>&1; then
+    echo "ERROR: ${DOMAIN} does not resolve in DNS yet (NXDOMAIN)."
+    echo "Create an A record pointing ${DOMAIN} to this server, then rerun setup."
+    exit 1
+fi
+
 systemctl stop nginx || true
 
 if ! certbot certonly --standalone -d "${DOMAIN}" --non-interactive --agree-tos \
@@ -174,6 +182,37 @@ rm -f /etc/nginx/sites-enabled/default
 nginx -t
 systemctl start nginx
 systemctl reload nginx
+
+# --- 14. Certbot renewal hooks (standalone safety) ------------------------
+
+echo "==> Installing safe Certbot renewal hooks..."
+mkdir -p /etc/letsencrypt/renewal-hooks/pre /etc/letsencrypt/renewal-hooks/post
+
+cat > /etc/letsencrypt/renewal-hooks/pre/10-stop-nginx.sh <<'HOOKPRE'
+#!/usr/bin/env bash
+set -euo pipefail
+
+STATE_FILE="/run/certbot-nginx-running"
+
+if systemctl is-active --quiet nginx; then
+    systemctl stop nginx
+    touch "${STATE_FILE}"
+fi
+HOOKPRE
+chmod 755 /etc/letsencrypt/renewal-hooks/pre/10-stop-nginx.sh
+
+cat > /etc/letsencrypt/renewal-hooks/post/10-start-nginx.sh <<'HOOKPOST'
+#!/usr/bin/env bash
+set -euo pipefail
+
+STATE_FILE="/run/certbot-nginx-running"
+
+if [ -f "${STATE_FILE}" ]; then
+    systemctl start nginx
+    rm -f "${STATE_FILE}"
+fi
+HOOKPOST
+chmod 755 /etc/letsencrypt/renewal-hooks/post/10-start-nginx.sh
 
 # --- Done -----------------------------------------------------------------
 
