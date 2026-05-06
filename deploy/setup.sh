@@ -138,7 +138,31 @@ ${APP_USER} ALL=(ALL) NOPASSWD: /bin/systemctl status vintage_shop
 SUDOEOF
 chmod 440 /etc/sudoers.d/vintage_shop
 
-# --- 12. Nginx ------------------------------------------------------------
+# --- 12. SSL certificate --------------------------------------------------
+
+echo "==> Obtaining SSL certificate (before Nginx site config)..."
+systemctl stop nginx || true
+
+if ! certbot certonly --standalone -d "${DOMAIN}" --non-interactive --agree-tos \
+    --register-unsafely-without-email; then
+    echo "ERROR: Certbot failed. Check DNS for ${DOMAIN} and port 80 reachability, then retry."
+    exit 1
+fi
+
+echo "==> Ensuring Certbot TLS config files exist..."
+if [ ! -f /etc/letsencrypt/options-ssl-nginx.conf ]; then
+    curl -fsSL \
+        https://raw.githubusercontent.com/certbot/certbot/master/certbot-nginx/certbot_nginx/_internal/tls_configs/options-ssl-nginx.conf \
+        -o /etc/letsencrypt/options-ssl-nginx.conf
+fi
+
+if [ ! -f /etc/letsencrypt/ssl-dhparams.pem ]; then
+    curl -fsSL \
+        https://raw.githubusercontent.com/certbot/certbot/master/certbot/certbot/ssl-dhparams.pem \
+        -o /etc/letsencrypt/ssl-dhparams.pem
+fi
+
+# --- 13. Nginx ------------------------------------------------------------
 
 echo "==> Configuring Nginx..."
 sed "s/DOMAIN_PLACEHOLDER/${DOMAIN}/g" "${APP_DIR}/deploy/nginx.conf" \
@@ -148,14 +172,8 @@ ln -sf /etc/nginx/sites-available/vintage_shop.conf /etc/nginx/sites-enabled/vin
 rm -f /etc/nginx/sites-enabled/default
 
 nginx -t
+systemctl start nginx
 systemctl reload nginx
-
-# --- 13. SSL certificate --------------------------------------------------
-
-echo "==> Obtaining SSL certificate..."
-certbot --nginx -d "${DOMAIN}" --non-interactive --agree-tos --redirect \
-    --register-unsafely-without-email || \
-    echo "    WARNING: Certbot failed. Run manually: certbot --nginx -d ${DOMAIN}"
 
 # --- Done -----------------------------------------------------------------
 
