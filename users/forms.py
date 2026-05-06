@@ -65,18 +65,16 @@ class UserRegistrationForm(UserCreationForm):
         fields = ('email', 'first_name', 'last_name', 'password1', 'password2', 'user_type')
 
     def clean_email(self):
-        """Validate that email is unique."""
         email = self.cleaned_data.get('email')
         if User.objects.filter(email=email).exists():
-            raise ValidationError('This email is already registered.')
+            raise ValidationError('Ova e-mail adresa je već registrovana.')
         return email
 
     def clean_password2(self):
-        """Validate that passwords match."""
         password1 = self.cleaned_data.get('password1')
         password2 = self.cleaned_data.get('password2')
         if password1 and password2 and password1 != password2:
-            raise ValidationError('Passwords do not match.')
+            raise ValidationError('Lozinke se ne poklapaju.')
         return password2
 
     def save(self, commit=True):
@@ -135,9 +133,9 @@ class UserLoginForm(forms.Form):
             # Django auth backend uses USERNAME_FIELD, which we set to email
             self.user = authenticate(username=email, password=password)
             if self.user is None:
-                raise ValidationError('Invalid email or password.')
+                raise ValidationError('Pogrešna e-mail adresa ili lozinka.')
             if not self.user.is_active:
-                raise ValidationError('This account is inactive.')
+                raise ValidationError('Ovaj nalog je deaktiviran.')
         return self.cleaned_data
 
     def get_user(self):
@@ -159,7 +157,7 @@ class UserPasswordResetForm(forms.Form):
         """Check if email exists."""
         email = self.cleaned_data.get('email')
         if not User.objects.filter(email=email).exists():
-            raise ValidationError('No account found with this email.')
+            raise ValidationError('Nije pronađen nalog sa ovom e-adresom.')
         return email
 
     def get_user(self):
@@ -171,18 +169,23 @@ class UserPasswordResetForm(forms.Form):
 class UserPasswordSetForm(SetPasswordForm):
     """Form to set a new password (used in password reset)."""
 
+    error_messages = {
+        **SetPasswordForm.error_messages,
+        "password_mismatch": "Lozinke se ne poklapaju.",
+    }
+
     new_password1 = forms.CharField(
-        label='New Password',
+        label='Nova lozinka',
         widget=forms.PasswordInput(attrs={
             'class': 'w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500',
-            'placeholder': 'New password'
+            'placeholder': 'Nova lozinka'
         })
     )
     new_password2 = forms.CharField(
-        label='Confirm Password',
+        label='Potvrda lozinke',
         widget=forms.PasswordInput(attrs={
             'class': 'w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500',
-            'placeholder': 'Confirm new password'
+            'placeholder': 'Potvrdite novu lozinku'
         })
     )
 
@@ -221,7 +224,7 @@ class UserPasswordChangeForm(forms.Form):
         """Validate old password."""
         old_password = self.cleaned_data.get('old_password')
         if not self.user.check_password(old_password):
-            raise ValidationError('Your current password is incorrect.')
+            raise ValidationError('Trenutna lozinka nije ispravna.')
         return old_password
 
     def clean(self):
@@ -231,9 +234,9 @@ class UserPasswordChangeForm(forms.Form):
         
         if new_password1 and new_password2:
             if new_password1 != new_password2:
-                raise ValidationError('New passwords do not match.')
+                raise ValidationError('Nove lozinke se ne poklapaju.')
             if new_password1 == self.cleaned_data.get('old_password'):
-                raise ValidationError('New password must be different from current password.')
+                raise ValidationError('Nova lozinka mora biti različita od trenutne.')
         
         return self.cleaned_data
 
