@@ -297,6 +297,11 @@ Srdačan pozdrav,
 Tim {site_name}
 """
 
+    logger.info(
+        "Sending verification email to %s via %s",
+        user.email,
+        settings.EMAIL_BACKEND,
+    )
     try:
         send_mail(
             subject,
@@ -305,6 +310,7 @@ Tim {site_name}
             [user.email],
             fail_silently=False,
         )
+        logger.info("Verification email sent to user %s (%s)", user.pk, user.email)
     except BadHeaderError:
         logger.error("Invalid header in verification email for user %s", user.pk)
     except Exception:
@@ -339,6 +345,11 @@ Srdačan pozdrav,
 Tim {site_name}
 """
 
+    logger.info(
+        "Sending password reset email to %s via %s",
+        user.email,
+        settings.EMAIL_BACKEND,
+    )
     try:
         send_mail(
             subject,
@@ -347,6 +358,7 @@ Tim {site_name}
             [user.email],
             fail_silently=False,
         )
+        logger.info("Password reset email sent to user %s (%s)", user.pk, user.email)
     except BadHeaderError:
         logger.error("Invalid header in password reset email for user %s", user.pk)
     except Exception:
