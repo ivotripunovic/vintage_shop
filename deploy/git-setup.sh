@@ -11,7 +11,7 @@ set -euo pipefail
 APP_USER="deploy"
 SERVICE_USER="vintage_shop"
 SHARED_GROUP="vsapp"
-APP_DIR="/opt/vintage_shop"
+APP_DIR="/srv/django/apps/vintage_shop"
 REPO_DIR="/var/repo/vintage_shop.git"
 
 # --- 1. Shared group ------------------------------------------------------

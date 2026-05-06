@@ -20,7 +20,7 @@ fi
 DOMAIN="$1"
 DB_PASSWORD="$2"
 APP_USER="vintage_shop"
-APP_DIR="/opt/vintage_shop"
+APP_DIR="/srv/django/apps/vintage_shop"
 REPO_URL="$(git remote get-url origin 2>/dev/null || echo 'https://github.com/OWNER/vintage_shop.git')"
 
 echo "==> Setting up Vintage Shop on ${DOMAIN}"
@@ -92,7 +92,7 @@ ALLOWED_HOSTS=${DOMAIN},www.${DOMAIN}
 DB_NAME=${APP_USER}
 DB_USER=${APP_USER}
 DB_PASSWORD=${DB_PASSWORD}
-DB_HOST=localhost
+DB_HOST=127.0.0.1
 DB_PORT=5432
 
 SENDGRID_API_KEY=

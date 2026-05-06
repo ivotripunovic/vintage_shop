@@ -8,7 +8,7 @@
 
 set -euo pipefail
 
-APP_DIR="/opt/vintage_shop"
+APP_DIR="/srv/django/apps/vintage_shop"
 
 cd "${APP_DIR}"
 
