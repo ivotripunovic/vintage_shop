@@ -19,6 +19,9 @@ git reset --hard origin/main
 echo "==> Installing dependencies..."
 "${APP_DIR}/venv/bin/pip" install -r requirements.txt
 
+echo "==> Ensuring required directories exist..."
+mkdir -p "${APP_DIR}/media" "${APP_DIR}/logs" "${APP_DIR}/static" "${APP_DIR}/staticfiles"
+
 echo "==> Running migrations..."
 "${APP_DIR}/venv/bin/python" manage.py migrate --no-input
 

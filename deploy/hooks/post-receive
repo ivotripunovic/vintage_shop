@@ -31,14 +31,14 @@ fi
 echo "--> Installing dependencies..."
 ./venv/bin/pip install -r requirements.txt --quiet
 
+echo "--> Ensuring required directories exist..."
+mkdir -p ./media ./logs ./static ./staticfiles
+
 echo "--> Running migrations..."
 ./venv/bin/python manage.py migrate --no-input
 
 echo "--> Collecting static files..."
 ./venv/bin/python manage.py collectstatic --no-input --clear
-
-echo "--> Ensuring required directories exist..."
-mkdir -p ./media ./logs ./staticfiles
 find ./staticfiles -type d -exec chmod 755 {} +
 find ./staticfiles -type f -exec chmod 644 {} +
 if [ ! -f "./staticfiles/admin/css/base.css" ]; then

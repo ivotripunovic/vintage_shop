@@ -113,7 +113,7 @@ fi
 # --- 8. Required directories ---------------------------------------------
 
 echo "==> Creating application directories..."
-sudo -u "${APP_USER}" mkdir -p "${APP_DIR}/logs" "${APP_DIR}/media" "${APP_DIR}/staticfiles"
+sudo -u "${APP_USER}" mkdir -p "${APP_DIR}/logs" "${APP_DIR}/media" "${APP_DIR}/static" "${APP_DIR}/staticfiles"
 
 # --- 9. Django migrate + collectstatic ------------------------------------
 
