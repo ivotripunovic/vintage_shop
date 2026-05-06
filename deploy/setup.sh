@@ -19,7 +19,7 @@ fi
 
 DOMAIN="$1"
 DB_PASSWORD="$2"
-APP_USER="vintage_shop"
+APP_USER="django"
 APP_DIR="/srv/django/apps/vintage_shop"
 REPO_URL="$(git remote get-url origin 2>/dev/null || echo 'https://github.com/OWNER/vintage_shop.git')"
 
@@ -62,6 +62,15 @@ sudo -u postgres psql -tc "SELECT 1 FROM pg_catalog.pg_database WHERE datname='$
 # --- 5. Clone repository -------------------------------------------------
 
 echo "==> Cloning repository..."
+APP_PARENT_DIR="$(dirname "${APP_DIR}")"
+mkdir -p "${APP_PARENT_DIR}"
+
+# Ensure the app user can traverse parent directories and read/write APP_DIR
+chmod 755 /srv/django "${APP_PARENT_DIR}" || true
+if [ -d "${APP_DIR}" ]; then
+    chown -R "${APP_USER}:www-data" "${APP_DIR}"
+fi
+
 if [ ! -d "${APP_DIR}" ]; then
     mkdir -p "${APP_DIR}"
     chown "${APP_USER}:www-data" "${APP_DIR}"
