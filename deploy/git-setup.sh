@@ -13,6 +13,7 @@ SERVICE_USER="django"
 SHARED_GROUP="vsapp"
 APP_DIR="/srv/django/apps/vintage_shop"
 REPO_DIR="/var/repo/vintage_shop.git"
+SSH_PORT="22"
 
 # --- 1. Users and shared group --------------------------------------------
 # Both the deploy user and the service user join this group so they can
@@ -87,7 +88,7 @@ echo "=============================="
 echo ""
 echo "Run these commands on your local machine:"
 echo ""
-echo "  git remote add production ${APP_USER}@${SERVER_IP}:${REPO_DIR}"
+echo "  git remote add production ssh://${APP_USER}@${SERVER_IP}:${SSH_PORT}${REPO_DIR}"
 echo "  git push production main"
 echo ""
 echo "NOTE: Log out and back in as ${APP_USER} for group membership to take effect."
