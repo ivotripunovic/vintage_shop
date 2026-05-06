@@ -107,7 +107,7 @@ DB_PORT=5432
 SENDGRID_API_KEY=
 DEFAULT_FROM_EMAIL=noreply@${DOMAIN}
 
-CSRF_TRUSTED_ORIGINS=https://${DOMAIN},https://www.${DOMAIN}
+CSRF_TRUSTED_ORIGINS=https://www.${DOMAIN},https://${DOMAIN}
 SECURE_SSL_REDIRECT=True
 SESSION_COOKIE_SECURE=True
 CSRF_COOKIE_SECURE=True
@@ -158,18 +158,23 @@ chmod 440 /etc/sudoers.d/vintage_shop
 
 echo "==> Obtaining SSL certificate (before Nginx site config)..."
 
-echo "==> Verifying DNS for ${DOMAIN}..."
+echo "==> Verifying DNS for ${DOMAIN} and www.${DOMAIN}..."
 if ! getent ahosts "${DOMAIN}" > /dev/null 2>&1; then
     echo "ERROR: ${DOMAIN} does not resolve in DNS yet (NXDOMAIN)."
     echo "Create an A record pointing ${DOMAIN} to this server, then rerun setup."
     exit 1
 fi
+if ! getent ahosts "www.${DOMAIN}" > /dev/null 2>&1; then
+    echo "ERROR: www.${DOMAIN} does not resolve in DNS yet (NXDOMAIN)."
+    echo "Create an A record pointing www.${DOMAIN} to this server, then rerun setup."
+    exit 1
+fi
 
 systemctl stop nginx || true
 
-if ! certbot certonly --standalone -d "${DOMAIN}" --non-interactive --agree-tos \
+if ! certbot certonly --standalone -d "${DOMAIN}" -d "www.${DOMAIN}" --non-interactive --agree-tos \
     --register-unsafely-without-email; then
-    echo "ERROR: Certbot failed. Check DNS for ${DOMAIN} and port 80 reachability, then retry."
+    echo "ERROR: Certbot failed. Check DNS for ${DOMAIN} / www.${DOMAIN} and port 80 reachability, then retry."
     exit 1
 fi
 
@@ -245,6 +250,6 @@ echo "Post-setup checklist:"
 echo "  1. Edit ${APP_DIR}/.env and add your SENDGRID_API_KEY"
 echo "  2. Create a superuser:"
 echo "     sudo -u ${APP_USER} ${APP_DIR}/venv/bin/python ${APP_DIR}/manage.py createsuperuser"
-echo "  3. Verify the site is running: curl -I https://${DOMAIN}"
+echo "  3. Verify the site is running: curl -I https://www.${DOMAIN}"
 echo "  4. Check service status: systemctl status vintage_shop"
 echo ""
