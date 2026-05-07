@@ -9,5 +9,7 @@ def site_settings(request):
     return {
         "SITE_NAME": settings.SITE_NAME,
         "CURRENCY_SYMBOL": settings.CURRENCY_SYMBOL,
+        "INSTAGRAM_URL": settings.INSTAGRAM_URL,
+        "FACEBOOK_URL": settings.FACEBOOK_URL,
         "nav_categories": nav_categories,
     }
