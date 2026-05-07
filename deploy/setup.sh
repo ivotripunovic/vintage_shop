@@ -205,8 +205,7 @@ ln -sf /etc/nginx/sites-available/vintage_shop.conf /etc/nginx/sites-enabled/vin
 rm -f /etc/nginx/sites-enabled/default
 
 nginx -t
-systemctl start nginx
-systemctl reload nginx
+systemctl restart nginx
 
 # --- 14. Certbot renewal hooks (standalone safety) ------------------------
 
@@ -233,7 +232,7 @@ set -euo pipefail
 STATE_FILE="/run/certbot-nginx-running"
 
 if [ -f "${STATE_FILE}" ]; then
-    systemctl start nginx
+    systemctl restart nginx
     rm -f "${STATE_FILE}"
 fi
 HOOKPOST
