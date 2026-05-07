@@ -146,3 +146,10 @@ sudo chmod +x /var/repo/vintage_shop.git/hooks/post-receive
 | `deploy/gunicorn.conf.py` | Gunicorn configuration |
 | `deploy/nginx.conf` | Nginx site configuration |
 | `deploy/vintage_shop.service` | Systemd service unit |
+
+
+## Deploying manualy
+sudo -u django bash /srv/django/apps/vintage_shop/deploy/deploy.sh
+
+sudo -u django bash -c "cd /srv/django/apps/vintage_shop && source venv/bin/activate
+  && python manage.py seed_conditions"
