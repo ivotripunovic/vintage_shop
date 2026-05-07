@@ -96,8 +96,8 @@ class ProductImageForm(forms.ModelForm):
         if not image:
             raise ValidationError('Slika je obavezna.')
 
-        if image.size > 5 * 1024 * 1024:
-            raise ValidationError('Veličina slike ne sme biti veća od 5MB.')
+        if image.size > 20 * 1024 * 1024:
+            raise ValidationError('Veličina slike ne sme biti veća od 20MB.')
 
         valid_extensions = ['jpg', 'jpeg', 'png', 'gif', 'webp']
         file_ext = image.name.split('.')[-1].lower()
@@ -154,8 +154,8 @@ class BulkProductImageForm(forms.Form):
         valid_extensions = ['jpg', 'jpeg', 'png', 'gif', 'webp']
 
         for file in files:
-            if file.size > 5 * 1024 * 1024:
-                raise ValidationError(f'{file.name}: Veličina slike ne sme biti veća od 5MB.')
+            if file.size > 20 * 1024 * 1024:
+                raise ValidationError(f'{file.name}: Veličina slike ne sme biti veća od 20MB.')
 
             file_ext = file.name.split('.')[-1].lower()
             if file_ext not in valid_extensions:
