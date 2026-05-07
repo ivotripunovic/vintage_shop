@@ -211,7 +211,9 @@
                 {% if user.is_authenticated %}
                     {% if user.is_seller %}
                         <a href="{% url 'seller_dashboard' %}" class="block py-2 text-xs uppercase tracking-widest text-stone-500 hover:text-stone-900">Kontrolna tabla</a>
+                        <a href="{% url 'seller_products_list' %}" class="block py-2 text-xs uppercase tracking-widest text-stone-500 hover:text-stone-900">Moji proizvodi</a>
                         <a href="{% url 'product_create' %}" class="block py-2 text-xs uppercase tracking-widest text-stone-500 hover:text-stone-900">Dodaj proizvod</a>
+                        <a href="{% url 'seller_settings' %}" class="block py-2 text-xs uppercase tracking-widest text-stone-500 hover:text-stone-900">Podešavanja prodavnice</a>
                     {% endif %}
                     <a href="{% url 'account-settings' %}" class="block py-2 text-xs uppercase tracking-widest text-stone-500 hover:text-stone-900">Podešavanja naloga</a>
                     <a href="{% url 'logout' %}" class="block py-2 text-xs uppercase tracking-widest text-stone-500 hover:text-stone-900">Odjava</a>
