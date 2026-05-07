@@ -4,6 +4,14 @@
 
 {% block content %}
 
+{% if is_owner %}
+<div class="flex flex-wrap gap-2 mb-6 p-3 bg-neutral-50 border border-neutral-200">
+    <a href="{% url 'product_images' product.id %}" class="text-xs uppercase tracking-widest border border-stone-900 text-stone-900 px-4 py-2 hover:bg-white transition-colors">Dodaj slike</a>
+    <a href="{% url 'product_edit' product.id %}" class="text-xs uppercase tracking-widest border border-neutral-300 text-stone-500 px-4 py-2 hover:border-stone-400 hover:text-stone-900 transition-colors">Uredi oglas</a>
+    <a href="{% url 'seller_products_list' %}" class="text-xs uppercase tracking-widest border border-neutral-300 text-stone-500 px-4 py-2 hover:border-stone-400 hover:text-stone-900 transition-colors">Moji oglasi</a>
+</div>
+{% endif %}
+
 <nav class="text-xs uppercase tracking-widest text-stone-400 mb-8 flex gap-2 flex-wrap">
     <a href="{% url 'products_browse' %}" class="hover:text-stone-900 transition-colors">Prodavnica</a>
     {% if product.category %}

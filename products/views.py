@@ -299,13 +299,20 @@ def product_public_detail_view(request, product_id):
         .order_by('-created_at')[:6]
     )
     
+    is_owner = (
+        request.user.is_authenticated
+        and hasattr(request.user, 'seller')
+        and request.user.seller == product.seller
+    )
+
     context = {
         'product': product,
         'images': images,
         'related_products': related_products,
         'page_title': product.title,
+        'is_owner': is_owner,
     }
-    
+
     return render(request, 'products/product_public_detail.html', context)
 
 
