@@ -10,7 +10,7 @@ set -euo pipefail
 
 APP_USER="deploy"
 SERVICE_USER="django"
-SHARED_GROUP="vsapp"
+SHARED_GROUP="www-data"
 APP_DIR="/srv/django/apps/vintage_shop"
 REPO_DIR="/var/repo/vintage_shop.git"
 SSH_PORT="22"
