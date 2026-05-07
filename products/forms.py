@@ -16,12 +16,12 @@ class ProductForm(forms.ModelForm):
         widgets = {
             'title': forms.TextInput(attrs={
                 'class': 'w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500',
-                'placeholder': 'Product title',
+                'placeholder': 'Naziv proizvoda',
                 'maxlength': '255'
             }),
             'description': forms.Textarea(attrs={
                 'class': 'w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500',
-                'placeholder': 'Detailed product description',
+                'placeholder': 'Detaljan opis proizvoda',
                 'rows': 6
             }),
             'price': forms.NumberInput(attrs={
@@ -50,28 +50,25 @@ class ProductForm(forms.ModelForm):
         """Validate title is not empty."""
         title = self.cleaned_data.get('title')
         if not title or len(title.strip()) == 0:
-            raise ValidationError('Product title is required.')
+            raise ValidationError('Naziv proizvoda je obavezan.')
         return title.strip()
 
     def clean_description(self):
-        """Validate description is not empty."""
         description = self.cleaned_data.get('description')
         if not description or len(description.strip()) == 0:
-            raise ValidationError('Product description is required.')
+            raise ValidationError('Opis proizvoda je obavezan.')
         return description.strip()
 
     def clean_price(self):
-        """Validate price is positive."""
         price = self.cleaned_data.get('price')
         if price and price <= 0:
-            raise ValidationError('Price must be greater than 0.')
+            raise ValidationError('Cena mora biti veća od 0.')
         return price
 
     def clean_stock(self):
-        """Validate stock is non-negative."""
         stock = self.cleaned_data.get('stock')
         if stock is not None and stock < 0:
-            raise ValidationError('Stock cannot be negative.')
+            raise ValidationError('Zalihe ne mogu biti negativne.')
         return stock
 
 
@@ -88,7 +85,7 @@ class ProductImageForm(forms.ModelForm):
             }),
             'alt_text': forms.TextInput(attrs={
                 'class': 'w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500',
-                'placeholder': 'Alternative text for image (for accessibility)',
+                'placeholder': 'Opis slike (za pristupačnost)',
                 'maxlength': '255'
             }),
         }
@@ -97,17 +94,15 @@ class ProductImageForm(forms.ModelForm):
         """Validate image file."""
         image = self.cleaned_data.get('image')
         if not image:
-            raise ValidationError('Image file is required.')
-        
-        # Check file size (max 5MB)
+            raise ValidationError('Slika je obavezna.')
+
         if image.size > 5 * 1024 * 1024:
-            raise ValidationError('Image file size must not exceed 5MB.')
-        
-        # Check file type
+            raise ValidationError('Veličina slike ne sme biti veća od 5MB.')
+
         valid_extensions = ['jpg', 'jpeg', 'png', 'gif', 'webp']
         file_ext = image.name.split('.')[-1].lower()
         if file_ext not in valid_extensions:
-            raise ValidationError(f'Only {", ".join(valid_extensions)} files are allowed.')
+            raise ValidationError(f'Dozvoljeni formati: {", ".join(valid_extensions)}.')
         
         return image
 
@@ -133,8 +128,8 @@ class BulkProductImageForm(forms.Form):
 
     images = forms.FileField(
         required=True,
-        label='Select multiple images',
-        help_text='You can select multiple images at once. Each image will be added to the product.',
+        label='Odaberite slike',
+        help_text='Možete odabrati više slika odjednom. Svaka slika će biti dodana proizvodu.',
         widget=forms.FileInput(attrs={
             'accept': 'image/*',
             'class': 'w-full px-4 py-2 border border-gray-300 rounded-lg'
@@ -154,19 +149,17 @@ class BulkProductImageForm(forms.Form):
         files = self.files.getlist('images')
         
         if not files:
-            raise ValidationError('At least one image is required.')
-        
+            raise ValidationError('Potrebna je barem jedna slika.')
+
         valid_extensions = ['jpg', 'jpeg', 'png', 'gif', 'webp']
-        
+
         for file in files:
-            # Check file size (max 5MB per file)
             if file.size > 5 * 1024 * 1024:
-                raise ValidationError(f'{file.name}: File size must not exceed 5MB.')
-            
-            # Check file type
+                raise ValidationError(f'{file.name}: Veličina slike ne sme biti veća od 5MB.')
+
             file_ext = file.name.split('.')[-1].lower()
             if file_ext not in valid_extensions:
-                raise ValidationError(f'{file.name}: Only {", ".join(valid_extensions)} files are allowed.')
+                raise ValidationError(f'{file.name}: Dozvoljeni formati: {", ".join(valid_extensions)}.')
         
         # Store the validated files in cleaned_data
         cleaned_data['images'] = files

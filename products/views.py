@@ -52,7 +52,7 @@ def product_create_view(request):
     
     context = {
         'form': form,
-        'page_title': 'Create Product',
+        'page_title': 'Dodaj proizvod',
     }
     
     return render(request, 'products/product_form.html', context)
@@ -74,7 +74,7 @@ def product_edit_view(request, product_id):
         form = ProductForm(request.POST, instance=product)
         if form.is_valid():
             product = form.save()
-            messages.success(request, 'Product updated successfully.')
+            messages.success(request, 'Proizvod je uspešno ažuriran.')
             return redirect('product_detail', product_id=product.id)
     else:
         form = ProductForm(instance=product)
@@ -82,7 +82,7 @@ def product_edit_view(request, product_id):
     context = {
         'form': form,
         'product': product,
-        'page_title': f'Edit: {product.title}',
+        'page_title': f'Izmeni: {product.title}',
     }
     
     return render(request, 'products/product_form.html', context)

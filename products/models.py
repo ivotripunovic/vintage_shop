@@ -65,10 +65,10 @@ class Product(SoftDeleteModel):
     """Product listings by sellers."""
 
     STATUS_CHOICES = (
-        ("draft", "Draft"),
-        ("published", "Published"),
-        ("sold", "Sold"),
-        ("archived", "Archived"),
+        ("draft", "Nacrt"),
+        ("published", "Objavljeno"),
+        ("sold", "Prodato"),
+        ("archived", "Arhivirano"),
     )
 
     seller = models.ForeignKey(
