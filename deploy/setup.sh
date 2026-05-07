@@ -170,9 +170,20 @@ if ! getent ahosts "www.${DOMAIN}" > /dev/null 2>&1; then
     exit 1
 fi
 
-systemctl stop nginx || true
+echo "==> Stopping nginx and waiting for ports to be released..."
+systemctl stop nginx 2>/dev/null || true
+pkill -f nginx 2>/dev/null || true
+for i in $(seq 1 15); do
+    ss -tlnp | grep -qE ':80 |:443 ' || break
+    sleep 1
+done
+if ss -tlnp | grep -qE ':80 |:443 '; then
+    echo "ERROR: Ports 80/443 still in use after stopping nginx. Check: ss -tlnp"
+    exit 1
+fi
 
-if ! certbot certonly --standalone -d "${DOMAIN}" -d "www.${DOMAIN}" --non-interactive --agree-tos \
+if ! certbot certonly --standalone --preferred-challenges http \
+    -d "${DOMAIN}" -d "www.${DOMAIN}" --non-interactive --agree-tos \
     --register-unsafely-without-email; then
     echo "ERROR: Certbot failed. Check DNS for ${DOMAIN} / www.${DOMAIN} and port 80 reachability, then retry."
     exit 1
