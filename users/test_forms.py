@@ -64,20 +64,19 @@ class TestUserRegistrationForm(TestCase):
         self.assertTrue(user.is_buyer)
         self.assertTrue(user.is_seller)
 
-    def test_registration_buyer_only(self):
-        """Test registration as buyer only."""
+    def test_registration_sets_both_roles(self):
+        """All registered users get both buyer and seller roles."""
         form_data = {
             'email': 'newuser@example.com',
             'password1': 'SecurePass123!',
             'password2': 'SecurePass123!',
-            'user_type': 'buyer',
         }
         form = UserRegistrationForm(data=form_data)
         self.assertTrue(form.is_valid())
-        
+
         user = form.save()
         self.assertTrue(user.is_buyer)
-        self.assertFalse(user.is_seller)
+        self.assertTrue(user.is_seller)
 
     def test_registration_duplicate_email(self):
         """Test registration fails with duplicate email."""

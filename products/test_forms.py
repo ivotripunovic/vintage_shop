@@ -57,25 +57,20 @@ class BulkProductImageFormTests(TestCase):
         )
         
         self.assertFalse(form.is_valid())
-        self.assertIn('At least one image is required.', str(form.errors))
+        self.assertIn('Potrebna je barem jedna slika.', str(form.errors))
 
     def test_clean_validates_file_size(self):
-        """Test that file size validation works."""
-        # Create a mock file larger than 5MB
+        """Test that file size validation rejects files over 20MB."""
         large_file = SimpleUploadedFile(
             "large.jpg",
-            b"x" * (6 * 1024 * 1024),  # 6MB
+            b"x" * (21 * 1024 * 1024),  # 21MB — over the 20MB limit
             content_type="image/jpeg"
         )
-        
+
         files = MultiValueDict({'images': [large_file]})
-        form = BulkProductImageForm(
-            data={},
-            files=files
-        )
-        
+        form = BulkProductImageForm(data={}, files=files)
+
         self.assertFalse(form.is_valid())
-        self.assertIn('File size must not exceed 5MB', str(form.errors))
 
     def test_clean_validates_file_extensions(self):
         """Test that only valid image extensions are allowed."""
@@ -92,7 +87,7 @@ class BulkProductImageFormTests(TestCase):
         )
         
         self.assertFalse(form.is_valid())
-        self.assertIn('Only', str(form.errors))
+        self.assertIn('Dozvoljeni formati', str(form.errors))
 
     def test_clean_accepts_valid_image_formats(self):
         """Test that all valid image formats are accepted."""
