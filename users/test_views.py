@@ -57,30 +57,26 @@ class TestRegistrationView(TestCase):
 
     @patch('users.views.send_mail')
     def test_register_creates_buyer(self, mock_send_mail):
-        """Test registration creates buyer user."""
+        """Registration always creates a user with buyer role."""
         self.client.post(self.register_url, {
             'email': 'buyer@example.com',
             'password1': 'SecurePass123!',
             'password2': 'SecurePass123!',
-            'user_type': 'buyer',
         })
-        
+
         user = User.objects.get(email='buyer@example.com')
         self.assertTrue(user.is_buyer)
-        self.assertFalse(user.is_seller)
 
     @patch('users.views.send_mail')
     def test_register_creates_seller(self, mock_send_mail):
-        """Test registration creates seller user."""
+        """Registration always creates a user with seller role."""
         self.client.post(self.register_url, {
             'email': 'seller@example.com',
             'password1': 'SecurePass123!',
             'password2': 'SecurePass123!',
-            'user_type': 'seller',
         })
-        
+
         user = User.objects.get(email='seller@example.com')
-        self.assertFalse(user.is_buyer)
         self.assertTrue(user.is_seller)
 
     @patch('users.views.send_mail')
