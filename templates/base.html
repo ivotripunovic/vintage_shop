@@ -130,6 +130,12 @@
 
                 <div class="hidden md:flex items-center gap-6 flex-shrink-0">
                     {% if user.is_authenticated %}
+                        <a href="{% url 'chat_inbox' %}" class="relative text-stone-500 hover:text-stone-900 transition-colors" title="Poruke">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
+                            </svg>
+                            <span id="chat-badge" class="absolute -top-1.5 -right-1.5 bg-stone-900 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center leading-none" style="display:none;font-size:9px"></span>
+                        </a>
                         {% if user.is_seller %}
                         <div class="relative group">
                             <button class="text-xs uppercase tracking-widest text-stone-500 hover:text-stone-900 transition-colors flex items-center gap-1">
@@ -209,6 +215,10 @@
             <div class="border-t border-neutral-100 pt-3 mt-3 space-y-1">
                 <a href="{% url 'shops_browse' %}" class="block py-2 text-xs uppercase tracking-widest text-stone-500 hover:text-stone-900">Prodavci</a>
                 {% if user.is_authenticated %}
+                    <a href="{% url 'chat_inbox' %}" class="block py-2 text-xs uppercase tracking-widest text-stone-500 hover:text-stone-900 flex items-center gap-2">
+                        Poruke
+                        <span id="chat-badge-mobile" class="bg-stone-900 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center leading-none" style="display:none;font-size:9px"></span>
+                    </a>
                     {% if user.is_seller %}
                         <a href="{% url 'seller_dashboard' %}" class="block py-2 text-xs uppercase tracking-widest text-stone-500 hover:text-stone-900">Kontrolna tabla</a>
                         <a href="{% url 'seller_products_list' %}" class="block py-2 text-xs uppercase tracking-widest text-stone-500 hover:text-stone-900">Moji proizvodi</a>
@@ -300,5 +310,34 @@
         </div>
     </div>
 </footer>
+
+{% if user.is_authenticated %}
+<script>
+(function () {
+    function updateBadge(count) {
+        ["chat-badge", "chat-badge-mobile"].forEach(function (id) {
+            var el = document.getElementById(id);
+            if (!el) return;
+            if (count > 0) {
+                el.textContent = count > 9 ? "9+" : count;
+                el.style.display = "";
+            } else {
+                el.style.display = "none";
+            }
+        });
+    }
+    function poll() {
+        fetch("{% url 'chat_unread' %}")
+            .then(function (r) { return r.json(); })
+            .then(function (d) { updateBadge(d.count); })
+            .catch(function () {})
+            .finally(function () { setTimeout(poll, 15000); });
+    }
+    poll();
+})();
+</script>
+{% endif %}
+
+{% block extra_js %}{% endblock %}
 </body>
 </html>

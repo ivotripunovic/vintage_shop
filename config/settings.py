@@ -41,6 +41,7 @@ INSTALLED_APPS = [
     "orders",
     "billing",
     "core",
+    "chat",
 ]
 
 MIDDLEWARE = [
@@ -133,6 +134,7 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # Custom User Model
 AUTH_USER_MODEL = "users.User"
+LOGIN_URL = "/auth/login/"
 
 # REST Framework
 REST_FRAMEWORK = {

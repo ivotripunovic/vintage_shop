@@ -96,6 +96,19 @@
                 <button disabled class="flex-1 border border-neutral-200 text-stone-400 text-xs uppercase tracking-widest py-4 cursor-not-allowed">Nedostupno</button>
             {% endif %}
         </div>
+
+        {% if user.is_authenticated and not is_owner %}
+        <div class="border-t border-neutral-200 pt-5">
+            <form method="post" action="{% url 'chat_start' %}">
+                {% csrf_token %}
+                <input type="hidden" name="seller_id" value="{{ product.seller.pk }}">
+                <input type="hidden" name="product_id" value="{{ product.pk }}">
+                <button type="submit" class="w-full border border-neutral-300 text-stone-600 text-xs uppercase tracking-widest py-3 hover:border-stone-900 hover:text-stone-900 transition-colors">
+                    Pošalji poruku prodavcu
+                </button>
+            </form>
+        </div>
+        {% endif %}
     </div>
 </div>
 

@@ -23,6 +23,9 @@ urlpatterns = [
     # Products
     path("products/", include("products.urls")),
     
+    # Chat
+    path("chat/", include("chat.urls")),
+
     # Home & Core
     path("", views.home_view, name="home"),
 ]

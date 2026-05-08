@@ -1,0 +1,156 @@
+{% extends "base.html" %}
+{% block title %}
+    {% if conversation.seller.shop_name %}{{ conversation.seller.shop_name }}{% else %}Razgovor{% endif %} — {{ SITE_NAME }}
+{% endblock %}
+
+{% block content %}
+
+<nav class="text-xs uppercase tracking-widest text-stone-400 mb-6 flex gap-2 flex-wrap">
+    <a href="{% url 'chat_inbox' %}" class="hover:text-stone-900 transition-colors">Poruke</a>
+    <span>/</span>
+    <span class="text-stone-700">
+        {% if request.user == conversation.buyer %}{{ conversation.seller.shop_name }}{% else %}{{ conversation.buyer.email }}{% endif %}
+    </span>
+</nav>
+
+{% if conversation.product %}
+<div class="mb-6 p-3 bg-neutral-50 border border-neutral-200 flex items-center gap-3">
+    {% if conversation.product.images.exists %}
+    <img src="{{ conversation.product.images.first.image.url }}" alt="{{ conversation.product.title }}" class="w-10 h-10 object-cover flex-shrink-0">
+    {% else %}
+    <div class="w-10 h-10 bg-neutral-200 flex-shrink-0"></div>
+    {% endif %}
+    <div>
+        <a href="{% url 'product_detail' conversation.product.pk %}" class="text-sm text-stone-900 hover:underline">{{ conversation.product.title }}</a>
+    </div>
+</div>
+{% endif %}
+
+<div id="messages" class="border border-neutral-200 divide-y divide-neutral-100 mb-4 max-h-[60vh] overflow-y-auto">
+    {% for msg in messages %}
+    <div class="px-5 py-4 {% if msg.sender == request.user %}bg-stone-50{% endif %}">
+        <div class="flex justify-between items-baseline mb-1">
+            <span class="text-xs uppercase tracking-widest {% if msg.sender == request.user %}text-stone-700{% else %}text-stone-400{% endif %}">
+                {% if msg.sender == request.user %}Vi{% else %}{{ msg.sender.email }}{% endif %}
+            </span>
+            <span class="text-xs text-stone-400">{{ msg.created_at|date:"d.m.Y H:i" }}</span>
+        </div>
+        <p class="text-sm text-stone-800 whitespace-pre-wrap">{{ msg.body }}</p>
+    </div>
+    {% empty %}
+    <div class="px-5 py-8 text-center">
+        <p class="text-xs uppercase tracking-widest text-stone-400">Počnite razgovor.</p>
+    </div>
+    {% endfor %}
+</div>
+
+<form id="sendForm" class="flex gap-3 items-end">
+    {% csrf_token %}
+    <div class="flex-1">{{ form }}</div>
+    <button type="submit" class="flex-shrink-0 bg-stone-900 text-white text-xs uppercase tracking-widest px-5 py-2 hover:bg-stone-700 transition-colors h-[38px]">Pošalji</button>
+</form>
+
+<script>
+(function () {
+    const messagesEl = document.getElementById("messages");
+    const form = document.getElementById("sendForm");
+    const textarea = form.querySelector("textarea");
+    const csrf = form.querySelector("[name=csrfmiddlewaretoken]").value;
+    let lastId = {{ last_id }};
+    let polling = true;
+
+    function isNearBottom() {
+        return messagesEl.scrollHeight - messagesEl.scrollTop - messagesEl.clientHeight < 120;
+    }
+
+    function scrollToBottom() {
+        messagesEl.scrollTop = messagesEl.scrollHeight;
+    }
+
+    function appendMessage(body, isMine, senderLabel, timestamp) {
+        const wasNear = isNearBottom();
+        const div = document.createElement("div");
+        div.className = "px-5 py-4" + (isMine ? " bg-stone-50" : "");
+        div.innerHTML =
+            '<div class="flex justify-between items-baseline mb-1">' +
+                '<span class="text-xs uppercase tracking-widest ' + (isMine ? "text-stone-700" : "text-stone-400") + '">' + senderLabel + "</span>" +
+                '<span class="text-xs text-stone-400">' + timestamp + "</span>" +
+            "</div>" +
+            '<p class="text-sm text-stone-800 whitespace-pre-wrap">' + escHtml(body) + "</p>";
+
+        // Remove empty-state placeholder if present
+        const empty = messagesEl.querySelector(".text-center");
+        if (empty) empty.remove();
+
+        messagesEl.appendChild(div);
+        if (wasNear) scrollToBottom();
+    }
+
+    function escHtml(s) {
+        return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+    }
+
+    function formatTime(iso) {
+        const d = new Date(iso);
+        return d.toLocaleDateString("sr-RS") + " " + d.toLocaleTimeString("sr-RS", {hour: "2-digit", minute: "2-digit"});
+    }
+
+    async function poll() {
+        if (!polling) return;
+        try {
+            const res = await fetch("{% url 'chat_poll' conversation.pk %}?after=" + lastId);
+            if (res.ok) {
+                const data = await res.json();
+                data.messages.forEach(m => {
+                    appendMessage(m.body, m.is_mine, m.is_mine ? "Vi" : m.sender, formatTime(m.created_at));
+                    lastId = m.id;
+                });
+                // Update global unread badge if present
+                const badge = document.getElementById("chat-badge");
+                if (badge) {
+                    badge.textContent = data.unread_total || "";
+                    badge.style.display = data.unread_total ? "" : "none";
+                }
+            }
+        } catch (_) {}
+        setTimeout(poll, 3000);
+    }
+
+    form.addEventListener("submit", async e => {
+        e.preventDefault();
+        const body = textarea.value.trim();
+        if (!body) return;
+        const btn = form.querySelector("button");
+        btn.disabled = true;
+        try {
+            const res = await fetch("{% url 'chat_send' conversation.pk %}", {
+                method: "POST",
+                headers: {"X-CSRFToken": csrf, "Content-Type": "application/x-www-form-urlencoded"},
+                body: "body=" + encodeURIComponent(body),
+            });
+            const data = await res.json();
+            if (data.ok) {
+                appendMessage(data.message.body, true, "Vi", formatTime(data.message.created_at));
+                lastId = data.message.id;
+                textarea.value = "";
+                scrollToBottom();
+            }
+        } finally {
+            btn.disabled = false;
+            textarea.focus();
+        }
+    });
+
+    // Allow Ctrl+Enter / Cmd+Enter to submit
+    textarea.addEventListener("keydown", e => {
+        if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
+            form.dispatchEvent(new Event("submit"));
+        }
+    });
+
+    scrollToBottom();
+    poll();
+})();
+</script>
+
+{% endblock %}

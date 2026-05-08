@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block title %}Poruke — {{ SITE_NAME }}{% endblock %}
+
+{% block content %}
+
+<div class="mb-8 flex justify-between items-baseline">
+    <h1 class="font-serif text-4xl font-light">Poruke</h1>
+</div>
+
+{% if conv_list %}
+<div class="border border-neutral-200 divide-y divide-neutral-100">
+    {% for conv, unread, last_msg in conv_list %}
+    <a href="{% url 'chat_detail' conv.pk %}" class="flex items-start gap-4 px-6 py-4 hover:bg-neutral-50 transition-colors {% if unread %}bg-stone-50{% endif %}">
+
+        <div class="w-10 h-10 bg-neutral-200 flex-shrink-0 flex items-center justify-center mt-0.5">
+            {% if request.user == conv.buyer %}
+                {% if conv.seller.shop_image %}
+                    <img src="{{ conv.seller.shop_image.url }}" alt="{{ conv.seller.shop_name }}" class="w-full h-full object-cover">
+                {% else %}
+                    <span class="text-xs text-neutral-400">{{ conv.seller.shop_name|slice:":1"|upper }}</span>
+                {% endif %}
+            {% else %}
+                <span class="text-xs text-neutral-400">{{ conv.buyer.email|slice:":1"|upper }}</span>
+            {% endif %}
+        </div>
+
+        <div class="flex-1 min-w-0">
+            <div class="flex justify-between items-baseline mb-1">
+                <span class="text-sm text-stone-900 {% if unread %}font-medium{% endif %}">
+                    {% if request.user == conv.buyer %}
+                        {{ conv.seller.shop_name }}
+                    {% else %}
+                        {{ conv.buyer.email }}
+                    {% endif %}
+                </span>
+                {% if last_msg %}
+                <span class="text-xs text-stone-400 flex-shrink-0 ml-2">{{ last_msg.created_at|date:"d.m.Y" }}</span>
+                {% endif %}
+            </div>
+
+            {% if conv.product %}
+            <p class="text-xs uppercase tracking-widest text-stone-400 mb-1 truncate">{{ conv.product.title }}</p>
+            {% endif %}
+
+            {% if last_msg %}
+            <p class="text-sm text-stone-500 truncate {% if unread %}text-stone-700{% endif %}">{{ last_msg.body }}</p>
+            {% endif %}
+        </div>
+
+        {% if unread %}
+        <span class="flex-shrink-0 bg-stone-900 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center mt-1">{{ unread }}</span>
+        {% endif %}
+
+    </a>
+    {% endfor %}
+</div>
+
+{% else %}
+<div class="border border-neutral-200 py-20 text-center">
+    <p class="text-xs uppercase tracking-widest text-stone-400">Još nema poruka.</p>
+    <a href="{% url 'products_browse' %}" class="text-xs uppercase tracking-widest text-stone-400 hover:text-stone-900 mt-3 inline-block transition-colors">Pregledajte proizvode</a>
+</div>
+{% endif %}
+
+{% endblock %}
