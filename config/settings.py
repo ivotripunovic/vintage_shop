@@ -50,6 +50,7 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "core.middleware.ComingSoonMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
@@ -210,6 +211,10 @@ LOGGING = {
 
 # Create logs directory
 os.makedirs(BASE_DIR / "logs", exist_ok=True)
+
+# Coming Soon Mode
+COMING_SOON = config("COMING_SOON", default=False, cast=bool)
+COMING_SOON_SECRET = config("COMING_SOON_SECRET", default="")
 
 # Site Configuration
 SITE_DOMAIN = config("SITE_DOMAIN", default="http://localhost:8000")
