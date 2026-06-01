@@ -62,6 +62,24 @@ URLs use i18n patterns with language prefix (Serbian default, English secondary)
 - `/products/` - products app (browse, create, edit, images)
 - `/admin/` - Django admin (non-i18n)
 
+### Coming Soon Mode
+
+Controlled by two `.env` variables:
+
+```
+COMING_SOON=True          # show coming soon page to all visitors
+COMING_SOON_SECRET=xyz    # optional bypass secret (see below)
+```
+
+`core.middleware.ComingSoonMiddleware` intercepts all requests when `COMING_SOON=True`. Bypass rules (in priority order):
+
+1. `/admin/` URLs always pass through
+2. Staff and superusers always see the full site
+3. Visiting `/?preview=<COMING_SOON_SECRET>` sets a cookie that grants access for 7 days
+4. Everyone else sees `templates/core/coming_soon.html`
+
+To work on the site locally with coming soon enabled: log in via `/admin/` as a superuser.
+
 ### Key Patterns
 
 - **Soft deletes**: Products use `SoftDeleteModel` — call `soft_delete()` instead of `delete()`.
