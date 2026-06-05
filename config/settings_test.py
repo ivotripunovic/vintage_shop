@@ -20,8 +20,10 @@ PASSWORD_HASHERS = [
 # TEST-SPECIFIC OPTIMIZATIONS
 # ============================================================================
 
-# Disable slow middleware
-MIDDLEWARE = [m for m in MIDDLEWARE if 'LoggingMiddleware' not in m]
+# Disable slow/intercepting middleware
+MIDDLEWARE = [m for m in MIDDLEWARE if 'LoggingMiddleware' not in m and 'ComingSoonMiddleware' not in m]
+
+COMING_SOON = False
 
 # Use simple in-memory cache for tests
 CACHES = {

@@ -8,6 +8,10 @@ from django.test import TestCase, Client
 from django.urls import reverse
 from django.contrib.auth import get_user_model
 from django.contrib.messages import get_messages
+from django.utils.crypto import get_random_string
+from django.utils import timezone
+from datetime import timedelta
+from .models import VerificationToken
 
 User = get_user_model()
 
@@ -304,9 +308,50 @@ class TestPasswordResetView(TestCase):
     def test_reset_request_authenticated_user_redirects(self):
         """Test authenticated user is redirected from reset request page."""
         self.client.force_login(self.user)
-        
+
         response = self.client.get(self.reset_request_url)
         self.assertEqual(response.status_code, 302)
+
+    def _make_reset_token(self):
+        token = get_random_string(50)
+        VerificationToken.objects.create(
+            user=self.user,
+            token=token,
+            token_type=VerificationToken.TOKEN_TYPE_PASSWORD,
+            expires_at=timezone.now() + timedelta(hours=1),
+        )
+        return token
+
+    def test_reset_confirm_page_loads(self):
+        """Test password reset confirm page loads with a valid token."""
+        token = self._make_reset_token()
+        response = self.client.get(reverse('password-reset-confirm', args=[token]))
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, 'users/password_reset_confirm.html')
+
+    def test_reset_confirm_renders_password_fields(self):
+        """Both password input fields must be present in the rendered HTML."""
+        token = self._make_reset_token()
+        response = self.client.get(reverse('password-reset-confirm', args=[token]))
+        self.assertContains(response, 'name="new_password1"')
+        self.assertContains(response, 'name="new_password2"')
+
+    def test_reset_confirm_invalid_token_redirects(self):
+        """Invalid token redirects back to reset request page."""
+        response = self.client.get(reverse('password-reset-confirm', args=['badtoken']))
+        self.assertRedirects(response, reverse('password-reset-request'))
+
+    def test_reset_confirm_sets_new_password(self):
+        """Submitting valid passwords changes the user's password."""
+        token = self._make_reset_token()
+        url = reverse('password-reset-confirm', args=[token])
+        response = self.client.post(url, {
+            'new_password1': 'NewSecure123!',
+            'new_password2': 'NewSecure123!',
+        }, follow=True)
+        self.assertRedirects(response, reverse('login'))
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.check_password('NewSecure123!'))
 
 
 @pytest.mark.django_db
