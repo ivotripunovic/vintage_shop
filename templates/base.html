@@ -204,7 +204,7 @@
     </div>
 
     <!-- Mobile menu -->
-    <div id="mobile-menu" class="hidden md:hidden border-b border-neutral-200 bg-white">
+    <div id="mobile-menu" class="hidden md:hidden border-b border-neutral-200 bg-white overflow-y-auto" style="max-height: calc(100vh - 4rem)">
         <div class="max-w-7xl mx-auto px-6 py-4 space-y-1">
             {% for category in nav_categories %}
             <a href="{% url 'category_products' category.id %}" class="block py-2 text-xs uppercase tracking-widest text-stone-600 hover:text-stone-900">{{ category.name }}</a>
