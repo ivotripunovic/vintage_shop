@@ -58,13 +58,13 @@
         /* Category bar hide/show on scroll */
         #nav-categories {
             max-height: 120px;
-            overflow: hidden;
             opacity: 1;
             transition: max-height 0.3s ease, opacity 0.25s ease;
         }
         #nav-categories.nav-hidden {
             max-height: 0;
             opacity: 0;
+            overflow: hidden;
         }
     </style>
     <script>
@@ -213,19 +213,7 @@
         </div>
     </div>
 
-    <!-- Row 2: Category chips — mobile horizontal scroll -->
-    {% if nav_categories %}
-    <div class="md:hidden border-b border-neutral-100 bg-white overflow-x-auto">
-        <div class="flex gap-2 px-4 py-2 w-max">
-            <a href="{% url 'products_browse' %}" class="flex-shrink-0 px-3 py-1 text-xs uppercase tracking-widest border border-neutral-200 text-stone-500 hover:border-stone-900 hover:text-stone-900 transition-colors whitespace-nowrap">Sve</a>
-            {% for category in nav_categories %}
-            <a href="{% url 'category_products' category.id %}" class="flex-shrink-0 px-3 py-1 text-xs uppercase tracking-widest border border-neutral-200 text-stone-500 hover:border-stone-900 hover:text-stone-900 transition-colors whitespace-nowrap">{{ category.name }}</a>
-            {% endfor %}
-        </div>
-    </div>
-    {% endif %}
-
-    <!-- Row 2: Category navigation — desktop -->
+    <!-- Row 2: Category navigation — desktop only -->
     <div id="nav-categories" class="border-b border-neutral-200 hidden md:block">
         <div class="max-w-7xl mx-auto px-6 lg:px-8 flex flex-wrap items-center justify-center gap-x-6 gap-y-0">
             {% for category in nav_categories %}
