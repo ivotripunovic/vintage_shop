@@ -32,7 +32,7 @@
 {% endif %}
 
 
-<section class="border border-neutral-200 p-6 md:p-12 mb-16">
+<section class="border border-neutral-200 p-6 md:p-12 mb-6 md:mb-16">
     <div class="max-w-xl">
         <p class="text-xs uppercase tracking-widest text-stone-400 mb-4">Za prodavce</p>
         <h2 class="font-serif text-4xl font-light mb-5">Počni da prodaješ danas</h2>
@@ -55,19 +55,5 @@
     </div>
 </section>
 
-<section class="text-center py-16 border-t border-neutral-200">
-    <h2 class="font-serif text-4xl font-light mb-4">
-        {% if user.is_authenticated %}Dobrodošli, {{ user.first_name|default:user.email }}{% else %}Discover Something Beautiful{% endif %}
-    </h2>
-    <p class="text-sm text-stone-400 mb-8">
-        {% if user.is_authenticated %}Continue exploring the marketplace.{% else %}Pridružite se hiljadama kupaca i prodavaca na {{ SITE_NAME }}.{% endif %}
-    </p>
-    <div class="flex gap-4 justify-center">
-        <a href="{% url 'products_browse' %}" class="inline-block bg-stone-900 text-white text-xs uppercase tracking-widest px-8 py-3 hover:bg-stone-700 transition-colors">Pregledaj proizvode</a>
-        {% if not user.is_authenticated %}
-            <a href="{% url 'login' %}" class="inline-block border border-stone-900 text-stone-900 text-xs uppercase tracking-widest px-8 py-3 hover:bg-neutral-50 transition-colors">Prijava</a>
-        {% endif %}
-    </div>
-</section>
 
 {% endblock %}
