@@ -404,7 +404,7 @@
     {% if user.is_authenticated and user.is_seller %}
     <a href="{% url 'product_create' %}" class="flex-1 flex flex-col items-center justify-center py-2 gap-0.5 {% if url_name == 'product_create' %}text-stone-900{% else %}text-stone-400 hover:text-stone-700{% endif %} transition-colors">
     {% else %}
-    <a href="{% url 'register' %}" class="flex-1 flex flex-col items-center justify-center py-2 gap-0.5 text-stone-400 hover:text-stone-700 transition-colors">
+    <a href="{% url 'login' %}" class="flex-1 flex flex-col items-center justify-center py-2 gap-0.5 text-stone-400 hover:text-stone-700 transition-colors">
     {% endif %}
         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 7h.01M7 3h5l5 5v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4a1 1 0 011-1h2z"/>
