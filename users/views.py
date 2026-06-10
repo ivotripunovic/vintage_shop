@@ -90,7 +90,6 @@ def login_view(request):
             
             # Redirect to next page or home
             next_url = request.GET.get('next', 'home')
-            messages.success(request, f'Dobrodošli, {user.email}!')
             return redirect(next_url)
         else:
             for error in form.non_field_errors():
@@ -110,7 +109,6 @@ def login_view(request):
 def logout_view(request):
     """Logout user."""
     logout(request)
-    messages.success(request, 'Uspešno ste se odjavili.')
     return redirect('home')
 
 
