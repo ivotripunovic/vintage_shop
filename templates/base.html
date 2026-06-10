@@ -133,7 +133,7 @@
 </head>
 <body class="bg-white text-stone-900 font-sans antialiased">
 
-<header class="sticky top-0 z-50 bg-white">
+<header class="sticky top-0 z-50 bg-white relative">
 
     <!-- Row 1: Logo + Search (desktop) + Auth -->
     <div class="md:border-b md:border-neutral-200">
@@ -250,7 +250,7 @@
     </div>
 
     <!-- Mobile menu -->
-    <div id="mobile-menu" class="hidden md:hidden border-b border-neutral-200 bg-white overflow-y-auto" style="max-height: calc(100vh - 6rem)">
+    <div id="mobile-menu" class="hidden md:hidden absolute left-0 right-0 bg-white border-b border-neutral-200 shadow-md overflow-y-auto z-50" style="top: 2.5rem; max-height: calc(100vh - 2.5rem)">
         <div class="max-w-7xl mx-auto px-6 py-4">
 
             <!-- Kategorije -->
