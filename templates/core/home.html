@@ -31,34 +31,13 @@
 </section>
 {% endif %}
 
-{% if categories %}
-<section class="mb-16">
-    <h2 class="font-serif text-3xl font-light mb-8">Kupuj po kategoriji</h2>
-    <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
-        {% for category in categories %}
-        <div class="border border-neutral-200 hover:border-stone-400 transition-colors p-6">
-            <a href="{% url 'category_products' category.id %}" class="group block mb-3">
-                <p class="text-xs uppercase tracking-widest text-stone-700 group-hover:text-stone-900 transition-colors">{{ category.name }}</p>
-            </a>
-            {% if category.children.all %}
-            <ul class="space-y-1">
-                {% for sub in category.children.all %}
-                <li><a href="{% url 'category_products' sub.id %}" class="text-xs text-stone-400 hover:text-stone-700 transition-colors">{{ sub.name }}</a></li>
-                {% endfor %}
-            </ul>
-            {% endif %}
-        </div>
-        {% endfor %}
-    </div>
-</section>
-{% endif %}
 
-<section class="border border-neutral-200 p-12 mb-16">
+<section class="border border-neutral-200 p-6 md:p-12 mb-16">
     <div class="max-w-xl">
         <p class="text-xs uppercase tracking-widest text-stone-400 mb-4">Za prodavce</p>
         <h2 class="font-serif text-4xl font-light mb-5">Počni da prodaješ danas</h2>
         <p class="text-sm text-stone-500 leading-relaxed mb-8">{{ SITE_NAME }} olakšava listovanje vaše vintage i polovne robe. Podesite vašu prodavnicu i počnite da zarađujete.</p>
-        <div class="grid grid-cols-3 gap-6 mb-8">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
             <div>
                 <p class="text-xs uppercase tracking-widest text-stone-800 mb-2">Jednostavno podešavanje</p>
                 <p class="text-xs text-stone-400">Kreirajte svoju prodavnicu za nekoliko minuta</p>
