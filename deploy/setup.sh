@@ -111,10 +111,19 @@ CSRF_TRUSTED_ORIGINS=https://www.${DOMAIN},https://${DOMAIN}
 SECURE_SSL_REDIRECT=True
 SESSION_COOKIE_SECURE=True
 CSRF_COOKIE_SECURE=True
+
+# django.contrib.sites — must match the id of the site row in the DB
+SITE_ID=1
+
+# Social Auth — Apple (Google and Facebook are configured via Django admin)
+APPLE_CLIENT_ID=
+APPLE_KEY_ID=
+APPLE_SECRET=
+APPLE_PRIVATE_KEY=
 ENVEOF
     chown "${APP_USER}:www-data" "${APP_DIR}/.env"
     chmod 640 "${APP_DIR}/.env"
-    echo "    .env created — edit it to add SENDGRID_API_KEY."
+    echo "    .env created — edit it to add SENDGRID_API_KEY and social auth credentials."
 else
     echo "    .env already exists, skipping."
 fi
@@ -128,6 +137,17 @@ sudo -u "${APP_USER}" mkdir -p "${APP_DIR}/logs" "${APP_DIR}/media" "${APP_DIR}/
 
 echo "==> Running Django migrations and collectstatic..."
 sudo -u "${APP_USER}" "${APP_DIR}/venv/bin/python" "${APP_DIR}/manage.py" migrate --no-input
+
+echo "==> Configuring django.contrib.sites..."
+sudo -u "${APP_USER}" "${APP_DIR}/venv/bin/python" "${APP_DIR}/manage.py" shell -c "
+from django.contrib.sites.models import Site
+from django.conf import settings
+site, _ = Site.objects.update_or_create(
+    id=settings.SITE_ID,
+    defaults={'domain': '${DOMAIN}', 'name': 'Vintage Shop'},
+)
+print(f'    Site configured: id={site.id}, domain={site.domain}')
+"
 sudo -u "${APP_USER}" "${APP_DIR}/venv/bin/python" "${APP_DIR}/manage.py" collectstatic --no-input --clear
 chown -R "${APP_USER}:www-data" "${APP_DIR}/staticfiles"
 find "${APP_DIR}/staticfiles" -type d -exec chmod 755 {} +
@@ -262,4 +282,16 @@ echo "  2. Create a superuser:"
 echo "     sudo -u ${APP_USER} ${APP_DIR}/venv/bin/python ${APP_DIR}/manage.py createsuperuser"
 echo "  3. Verify the site is running: curl -I https://www.${DOMAIN}"
 echo "  4. Check service status: systemctl status vintage_shop"
+echo ""
+echo "Social login setup (https://${DOMAIN}/admin/):"
+echo "  5. Google login:"
+echo "     - Go to Social applications → Add → Google"
+echo "     - Paste Client ID and Secret Key from Google Cloud Console"
+echo "     - Move '${DOMAIN}' from Available to Chosen sites → Save"
+echo "  6. Facebook login (same steps, provider = Facebook)"
+echo "  7. Apple login:"
+echo "     - Fill APPLE_CLIENT_ID, APPLE_KEY_ID, APPLE_SECRET, APPLE_PRIVATE_KEY in .env"
+echo "     - Go to Social applications → Add → Apple, move site → Save"
+echo "     - Requires a paid Apple Developer account and HTTPS domain"
+echo "  8. Verify buttons appear on the login page: https://${DOMAIN}/auth/login/"
 echo ""
