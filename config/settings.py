@@ -147,7 +147,7 @@ LOGIN_URL = "/auth/login/"
 LOGIN_REDIRECT_URL = "/"
 
 # Sites framework (required by allauth)
-SITE_ID = 1
+SITE_ID = config("SITE_ID", default=1, cast=int)
 
 # Authentication backends
 AUTHENTICATION_BACKENDS = [
