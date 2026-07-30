@@ -6,6 +6,7 @@ python-decouple==3.8
 # Django Extensions
 django-crispy-forms==2.5
 crispy-tailwind==1.0.3
+django-allauth[socialaccount]==65.18.0
 
 # API (optional, for future mobile app)
 djangorestframework==3.16.1

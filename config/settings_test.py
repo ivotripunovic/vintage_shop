@@ -43,3 +43,6 @@ LOGGING = {
 
 # Skip migrations for faster test setup (if using pytest)
 # For manage.py test, Django handles this automatically
+
+# Disable social providers in tests (no OAuth credentials available)
+SOCIALACCOUNT_PROVIDERS = {}
