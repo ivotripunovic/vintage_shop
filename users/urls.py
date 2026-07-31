@@ -22,4 +22,7 @@ urlpatterns = [
     # Account Management
     path('password-change/', views.password_change_view, name='password-change'),
     path('settings/', views.account_settings_view, name='account-settings'),
+
+    # Social signup confirmation
+    path('social/welcome/', views.social_signup_complete_view, name='social-signup-complete'),
 ]

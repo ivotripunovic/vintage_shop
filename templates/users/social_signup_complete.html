@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}Dobrodošli — {{ SITE_NAME }}{% endblock %}
+
+{% block content %}
+<div class="max-w-sm mx-auto py-12 text-center">
+
+    <div class="mb-8">
+        <div class="w-16 h-16 mx-auto mb-6 rounded-full bg-stone-100 flex items-center justify-center">
+            <svg class="w-8 h-8 text-stone-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M5 13l4 4L19 7"/>
+            </svg>
+        </div>
+        <h1 class="font-serif text-4xl font-light mb-3">Dobrodošli</h1>
+        <p class="text-sm text-stone-500">Vaš nalog je uspešno kreiran.</p>
+    </div>
+
+    <div class="border border-stone-200 p-6 mb-8 text-left space-y-3">
+        {% if user.get_full_name %}
+        <div class="flex justify-between text-sm">
+            <span class="text-stone-400 uppercase tracking-widest text-xs">Ime</span>
+            <span class="text-stone-700">{{ user.get_full_name }}</span>
+        </div>
+        {% endif %}
+        <div class="flex justify-between text-sm">
+            <span class="text-stone-400 uppercase tracking-widest text-xs">Email</span>
+            <span class="text-stone-700">{{ user.email }}</span>
+        </div>
+        <div class="flex justify-between text-sm">
+            <span class="text-stone-400 uppercase tracking-widest text-xs">Tip naloga</span>
+            <span class="text-stone-700">Kupac</span>
+        </div>
+    </div>
+
+    <div class="space-y-3">
+        <a href="{% url 'home' %}" class="block w-full bg-stone-900 text-white text-xs uppercase tracking-widest py-3.5 hover:bg-stone-700 transition-colors">
+            Počni sa kupovinom
+        </a>
+        <a href="{% url 'seller_register' %}" class="block w-full border border-stone-300 text-stone-700 text-xs uppercase tracking-widest py-3.5 hover:bg-stone-50 transition-colors">
+            Postani prodavac
+        </a>
+    </div>
+
+</div>
+{% endblock %}

@@ -8,7 +8,7 @@ from unittest.mock import MagicMock, patch
 from django.test import TestCase, RequestFactory
 from django.contrib.messages.storage.fallback import FallbackStorage
 
-from allauth.exceptions import ImmediateHttpResponse
+from allauth.core.exceptions import ImmediateHttpResponse
 
 from .adapters import AccountAdapter, SocialAccountAdapter
 from .models import User

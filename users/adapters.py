@@ -23,7 +23,8 @@ class AccountAdapter(DefaultAccountAdapter):
             user_username(user, username)
 
     def get_signup_redirect_url(self, request):
-        return "/"
+        from django.urls import reverse
+        return reverse("social-signup-complete")
 
     def get_login_redirect_url(self, request):
         return "/"
@@ -33,7 +34,7 @@ class SocialAccountAdapter(DefaultSocialAccountAdapter):
     def pre_social_login(self, request, sociallogin):
         """Block social login if no account exists with the provider's email.
         Allow signup process (coming from the register page) to pass through."""
-        from allauth.exceptions import ImmediateHttpResponse
+        from allauth.core.exceptions import ImmediateHttpResponse
         from django.contrib import messages
         from django.contrib.auth import get_user_model
         from django.shortcuts import redirect

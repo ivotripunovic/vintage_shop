@@ -5,7 +5,7 @@ User authentication views (registration, login, logout, password reset).
 import logging
 
 from django.shortcuts import render, redirect
-from django.contrib.auth import login, logout, authenticate
+from django.contrib.auth import login, logout
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.views.decorators.http import require_http_methods
@@ -13,7 +13,6 @@ from django.views.decorators.csrf import csrf_protect
 from django.utils.crypto import get_random_string
 from django.core.mail import send_mail, BadHeaderError
 from django.conf import settings
-from django.urls import reverse
 
 logger = logging.getLogger(__name__)
 
@@ -261,6 +260,15 @@ def account_settings_view(request):
         'page_title': 'Account Settings',
     }
     return render(request, 'users/account_settings.html', context)
+
+
+@login_required(login_url='login')
+def social_signup_complete_view(request):
+    """Confirmation page shown after a successful social (Google/Facebook/Apple) registration."""
+    context = {
+        'page_title': 'Dobrodošli',
+    }
+    return render(request, 'users/social_signup_complete.html', context)
 
 
 # ============================================================================

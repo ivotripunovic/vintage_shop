@@ -1,29 +1,29 @@
 # Django & Core
-Django==5.2.10
-psycopg2-binary==2.9.11
+Django==5.2.16
+psycopg2-binary==2.9.12
 python-decouple==3.8
 
 # Django Extensions
-django-crispy-forms==2.5
+django-crispy-forms==2.7
 crispy-tailwind==1.0.3
 django-allauth[socialaccount]==65.18.0
 
 # API (optional, for future mobile app)
-djangorestframework==3.16.1
+djangorestframework==3.17.1
 
 # Images
-Pillow==12.1.0
+Pillow==12.3.0
 
 # Task Scheduling
-APScheduler==3.11.2
+APScheduler==3.11.3
 
 # Email
 sendgrid==6.12.5
 
 # Testing
-pytest==9.0.2
-pytest-django==4.11.1
-pytest-cov==7.0.0
+pytest==9.1.1
+pytest-django==4.12.0
+pytest-cov==7.1.0
 pytest-xdist==3.8.0
 
 # Code Quality
@@ -32,7 +32,7 @@ flake8==7.3.0
 isort==7.0.0
 
 # Production Server
-gunicorn==24.1.1
+gunicorn==26.0.0
 
 # Security & Utilities
 django-environ==0.12.0
