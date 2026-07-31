@@ -25,19 +25,21 @@
             <span class="text-stone-400 uppercase tracking-widest text-xs">Email</span>
             <span class="text-stone-700">{{ user.email }}</span>
         </div>
-        <div class="flex justify-between text-sm">
-            <span class="text-stone-400 uppercase tracking-widest text-xs">Tip naloga</span>
-            <span class="text-stone-700">Kupac</span>
-        </div>
     </div>
+
+    <p class="text-xs uppercase tracking-widest text-stone-400 mb-4">Kako želite da koristite {{ SITE_NAME }}?</p>
 
     <div class="space-y-3">
         <a href="{% url 'home' %}" class="block w-full bg-stone-900 text-white text-xs uppercase tracking-widest py-3.5 hover:bg-stone-700 transition-colors">
-            Počni sa kupovinom
+            Kupujem vintage stvari
         </a>
-        <a href="{% url 'seller_register' %}" class="block w-full border border-stone-300 text-stone-700 text-xs uppercase tracking-widest py-3.5 hover:bg-stone-50 transition-colors">
-            Postani prodavac
-        </a>
+
+        <form method="post" action="{% url 'social-become-seller' %}">
+            {% csrf_token %}
+            <button type="submit" class="w-full border border-stone-300 text-stone-700 text-xs uppercase tracking-widest py-3.5 hover:bg-stone-50 transition-colors">
+                Prodajem — otvori prodavnicu
+            </button>
+        </form>
     </div>
 
 </div>

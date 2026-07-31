@@ -66,25 +66,19 @@ def seller_shop_setup_view(request):
         messages.error(request, 'You must be a seller to access this page.')
         return redirect('seller_register')
     
+    seller, _ = Seller.objects.get_or_create(user=request.user)
+
     if request.method == "POST":
-        form = ShopSetupForm(request.POST, request.FILES)
+        form = ShopSetupForm(request.POST, request.FILES, instance=seller)
         if form.is_valid():
             with transaction.atomic():
-                seller, created = Seller.objects.get_or_create(user=request.user)
                 form_instance = form.save(commit=False)
                 form_instance.user = request.user
-                form_instance.id = seller.id if seller.id else None
                 form_instance.save()
-                
                 messages.success(request, 'Shop setup complete! Now add your bank details.')
                 return redirect('seller_bank_details')
     else:
-        # Pre-fill if seller already exists
-        try:
-            seller = request.user.seller_profile
-            form = ShopSetupForm(instance=seller)
-        except Seller.DoesNotExist:
-            form = ShopSetupForm()
+        form = ShopSetupForm(instance=seller)
     
     return render(request, 'sellers/shop_setup.html', {'form': form})
 

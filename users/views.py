@@ -271,6 +271,39 @@ def social_signup_complete_view(request):
     return render(request, 'users/social_signup_complete.html', context)
 
 
+@login_required(login_url='login')
+@require_http_methods(["POST"])
+def social_become_seller_view(request):
+    """Upgrade a social-registered user to seller and redirect to shop setup."""
+    from sellers.models import Seller, SellerSubscription
+    from django.utils.timezone import now
+    from datetime import timedelta
+
+    user = request.user
+    if not user.is_seller:
+        user.is_seller = True
+        user.save(update_fields=["is_seller"])
+
+        if not hasattr(user, "seller_profile"):
+            base_slug = user.email.split("@")[0].replace(".", "-")
+            seller = Seller.objects.create(
+                user=user,
+                shop_name=user.get_full_name() or base_slug,
+                shop_slug=base_slug,
+            )
+            start_date = now().date()
+            SellerSubscription.objects.create(
+                seller=seller,
+                plan_type="monthly",
+                start_date=start_date,
+                renewal_date=start_date + timedelta(days=30),
+                status="active",
+                amount=9.99,
+            )
+
+    return redirect("seller_shop_setup")
+
+
 # ============================================================================
 # Email Sending Utilities
 # ============================================================================

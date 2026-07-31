@@ -25,4 +25,5 @@ urlpatterns = [
 
     # Social signup confirmation
     path('social/welcome/', views.social_signup_complete_view, name='social-signup-complete'),
+    path('social/become-seller/', views.social_become_seller_view, name='social-become-seller'),
 ]
