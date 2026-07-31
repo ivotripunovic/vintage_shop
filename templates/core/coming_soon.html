@@ -30,6 +30,33 @@
             Vintage komadi s dušom — sasvim uskoro.
         </p>
 
+        <div class="mt-12">
+            {% if messages %}
+            <div class="mb-4 space-y-1">
+                {% for message in messages %}
+                <p class="text-xs {% if message.tags == 'error' %}text-red-500{% else %}text-stone-600{% endif %}">
+                    {{ message }}
+                </p>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            <form method="post" action="{% url 'waitlist_subscribe' %}" class="flex flex-col sm:flex-row gap-3">
+                {% csrf_token %}
+                <div class="absolute -left-[9999px]" aria-hidden="true">
+                    {{ waitlist_form.website }}
+                </div>
+                {{ waitlist_form.timestamp }}
+                {{ waitlist_form.email }}
+                <button type="submit" class="px-6 py-3 bg-stone-900 text-white text-xs uppercase tracking-widest hover:bg-stone-800 transition-colors whitespace-nowrap">
+                    Prijavi se
+                </button>
+            </form>
+            <p class="text-xs text-stone-400 mt-3">
+                Ostavite email i javićemo vam se čim krenemo sa radom.
+            </p>
+        </div>
+
         <div class="mt-16">
             <p class="text-xs uppercase tracking-widest text-stone-300">© Urbani Buvljak</p>
         </div>

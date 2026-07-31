@@ -43,3 +43,16 @@ class SoftDeleteModel(TimeStampedModel):
         self.is_deleted = False
         self.deleted_at = None
         self.save()
+
+
+class WaitlistSubscriber(TimeStampedModel):
+    """Email left on the coming-soon page for the launch mailing list."""
+
+    email = models.EmailField(unique=True)
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return self.email
