@@ -1,8 +1,15 @@
 import json
+import logging
+from datetime import timedelta
+
+from django.conf import settings
 from django.contrib.auth.decorators import login_required
+from django.core.mail import send_mail, BadHeaderError
 from django.db.models import Q, Count, OuterRef, Subquery
 from django.http import JsonResponse, HttpResponseForbidden, HttpResponseBadRequest
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
+from django.utils import timezone
 from django.views.decorators.http import require_POST
 
 from sellers.models import Seller
@@ -10,10 +17,61 @@ from products.models import Product
 from .models import Conversation, Message
 from .forms import MessageForm
 
+logger = logging.getLogger(__name__)
+
+# Don't email a recipient about new messages more than once per this window,
+# so an active back-and-forth conversation doesn't spam their inbox.
+EMAIL_NOTIFY_COOLDOWN = timedelta(minutes=10)
+
 
 def _assert_participant(conversation, user):
     """Return True if user is buyer or seller's user, else False."""
     return user == conversation.buyer or user == conversation.seller.user
+
+
+def _notify_recipient_by_email(conversation, sender, message):
+    """Email the other participant about a new message, if not on cooldown."""
+    now = timezone.now()
+    if conversation.last_emailed_at and now - conversation.last_emailed_at < EMAIL_NOTIFY_COOLDOWN:
+        return
+
+    recipient = conversation.other_participant(sender)
+    chat_url = f"{settings.SITE_DOMAIN}{reverse('chat_detail', args=[conversation.pk])}"
+    site_name = settings.SITE_NAME
+    name = recipient.first_name or recipient.email
+    subject = f"Nova poruka na {site_name}"
+    body = f"""Zdravo {name},
+
+Imate novu poruku od {sender.first_name or sender.email}:
+
+"{message.body[:200]}"
+
+Pogledajte i odgovorite ovde:
+{chat_url}
+
+Srdačan pozdrav,
+Tim {site_name}
+"""
+
+    logger.info(
+        "Sending new-message email to %s via %s",
+        recipient.email,
+        settings.EMAIL_BACKEND,
+    )
+    try:
+        send_mail(
+            subject,
+            body,
+            settings.DEFAULT_FROM_EMAIL,
+            [recipient.email],
+            fail_silently=False,
+        )
+        conversation.last_emailed_at = now
+        conversation.save(update_fields=["last_emailed_at"])
+    except BadHeaderError:
+        logger.error("Invalid header in new-message email for conversation %s", conversation.pk)
+    except Exception:
+        logger.exception("Failed to send new-message email for conversation %s", conversation.pk)
 
 
 @login_required
@@ -78,6 +136,8 @@ def chat_send(request, pk):
 
     # Touch conversation.updated_at
     Conversation.objects.filter(pk=pk).update(updated_at=msg.created_at)
+
+    _notify_recipient_by_email(conversation, request.user, msg)
 
     return JsonResponse({
         "ok": True,

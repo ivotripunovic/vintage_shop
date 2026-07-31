@@ -1,10 +1,15 @@
+from datetime import timedelta
+
 import pytest
+from django.core import mail
 from django.urls import reverse
+from django.utils import timezone
 
 from users.models import User
 from sellers.models import Seller
 from products.models import Product, ProductCategory
 from chat.models import Conversation, Message
+from chat.views import EMAIL_NOTIFY_COOLDOWN
 
 
 # ---------------------------------------------------------------------------
@@ -179,6 +184,35 @@ class TestChatSend:
         client.force_login(buyer)
         res = client.get(reverse("chat_send", args=[conversation.pk]))
         assert res.status_code == 405
+
+    def test_emails_the_other_participant(self, client, buyer, seller_user, conversation):
+        client.force_login(buyer)
+        client.post(reverse("chat_send", args=[conversation.pk]), {"body": "Hey seller!"})
+        assert len(mail.outbox) == 1
+        assert mail.outbox[0].to == [seller_user.email]
+
+    def test_does_not_email_within_cooldown(self, client, buyer, conversation):
+        client.force_login(buyer)
+        client.post(reverse("chat_send", args=[conversation.pk]), {"body": "First"})
+        client.post(reverse("chat_send", args=[conversation.pk]), {"body": "Second"})
+        assert len(mail.outbox) == 1
+
+    def test_emails_again_after_cooldown_elapses(self, client, buyer, seller_user, conversation):
+        conversation.last_emailed_at = timezone.now() - EMAIL_NOTIFY_COOLDOWN - timedelta(seconds=1)
+        conversation.save(update_fields=["last_emailed_at"])
+
+        client.force_login(buyer)
+        client.post(reverse("chat_send", args=[conversation.pk]), {"body": "Still here?"})
+
+        assert len(mail.outbox) == 1
+        assert mail.outbox[0].to == [seller_user.email]
+
+    def test_updates_last_emailed_at(self, client, buyer, conversation):
+        assert conversation.last_emailed_at is None
+        client.force_login(buyer)
+        client.post(reverse("chat_send", args=[conversation.pk]), {"body": "Hey seller!"})
+        conversation.refresh_from_db()
+        assert conversation.last_emailed_at is not None
 
 
 # ---------------------------------------------------------------------------

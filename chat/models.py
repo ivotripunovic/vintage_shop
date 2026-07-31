@@ -21,6 +21,7 @@ class Conversation(TimeStampedModel):
         blank=True,
         related_name="chat_conversations",
     )
+    last_emailed_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         ordering = ["-updated_at"]
