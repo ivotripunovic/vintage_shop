@@ -59,13 +59,15 @@
         {% for product in products %}
         <a href="{% url 'product_detail' product.id %}" class="group">
             <div class="aspect-square bg-neutral-100 overflow-hidden mb-3">
-                {% if product.images.exists %}
-                    <img src="{{ product.images.first.image.url }}" alt="{{ product.images.first.alt_text }}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
+                {% with image=product.images.all.0 %}
+                {% if image %}
+                    <img src="{{ image.image.url }}" alt="{{ image.alt_text }}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
                 {% else %}
                     <div class="w-full h-full flex items-center justify-center">
                         <span class="text-xs uppercase tracking-widest text-neutral-400">Nema slike</span>
                     </div>
                 {% endif %}
+                {% endwith %}
             </div>
             {% if product.category %}<p class="text-xs uppercase tracking-widest text-stone-400 mb-1">{{ product.category.name }}</p>{% endif %}
             <h3 class="text-sm text-stone-900 mb-1 truncate">{{ product.title }}</h3>

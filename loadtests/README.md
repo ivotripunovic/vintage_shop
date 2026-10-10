@@ -30,6 +30,22 @@ At the end it checks the database:
 - Nginx isn't in front, so its `limit_req` (10 signups/min per IP) isn't exercised. In production, floods are cut off there before reaching Django.
 - A core on a dev machine is usually faster than a VPS vCPU. Treat the numbers as an upper bound and re-run against staging if you have one.
 
+## Profiling a single page
+
+Load tests show *how much* traffic the site handles; the profiler shows *where the time goes* in one request. It renders the page in-process (no gunicorn, no network) on a throwaway copy of `db.sqlite3`:
+
+```bash
+python loadtests/profile_page.py                        # coming-soon page
+python loadtests/profile_page.py --live                 # real homepage
+python loadtests/profile_page.py --path /products/      # any page
+python loadtests/profile_page.py --live --filter '^(?!.*venv)'   # project code only
+python loadtests/profile_page.py --live --sort tottime --top 40  # hottest functions
+```
+
+It prints the time per request, the rough max req/s on one core, every SQL query the page runs (look for repeated near-identical queries, which are N+1 problems), and a cProfile table:
+- `--sort cumulative` (default): time including everything a function calls. Read it top-down to find which view, template or tag is expensive.
+- `--sort tottime`: time spent inside the function itself. This finds hot spots such as `reverse()` called hundreds of times.
+
 ## Results (2026-10-10, 1 core, 60 s per stage)
 
 ### Coming-soon page + signups

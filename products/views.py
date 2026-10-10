@@ -333,7 +333,7 @@ def category_products_view(request, category_id):
     # Include products from this category and all its subcategories
     products = Product.objects.filter(
         status='published', category_id__in=category.get_all_ids()
-    )
+    ).select_related('condition', 'seller').prefetch_related('images')
     
     # Apply search
     if search_query:
@@ -387,7 +387,11 @@ def products_browse_view(request):
     sort_by = request.GET.get('sort', '-created_at')
     
     # Start with published products
-    products = Product.objects.filter(status='published')
+    products = (
+        Product.objects.filter(status='published')
+        .select_related('category', 'seller')
+        .prefetch_related('images')
+    )
     
     # Apply search
     if search_query:

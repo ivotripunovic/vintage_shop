@@ -39,9 +39,18 @@ class ProductCategory(models.Model):
 
     def get_all_ids(self):
         """Return this category's id plus all descendant ids."""
+        # One query per tree level rather than one per category
         ids = [self.id]
-        for child in self.children.all():
-            ids.extend(child.get_all_ids())
+        level = [self.id]
+        while level:
+            level = [
+                pk
+                for pk in ProductCategory.objects.filter(
+                    parent_id__in=level
+                ).values_list("id", flat=True)
+                if pk not in ids  # guards against a parent cycle
+            ]
+            ids.extend(level)
         return ids
 
 
