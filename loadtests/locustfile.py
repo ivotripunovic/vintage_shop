@@ -9,14 +9,26 @@ form defends against. Run via loadtests/run_local.sh, or directly:
 
 Without nginx in front (local runs), each simulated user sends its own
 X-Real-IP header, just as nginx would set it in production.
+
+Against the live server, only run visitors (see loadtests/README.md):
+
+    PREVIEW_SECRET=... locust -f loadtests/locustfile.py \
+        --host https://www.example.com Visitor
+
+RealSignup and SpamBot refuse to run against a non-local host unless
+ALLOW_REMOTE_SIGNUPS=1, because they create real subscribers and send real
+confirmation emails.
 """
 
+import os
 import random
 import re
 import time
 import uuid
+from urllib.parse import urlparse
 
 from locust import HttpUser, between, task
+from locust.exception import StopUser
 
 CSRF_RE = re.compile(r'name="csrfmiddlewaretoken" value="([^"]+)"')
 TIMESTAMP_RE = re.compile(r'name="timestamp" value="([^"]+)"')
@@ -25,6 +37,9 @@ TIMESTAMP_RE = re.compile(r'name="timestamp" value="([^"]+)"')
 BOT_IPS = [f"203.0.113.{i}" for i in range(1, 6)]
 
 SIGNUP_PATH = "/waitlist/subscribe/"
+LOCAL_HOSTS = {"127.0.0.1", "localhost", "::1"}
+# Coming-soon bypass secret; lets visitors load the real site on a live server
+PREVIEW_SECRET = os.environ.get("PREVIEW_SECRET", "")
 
 
 def random_ip():
@@ -58,18 +73,45 @@ class _FormUser(HttpUser):
             return csrf.group(1), timestamp.group(1)
 
 
+class _SignupUser(_FormUser):
+    """Base for users that POST signups: blocked on remote hosts by default."""
+
+    abstract = True
+
+    def on_start(self):
+        host = urlparse(self.host).hostname
+        if host not in LOCAL_HOSTS and os.environ.get("ALLOW_REMOTE_SIGNUPS") != "1":
+            # Would create real subscribers and send real confirmation emails
+            raise StopUser()
+        super().on_start()
+
+
 class Visitor(_FormUser):
-    """Reads the page and leaves."""
+    """Reads the home page and the product listing."""
 
     weight = 70
     wait_time = between(1, 3)
 
-    @task
+    def on_start(self):
+        super().on_start()
+        if PREVIEW_SECRET:
+            # Sets the bypass cookie, so later requests see the real site
+            self.client.get(
+                f"/?preview={PREVIEW_SECRET}",
+                headers=self.headers(),
+                name="GET /?preview",
+            )
+
+    @task(3)
     def view_home(self):
         self.client.get("/", headers=self.headers(), name="GET /")
 
+    @task(1)
+    def view_products(self):
+        self.client.get("/products/", headers=self.headers(), name="GET /products/")
 
-class RealSignup(_FormUser):
+
+class RealSignup(_SignupUser):
     """A human: loads the page, types an email for a few seconds, submits."""
 
     weight = 20
@@ -99,7 +141,7 @@ class RealSignup(_FormUser):
                 response.failure(f"real signup got {response.status_code}")
 
 
-class SpamBot(_FormUser):
+class SpamBot(_SignupUser):
     """
     Cycles through spam techniques. Every one must be rejected (302 redirect
     with nothing saved, 403 for missing CSRF, or 429 from nginx).
@@ -109,6 +151,7 @@ class SpamBot(_FormUser):
     wait_time = between(0.1, 0.5)
 
     def on_start(self):
+        super().on_start()
         self.ip = random.choice(BOT_IPS)
 
     def _spam_email(self, domain="gmail.com"):

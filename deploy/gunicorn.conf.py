@@ -36,6 +36,9 @@ keepalive = 5
 
 # Logging — stdout/stderr captured by journald
 accesslog = "-"
+# Client IP (from nginx), request, status, bytes, and time taken in ms, so
+# slow pages show up in `journalctl -u vintage_shop` (see loadtests/slow_requests.py)
+access_log_format = '%({x-real-ip}i)s "%(r)s" %(s)s %(b)s %(M)sms'
 errorlog = "-"
 loglevel = "info"
 

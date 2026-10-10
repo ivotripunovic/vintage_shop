@@ -10,6 +10,9 @@ Usage:
     python loadtests/profile_page.py --live             # real homepage
     python loadtests/profile_page.py --path /products/  # any page (implies --live)
     python loadtests/profile_page.py -n 500 --top 40 --sort tottime
+
+On the production server (uses its real database, read-only GETs):
+    python loadtests/profile_page.py --server --live -n 50
 """
 
 import argparse
@@ -28,6 +31,12 @@ ROOT = Path(__file__).resolve().parent.parent
 def parse_args():
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     parser.add_argument("--live", action="store_true", help="COMING_SOON=False")
+    parser.add_argument(
+        "--server",
+        action="store_true",
+        help="use the configured database and settings from .env as-is "
+        "(for running on the production server) instead of a SQLite copy",
+    )
     parser.add_argument("--path", default="/", help="URL path to profile")
     parser.add_argument("-n", type=int, default=300, help="requests to profile")
     parser.add_argument("--top", type=int, default=30, help="functions to list")
@@ -48,14 +57,14 @@ def parse_args():
 
 
 def setup_django(args, tmp_dir):
-    db_copy = Path(tmp_dir) / "profile.sqlite3"
-    shutil.copy(ROOT / "db.sqlite3", db_copy)
     os.environ.update(
         DJANGO_SETTINGS_MODULE="config.settings",
-        DEBUG="True",
-        SQLITE_PATH=str(db_copy),
         COMING_SOON="False" if args.live or args.path != "/" else "True",
     )
+    if not args.server:
+        db_copy = Path(tmp_dir) / "profile.sqlite3"
+        shutil.copy(ROOT / "db.sqlite3", db_copy)
+        os.environ.update(DEBUG="True", SQLITE_PATH=str(db_copy))
     sys.path.insert(0, str(ROOT))
 
     import django
@@ -65,7 +74,9 @@ def setup_django(args, tmp_dir):
     from django.core.management import call_command
     from django.test.utils import setup_test_environment
 
-    call_command("migrate", verbosity=0)
+    if not args.server:
+        call_command("migrate", verbosity=0)
+    # Allows the test client's "testserver" host and swaps in a dummy mailer
     setup_test_environment()
 
 

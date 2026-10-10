@@ -46,6 +46,50 @@ It prints the time per request, the rough max req/s on one core, every SQL query
 - `--sort cumulative` (default): time including everything a function calls. Read it top-down to find which view, template or tag is expensive.
 - `--sort tottime`: time spent inside the function itself. This finds hot spots such as `reverse()` called hundreds of times.
 
+## Testing the live server
+
+### 1. Load test (run from your own machine, not the VPS)
+Running locust on the VPS would compete with the site for its one CPU, so run it from your laptop:
+
+```bash
+PREVIEW_SECRET=<your COMING_SOON_SECRET> locust -f loadtests/locustfile.py \
+    --host https://www.<domain> Visitor \
+    --headless -u 50 -r 5 -t 2m --csv loadtests/results/live-50
+```
+
+- **`Visitor` only.** `RealSignup` and `SpamBot` refuse to run against a non-local host. They would create real subscribers and send real confirmation emails (hurting your sender reputation), and nginx's per-IP signup limit would block them anyway, since all traffic comes from your single IP. Test signups locally with `run_local.sh`.
+- **`PREVIEW_SECRET`** makes visitors use the coming-soon bypass cookie, so they load the real homepage and `/products/`. Without it they get the coming-soon page.
+- **Ramp up in steps** (`-u 20`, `50`, `100`, …) and stop when p95 goes above ~1 s or errors appear. Run it off-peak, because real visitors share the same CPU.
+- Dropping the trailing `Visitor` and using the web UI (`http://localhost:8089`) lets you watch live charts and stop instantly.
+
+While it runs, watch the server in a second SSH session:
+
+```bash
+htop                                 # CPU at 100% on one core = CPU-bound
+free -m                              # memory headroom on the 1 GB box
+journalctl -u vintage_shop -f        # every request, with its time in ms
+sudo tail -f /var/log/nginx/error.log  # 502/504s or limit_req rejections
+```
+
+### 2. Find slow pages from real traffic
+Gunicorn's access log records how long each request took (`access_log_format` in `deploy/gunicorn.conf.py`). Summarise it on the server:
+
+```bash
+journalctl -u vintage_shop --since "1 hour ago" -o cat | venv/bin/python loadtests/slow_requests.py
+```
+
+This prints p95, median, max, count and 5xx errors per page (IDs collapsed, so `/products/12/` and `/products/57/` are grouped), slowest first. It works for normal traffic too, not just load tests.
+
+### 3. Profile one page on the server
+Once you know which page is slow, see why, using the production PostgreSQL database and settings:
+
+```bash
+cd /srv/django/apps/vintage_shop
+sudo -u django venv/bin/python loadtests/profile_page.py --server --path /products/ -n 30
+```
+
+`--server` uses the database from `.env` as-is (no copy, no migrations). The script only runs GET requests in-process, so it doesn't touch the running site's workers and doesn't write data. Keep `-n` small, because it uses the same CPU as the live site while it runs.
+
 ## Results (2026-10-10, 1 core, 60 s per stage)
 
 ### Coming-soon page + signups
