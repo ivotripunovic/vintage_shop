@@ -62,3 +62,6 @@ target/
 .dmypy.json
 dmypy.json
 .pyre/
+
+# Load test reports
+loadtests/results/

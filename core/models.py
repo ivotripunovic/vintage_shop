@@ -50,9 +50,18 @@ class WaitlistSubscriber(TimeStampedModel):
 
     email = models.EmailField(unique=True)
     ip_address = models.GenericIPAddressField(null=True, blank=True)
+    # Set when the subscriber clicks the link in the confirmation email
+    confirmed_at = models.DateTimeField(null=True, blank=True, db_index=True)
+    confirmation_sent_at = models.DateTimeField(null=True, blank=True)
+    # Set when the launch announcement was sent, so it's never sent twice
+    notified_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         ordering = ["-created_at"]
 
     def __str__(self):
         return self.email
+
+    @property
+    def is_confirmed(self):
+        return self.confirmed_at is not None

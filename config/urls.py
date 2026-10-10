@@ -11,7 +11,7 @@ from django.conf import settings
 from django.conf.urls.static import static
 from allauth.urls import build_provider_urlpatterns
 from . import views
-from core.views import waitlist_subscribe
+from core.views import waitlist_confirm, waitlist_subscribe, waitlist_unsubscribe
 
 urlpatterns = [
     # Admin
@@ -32,6 +32,12 @@ urlpatterns = [
     # Home & Core
     path("", views.home_view, name="home"),
     path("waitlist/subscribe/", waitlist_subscribe, name="waitlist_subscribe"),
+    path("waitlist/confirm/<str:token>/", waitlist_confirm, name="waitlist_confirm"),
+    path(
+        "waitlist/unsubscribe/<str:token>/",
+        waitlist_unsubscribe,
+        name="waitlist_unsubscribe",
+    ),
 ]
 
 # Serve media files in development

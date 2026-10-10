@@ -12,13 +12,22 @@ bind = "unix:/run/vintage_shop/gunicorn.sock"
 # important when PostgreSQL runs on the same 1GB box.
 workers = 2
 
+# 4 threads per worker = 8 concurrent requests for roughly the same memory.
+# Requests spend much of their time waiting (PostgreSQL, DNS checks on
+# waitlist signups), and with sync workers just two slow DNS lookups would
+# block the whole site.
+worker_class = "gthread"
+threads = 4
+
 # Preload for memory savings via copy-on-write on fork
 preload_app = True
 
-# Restart workers after 1000 requests to prevent memory leaks
-# from Pillow/image processing
-max_requests = 1000
-max_requests_jitter = 50
+# Restart workers periodically to cap memory leaks from Pillow/image
+# processing. Large jitter keeps the two workers from restarting at the same
+# moment; at 1000/50 a traffic spike restarted both together every ~25s,
+# dropping queued connections.
+max_requests = 5000
+max_requests_jitter = 1000
 
 # Timeout for slow requests (image uploads)
 timeout = 30

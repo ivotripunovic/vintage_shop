@@ -19,6 +19,8 @@ APScheduler==3.11.3
 
 # Email
 sendgrid==6.12.5
+dnspython==2.9.0
+disposable-email-domains==0.0.278
 
 # Testing
 pytest==9.1.1

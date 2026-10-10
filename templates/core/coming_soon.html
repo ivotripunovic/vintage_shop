@@ -43,11 +43,13 @@
 
             <form method="post" action="{% url 'waitlist_subscribe' %}" class="flex flex-col sm:flex-row gap-3">
                 {% csrf_token %}
+                {# Plain inputs instead of form widgets: widget rendering was ~half the page's render time #}
                 <div class="absolute -left-[9999px]" aria-hidden="true">
-                    {{ waitlist_form.website }}
+                    <input type="text" name="website" tabindex="-1" autocomplete="off">
                 </div>
-                {{ waitlist_form.timestamp }}
-                {{ waitlist_form.email }}
+                <input type="hidden" name="timestamp" value="{{ waitlist_timestamp }}">
+                <input type="email" name="email" required maxlength="320" placeholder="vasa@email.com" autocomplete="email"
+                       class="w-full px-4 py-3 bg-transparent border border-stone-300 text-stone-900 placeholder-stone-400 text-sm focus:outline-none focus:border-stone-900 transition-colors">
                 <button type="submit" class="px-6 py-3 bg-stone-900 text-white text-xs uppercase tracking-widest hover:bg-stone-800 transition-colors whitespace-nowrap">
                     Prijavi se
                 </button>

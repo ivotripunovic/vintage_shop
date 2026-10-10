@@ -90,7 +90,7 @@ if DEBUG:
     DATABASES = {
         "default": {
             "ENGINE": "django.db.backends.sqlite3",
-            "NAME": BASE_DIR / "db.sqlite3",
+            "NAME": config("SQLITE_PATH", default=str(BASE_DIR / "db.sqlite3")),
         }
     }
 else:
@@ -104,6 +104,26 @@ else:
             "PASSWORD": config("DB_PASSWORD", default="password"),
             "HOST": config("DB_HOST", default="localhost"),
             "PORT": config("DB_PORT", default="5432"),
+            # Reuse connections across requests instead of reconnecting each time
+            "CONN_MAX_AGE": config("DB_CONN_MAX_AGE", default=60, cast=int),
+            "CONN_HEALTH_CHECKS": True,
+        }
+    }
+
+# Cache
+# Production uses a file cache so rate-limit counters and DNS lookups are
+# shared between gunicorn workers (locmem is per-process).
+if DEBUG:
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+        }
+    }
+else:
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.filebased.FileBasedCache",
+            "LOCATION": config("CACHE_DIR", default="/var/tmp/vintage_shop_cache"),
         }
     }
 
@@ -267,6 +287,12 @@ os.makedirs(BASE_DIR / "logs", exist_ok=True)
 # Coming Soon Mode
 COMING_SOON = config("COMING_SOON", default=False, cast=bool)
 COMING_SOON_SECRET = config("COMING_SOON_SECRET", default="")
+
+# Waitlist
+# Look up MX records to reject emails on domains that can't receive mail
+WAITLIST_CHECK_DNS = config("WAITLIST_CHECK_DNS", default=True, cast=bool)
+# Send confirmation emails in a background thread so SMTP never blocks a worker
+WAITLIST_EMAIL_ASYNC = config("WAITLIST_EMAIL_ASYNC", default=True, cast=bool)
 
 # Site Configuration
 SITE_DOMAIN = config("SITE_DOMAIN", default="http://localhost:8000")

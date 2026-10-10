@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="sr">
 <head>
+    {% load cache %}
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}{{ SITE_NAME }}{% endblock %}</title>
@@ -255,6 +256,7 @@
     <!-- Row 3: Category navigation — desktop only -->
     <div id="nav-categories" class="border-b border-neutral-200 hidden md:block">
         <div class="max-w-7xl mx-auto px-6 lg:px-8 flex flex-wrap items-center justify-center gap-x-6 gap-y-0">
+            {% cache 300 nav_desktop %}{# cleared on category change, see core/signals.py #}
             {% for category in nav_categories %}
             <div class="relative group">
                 <a href="{% url 'category_products' category.id %}" class="block py-2.5 text-xs uppercase tracking-widest text-stone-500 hover:text-stone-900 transition-colors whitespace-nowrap">
@@ -269,6 +271,7 @@
                 {% endif %}
             </div>
             {% endfor %}
+            {% endcache %}
         </div>
     </div>
 
@@ -283,6 +286,7 @@
                 <div class="px-6 py-4">
 
                     <!-- Kategorije -->
+                    {% cache 300 nav_mobile %}{# cleared on category change, see core/signals.py #}
                     {% if nav_categories %}
                     <p class="text-xs uppercase tracking-widest text-stone-300 mb-2">Kategorije</p>
                     <div class="space-y-1 mb-4">
@@ -300,6 +304,7 @@
                         {% endfor %}
                     </div>
                     {% endif %}
+                    {% endcache %}
 
                     <!-- Prodavnica -->
                     <div class="border-t border-neutral-100 pt-4 mb-4">
@@ -354,6 +359,7 @@
         </div>
 
         <!-- Hidden subcategory data templates -->
+        {% cache 300 nav_subcategories %}{# cleared on category change, see core/signals.py #}
         {% for category in nav_categories %}
         {% if category.children.all %}
         <template id="subcat-{{ category.id }}">
@@ -364,6 +370,7 @@
         </template>
         {% endif %}
         {% endfor %}
+        {% endcache %}
 
     </div>
 

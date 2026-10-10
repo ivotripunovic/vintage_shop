@@ -4,7 +4,7 @@ from django.shortcuts import render
 from .forms import WaitlistSubscribeForm
 
 BYPASS_COOKIE = "vs_preview"
-WAITLIST_PATH = "/waitlist/subscribe/"
+WAITLIST_PREFIX = "/waitlist/"
 
 
 class ComingSoonMiddleware:
@@ -19,9 +19,9 @@ class ComingSoonMiddleware:
         if request.path.startswith("/admin/"):
             return self.get_response(request)
 
-        # Waitlist subscription endpoint always passes through, so visitors
-        # can join the mailing list while the rest of the site is gated
-        if request.path == WAITLIST_PATH:
+        # Waitlist endpoints (subscribe, confirm, unsubscribe) always pass
+        # through, so visitors can join the mailing list while the site is gated
+        if request.path.startswith(WAITLIST_PREFIX):
             return self.get_response(request)
 
         # Staff and superusers pass through
@@ -43,12 +43,9 @@ class ComingSoonMiddleware:
         if secret and request.COOKIES.get(BYPASS_COOKIE) == secret:
             return self.get_response(request)
 
-        waitlist_form = WaitlistSubscribeForm(
-            initial={"timestamp": WaitlistSubscribeForm.generate_timestamp()}
-        )
         return render(
             request,
             "core/coming_soon.html",
-            {"waitlist_form": waitlist_form},
+            {"waitlist_timestamp": WaitlistSubscribeForm.generate_timestamp()},
             status=200,
         )
