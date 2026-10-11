@@ -8,7 +8,7 @@ from django.http import HttpResponse
 from django.shortcuts import redirect
 from django.utils import timezone
 from django.views.decorators.cache import never_cache
-from django.views.decorators.http import require_GET, require_POST
+from django.views.decorators.http import require_POST, require_safe
 
 from .emails import (
     read_confirm_token,
@@ -144,7 +144,7 @@ def waitlist_unsubscribe(request, token):
 
 
 @never_cache
-@require_GET
+@require_safe
 def health(request):
     """
     For uptime monitors: 200 "ok" when Django and PostgreSQL both answer,

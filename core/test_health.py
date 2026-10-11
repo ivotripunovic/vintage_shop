@@ -12,6 +12,14 @@ class HealthTests(TestCase):
         self.assertEqual(response.content, b"ok")
         self.assertIn("no-cache", response["Cache-Control"])
 
+    def test_head_allowed_for_uptime_monitors(self):
+        response = self.client.head(reverse("health"))
+        self.assertEqual(response.status_code, 200)
+
+    def test_post_not_allowed(self):
+        response = self.client.post(reverse("health"))
+        self.assertEqual(response.status_code, 405)
+
     def test_503_when_database_is_down(self):
         with mock.patch("core.views.connection.cursor", side_effect=DatabaseError):
             response = self.client.get(reverse("health"))
