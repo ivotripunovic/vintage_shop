@@ -1,0 +1,3 @@
+# Daily traffic report at https://www.<domain>/stats/ (deploy/goaccess-report.sh).
+# Installed by setup.sh to /etc/cron.d/goaccess-report.
+15 4 * * * root /usr/local/bin/goaccess-report.sh

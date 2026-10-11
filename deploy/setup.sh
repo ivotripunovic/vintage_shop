@@ -34,7 +34,7 @@ apt-get install -y \
     postgresql postgresql-contrib libpq-dev \
     nginx certbot python3-certbot-nginx \
     fail2ban ufw \
-    git curl
+    git curl goaccess
 
 # --- 2. Firewall ---------------------------------------------------------
 
@@ -269,6 +269,23 @@ fi
 HOOKPOST
 chmod 755 /etc/letsencrypt/renewal-hooks/post/10-start-nginx.sh
 
+# --- 15. Daily traffic report (GoAccess) ---------------------------------
+
+echo "==> Installing daily GoAccess report at /stats/..."
+# Copied out of the repo so root never runs a file the app user can edit
+install -m 755 "${APP_DIR}/deploy/goaccess-report.sh" /usr/local/bin/goaccess-report.sh
+install -m 644 "${APP_DIR}/deploy/goaccess.cron" /etc/cron.d/goaccess-report
+
+STATS_PASSWORD=""
+if [ ! -f /etc/nginx/stats.htpasswd ]; then
+    STATS_PASSWORD="$(openssl rand -base64 18)"
+    printf 'admin:%s\n' "$(openssl passwd -apr1 "${STATS_PASSWORD}")" > /etc/nginx/stats.htpasswd
+    chown root:www-data /etc/nginx/stats.htpasswd
+    chmod 640 /etc/nginx/stats.htpasswd
+fi
+# First report now; fails harmlessly while the log is still empty
+/usr/local/bin/goaccess-report.sh || true
+
 # --- Done -----------------------------------------------------------------
 
 echo ""
@@ -294,4 +311,9 @@ echo "     - Fill APPLE_CLIENT_ID, APPLE_KEY_ID, APPLE_SECRET, APPLE_PRIVATE_KEY
 echo "     - Go to Social applications → Add → Apple, move site → Save"
 echo "     - Requires a paid Apple Developer account and HTTPS domain"
 echo "  8. Verify buttons appear on the login page: https://${DOMAIN}/auth/login/"
+echo ""
+echo "Traffic report (updated daily at 04:15): https://www.${DOMAIN}/stats/"
+if [ -n "${STATS_PASSWORD}" ]; then
+    echo "  Login: admin / ${STATS_PASSWORD}   (save it now, it is not shown again)"
+fi
 echo ""
