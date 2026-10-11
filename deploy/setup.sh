@@ -34,7 +34,7 @@ apt-get install -y \
     postgresql postgresql-contrib libpq-dev \
     nginx certbot python3-certbot-nginx \
     fail2ban ufw \
-    git curl goaccess
+    git curl rsync goaccess
 
 # --- 2. Firewall ---------------------------------------------------------
 

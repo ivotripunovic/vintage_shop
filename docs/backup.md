@@ -1,6 +1,6 @@
 # Backup and restore
 
-The PostgreSQL database is backed up every night on the server. Copy the backups to your own PC as well, because a backup on the same disk as the database is lost together with the server.
+The database, the uploaded images and `.env` are backed up every night on the server. Copy the backups to your own PC as well, because a backup on the same disk as the database is lost together with the server.
 
 ---
 
@@ -9,11 +9,11 @@ The PostgreSQL database is backed up every night on the server. Copy the backups
 | Data | Backed up | Where |
 |------|-----------|-------|
 | Database (users, shops, products, orders, waitlist) | Nightly at 03:30, last 14 days kept | `/var/backups/vintage_shop/django-<date>.dump` |
-| Uploaded images (`media/`) | **No**, see [Media files](#media-files) | `/srv/django/apps/vintage_shop/media/` |
+| Uploaded images (`media/`) | Nightly, one mirror (see [Media and .env](#media-and-env)) | `/var/backups/vintage_shop/media/` |
 | Code | Not needed, it's in git | |
-| `.env` (secrets) | **No**, keep a copy in your password manager | `/srv/django/apps/vintage_shop/.env` |
+| `.env` (secrets) | Nightly, latest copy | `/var/backups/vintage_shop/env` |
 
-Each dump is a compressed `pg_dump --format=custom` file. The script checks that the dump is readable before it replaces anything, and emails `ADMINS` (from `.env`) if the backup fails.
+Each dump is a compressed `pg_dump --format=custom` file. The script checks that the dump is readable before it replaces anything, and emails `ADMINS` (from `.env`) if any step fails.
 
 ---
 
@@ -37,6 +37,8 @@ The folder is readable by root and the `backup` group. To let your SSH user copy
 sudo usermod -aG backup <your-ssh-user>
 ```
 
+The `env` file holds the site's secrets (`SECRET_KEY`, database and email passwords). Anyone in the `backup` group can read it, so add only your own account, and keep the copies on your PC on an encrypted disk.
+
 ---
 
 ## Backup by hand
@@ -59,7 +61,7 @@ mkdir -p ~/backups/vintage_shop
 rsync -av <your-ssh-user>@<server>:/var/backups/vintage_shop/ ~/backups/vintage_shop/
 ```
 
-Without `--delete`, your PC keeps every dump, including those the server has already removed, so you get a longer history.
+Without `--delete`, your PC keeps every dump, including those the server has already removed, so you get a longer history. The same goes for images: one deleted on the site disappears from the server's mirror the next night but stays on your PC.
 
 To copy automatically every day, set up an SSH key (`ssh-copy-id <your-ssh-user>@<server>`), run `crontab -e` on your PC and add:
 
@@ -105,7 +107,7 @@ Then restore `/tmp/django-<date>.dump` as above, and delete it from `/tmp` after
 
 1. Run `deploy/setup.sh` as usual. It creates the empty `django` database and user.
 2. Copy the dump to the server and restore it as above.
-3. Restore `.env` secrets (`SECRET_KEY` must match the old one, or every user is logged out and email links stop working) and the `media/` folder.
+3. Restore `.env` and `media/` as in [Media and .env](#media-and-env). `SECRET_KEY` must match the old one, or every user is logged out and links in emails already sent stop working.
 
 ### Only some data
 
@@ -135,23 +137,31 @@ The count should match roughly what the admin shows.
 
 ---
 
-## Media files
+## Media and .env
 
-Uploaded product images are not in the database dump. Before launch there are few of them. Once sellers upload images, pack the folder into the backup folder on the server, so the normal rsync to your PC picks it up:
+Uploaded images are not in the database dump. Each night the script updates `/var/backups/vintage_shop/media/`, a mirror of the site's `media/` folder (only new and changed files are copied). It also saves the latest `.env` as `/var/backups/vintage_shop/env`.
 
-```bash
-sudo tar czf /var/backups/vintage_shop/media-$(date +%F).tar.gz -C /srv/django/apps/vintage_shop media
-sudo chgrp backup /var/backups/vintage_shop/media-$(date +%F).tar.gz
-```
-
-To restore, copy the archive to the server and unpack it:
+Restore images on the server:
 
 ```bash
-sudo tar xzf /var/backups/vintage_shop/media-<date>.tar.gz -C /srv/django/apps/vintage_shop
+sudo rsync -a /var/backups/vintage_shop/media/ /srv/django/apps/vintage_shop/media/
 sudo chown -R django:www-data /srv/django/apps/vintage_shop/media
 ```
 
-The nightly backup does not do this yet.
+Restore `.env` on the server:
+
+```bash
+sudo install -m 640 -o django -g www-data /var/backups/vintage_shop/env /srv/django/apps/vintage_shop/.env
+sudo systemctl restart vintage_shop
+```
+
+From your PC (for example on a new server), copy them up first, then run the commands above with `/tmp/vs-restore/` in place of `/var/backups/vintage_shop/`:
+
+```bash
+rsync -av ~/backups/vintage_shop/media ~/backups/vintage_shop/env <your-ssh-user>@<server>:/tmp/vs-restore/
+```
+
+Delete `/tmp/vs-restore` afterwards, since it contains the secrets.
 
 ---
 
@@ -159,5 +169,5 @@ The nightly backup does not do this yet.
 
 | File | Purpose |
 |------|---------|
-| `deploy/backup-db.sh` | Dumps the database, keeps 14 days, emails `ADMINS` on failure |
+| `deploy/backup-db.sh` | Dumps the database (14 days kept), mirrors `media/`, copies `.env`, emails `ADMINS` on failure |
 | `deploy/backup-db.cron` | Runs it nightly at 03:30 (installed to `/etc/cron.d/backup-db`) |
