@@ -120,6 +120,39 @@ sudo -u postgres psql restore_check     # look around, copy the rows you need
 sudo -u postgres dropdb restore_check
 ```
 
+### On your dev PC
+
+Development normally uses SQLite. With `USE_POSTGRES=True` it uses a local PostgreSQL database instead, so you can run the site on a copy of production data. The dump holds real users' emails, so delete it when you're done.
+
+Once, let your user create databases:
+
+```bash
+sudo -u postgres createuser --superuser $USER
+```
+
+Restore (again whenever you want fresher data):
+
+```bash
+dropdb --if-exists vintage_shop_prod
+createdb vintage_shop_prod
+pg_restore --no-owner --no-privileges -d vintage_shop_prod ~/backups/vintage_shop/django-<date>.dump
+```
+
+Run the site on it. Leaving `DB_HOST` empty connects through the local socket as your own user, so no password is needed:
+
+```bash
+export USE_POSTGRES=True DB_NAME=vintage_shop_prod DB_USER=$USER DB_HOST=
+python manage.py migrate        # only if your local code has newer migrations
+python manage.py createsuperuser  # production passwords are not known to you
+python manage.py runserver
+```
+
+`DEBUG` stays on and email still goes to the console, so nobody gets an email from your PC. To show product images, copy `~/backups/vintage_shop/media/` into the project's `media/` folder.
+
+Run `pytest` in a terminal without these variables. With `USE_POSTGRES=True` set, the tests would use PostgreSQL too.
+
+`pg_restore` must be the same major version as the server's PostgreSQL, or newer. Your PC has 15; check the server with `psql --version`. If the server is newer, install the matching `postgresql-client-<version>` from the [PostgreSQL apt repository](https://www.postgresql.org/download/linux/debian/).
+
 ---
 
 ## Test that backups work

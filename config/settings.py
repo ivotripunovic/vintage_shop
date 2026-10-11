@@ -85,8 +85,10 @@ TEMPLATES = [
 WSGI_APPLICATION = "config.wsgi.application"
 
 # Database
-# Use SQLite for development, PostgreSQL for production
-if DEBUG:
+# Use SQLite for development, PostgreSQL for production. USE_POSTGRES=True
+# runs development against PostgreSQL too, e.g. a restored production backup
+# (see docs/backup.md).
+if DEBUG and not config("USE_POSTGRES", default=False, cast=bool):
     DATABASES = {
         "default": {
             "ENGINE": "django.db.backends.sqlite3",
