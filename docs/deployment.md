@@ -146,6 +146,7 @@ sudo chmod +x /var/repo/vintage_shop.git/hooks/post-receive
 | `deploy/gunicorn.conf.py` | Gunicorn configuration |
 | `deploy/nginx.conf` | Nginx site configuration |
 | `deploy/vintage_shop.service` | Systemd service unit |
+| `deploy/backup-db.sh` | Nightly database backup, see [backup.md](backup.md) |
 
 
 ## Deploying manualy
