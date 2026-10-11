@@ -106,6 +106,8 @@ DB_PORT=5432
 
 SENDGRID_API_KEY=
 DEFAULT_FROM_EMAIL=noreply@${DOMAIN}
+# Emailed a traceback on every site error (comma-separated)
+ADMINS=
 
 CSRF_TRUSTED_ORIGINS=https://www.${DOMAIN},https://${DOMAIN}
 SECURE_SSL_REDIRECT=True
@@ -286,6 +288,13 @@ fi
 # First report now; fails harmlessly while the log is still empty
 /usr/local/bin/goaccess-report.sh || true
 
+# --- 16. Nightly database backup -----------------------------------------
+
+echo "==> Installing nightly database backup..."
+install -m 755 "${APP_DIR}/deploy/backup-db.sh" /usr/local/bin/backup-db.sh
+install -m 644 "${APP_DIR}/deploy/backup-db.cron" /etc/cron.d/backup-db
+/usr/local/bin/backup-db.sh
+
 # --- Done -----------------------------------------------------------------
 
 echo ""
@@ -299,18 +308,21 @@ echo "  2. Create a superuser:"
 echo "     sudo -u ${APP_USER} ${APP_DIR}/venv/bin/python ${APP_DIR}/manage.py createsuperuser"
 echo "  3. Verify the site is running: curl -I https://www.${DOMAIN}"
 echo "  4. Check service status: systemctl status vintage_shop"
+echo "  5. Set ADMINS=you@example.com in .env to get an email for every site error"
+echo "  6. Add https://www.${DOMAIN}/health/ to an uptime monitor (e.g. UptimeRobot)"
+echo "  7. Copy /var/backups/vintage_shop off the server (VPS snapshots or rclone)"
 echo ""
 echo "Social login setup (https://${DOMAIN}/admin/):"
-echo "  5. Google login:"
+echo "  8. Google login:"
 echo "     - Go to Social applications → Add → Google"
 echo "     - Paste Client ID and Secret Key from Google Cloud Console"
 echo "     - Move '${DOMAIN}' from Available to Chosen sites → Save"
-echo "  6. Facebook login (same steps, provider = Facebook)"
-echo "  7. Apple login:"
+echo "  9. Facebook login (same steps, provider = Facebook)"
+echo "  10. Apple login:"
 echo "     - Fill APPLE_CLIENT_ID, APPLE_KEY_ID, APPLE_SECRET, APPLE_PRIVATE_KEY in .env"
 echo "     - Go to Social applications → Add → Apple, move site → Save"
 echo "     - Requires a paid Apple Developer account and HTTPS domain"
-echo "  8. Verify buttons appear on the login page: https://${DOMAIN}/auth/login/"
+echo "  11. Verify buttons appear on the login page: https://${DOMAIN}/auth/login/"
 echo ""
 echo "Traffic report (updated daily at 04:15): https://www.${DOMAIN}/stats/"
 if [ -n "${STATS_PASSWORD}" ]; then

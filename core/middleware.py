@@ -5,6 +5,7 @@ from .forms import WaitlistSubscribeForm
 
 BYPASS_COOKIE = "vs_preview"
 WAITLIST_PREFIX = "/waitlist/"
+HEALTH_PATH = "/health/"
 
 
 class ComingSoonMiddleware:
@@ -15,8 +16,8 @@ class ComingSoonMiddleware:
         if not getattr(settings, "COMING_SOON", False):
             return self.get_response(request)
 
-        # Admin always passes through
-        if request.path.startswith("/admin/"):
+        # Admin and the uptime monitor's health check always pass through
+        if request.path.startswith("/admin/") or request.path == HEALTH_PATH:
             return self.get_response(request)
 
         # Waitlist endpoints (subscribe, confirm, unsubscribe) always pass

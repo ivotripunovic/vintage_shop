@@ -3,9 +3,12 @@ import datetime
 from django.contrib import messages
 from django.core.cache import cache
 from django.core.signing import BadSignature
+from django.db import connection
+from django.http import HttpResponse
 from django.shortcuts import redirect
 from django.utils import timezone
-from django.views.decorators.http import require_POST
+from django.views.decorators.cache import never_cache
+from django.views.decorators.http import require_GET, require_POST
 
 from .emails import (
     read_confirm_token,
@@ -138,3 +141,20 @@ def waitlist_unsubscribe(request, token):
     WaitlistSubscriber.objects.filter(email=email).delete()
     messages.success(request, "Odjavljeni ste i nećete više dobijati poruke.")
     return redirect("home")
+
+
+@never_cache
+@require_GET
+def health(request):
+    """
+    For uptime monitors: 200 "ok" when Django and PostgreSQL both answer,
+    503 when the database doesn't (gunicorn being down shows up as a 502).
+    """
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT 1")
+    except Exception:
+        return HttpResponse(
+            "database unavailable", status=503, content_type="text/plain"
+        )
+    return HttpResponse("ok", content_type="text/plain")

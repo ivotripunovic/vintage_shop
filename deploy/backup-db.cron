@@ -1,0 +1,3 @@
+# Nightly database backup to /var/backups/vintage_shop (deploy/backup-db.sh).
+# Installed by setup.sh to /etc/cron.d/backup-db.
+30 3 * * * root /usr/local/bin/backup-db.sh

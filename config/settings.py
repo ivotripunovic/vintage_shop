@@ -235,10 +235,18 @@ EMAIL_HOST_USER = config("EMAIL_HOST_USER", default="")
 EMAIL_HOST_PASSWORD = config("EMAIL_HOST_PASSWORD", default="")
 DEFAULT_FROM_EMAIL = config("DEFAULT_FROM_EMAIL", default="noreply@vintageshop.local")
 
+# Who gets an email with the traceback when the site has an error (500s,
+# failed confirmation emails). Comma-separated: ADMINS=you@example.com,other@x.com
+ADMINS = [(email, email) for email in config("ADMINS", default="", cast=Csv())]
+SERVER_EMAIL = config("SERVER_EMAIL", default=DEFAULT_FROM_EMAIL)
+
 # Logging
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
+    "filters": {
+        "require_debug_false": {"()": "django.utils.log.RequireDebugFalse"},
+    },
     "formatters": {
         "verbose": {
             "format": "{levelname} {asctime} {name} {process:d} {message}",
@@ -259,6 +267,12 @@ LOGGING = {
             "formatter": "verbose",
             "level": "INFO",
         },
+        # Emails the traceback to ADMINS on every ERROR (500s, logger.exception)
+        "mail_admins": {
+            "class": "django.utils.log.AdminEmailHandler",
+            "filters": ["require_debug_false"],
+            "level": "ERROR",
+        },
         "error_file": {
             "class": "logging.handlers.RotatingFileHandler",
             "filename": str(BASE_DIR / "logs" / "error.log"),
@@ -269,10 +283,15 @@ LOGGING = {
         },
     },
     "root": {
-        "handlers": ["console"] if DEBUG else ["app_file", "error_file"],
+        "handlers": (
+            ["console"] if DEBUG else ["app_file", "error_file", "mail_admins"]
+        ),
         "level": "DEBUG" if DEBUG else "INFO",
     },
     "loggers": {
+        # Configured here so Django's default handlers are replaced and errors
+        # reach mail_admins once, through the root logger
+        "django": {"handlers": [], "level": "INFO"},
         "django.security": {
             "handlers": ["console"] if DEBUG else ["error_file"],
             "level": "ERROR",
