@@ -16,10 +16,12 @@ Against the live server, only run visitors (see loadtests/README.md):
         --host https://www.example.com Visitor
 
 RealSignup and SpamBot refuse to run against a non-local host unless
-ALLOW_REMOTE_SIGNUPS=1, because they create real subscribers and send real
-confirmation emails.
+ALLOW_REMOTE_SIGNUPS=1 and LOADTEST_EMAIL_DOMAIN are set, because they create
+real subscribers and send real confirmation emails. LOADTEST_EMAIL_DOMAIN must
+be a domain you own (with MX records, so it passes the DNS check).
 """
 
+import logging
 import os
 import random
 import re
@@ -40,6 +42,12 @@ SIGNUP_PATH = "/waitlist/subscribe/"
 LOCAL_HOSTS = {"127.0.0.1", "localhost", "::1"}
 # Coming-soon bypass secret; lets visitors load the real site on a live server
 PREVIEW_SECRET = os.environ.get("PREVIEW_SECRET", "")
+# Domain for addresses that pass every check; confirmation emails go here
+EMAIL_DOMAIN = os.environ.get("LOADTEST_EMAIL_DOMAIN", "")
+
+
+def valid_email(prefix):
+    return f"{prefix}+{uuid.uuid4().hex[:12]}@{EMAIL_DOMAIN or 'gmail.com'}"
 
 
 def random_ip():
@@ -80,8 +88,16 @@ class _SignupUser(_FormUser):
 
     def on_start(self):
         host = urlparse(self.host).hostname
-        if host not in LOCAL_HOSTS and os.environ.get("ALLOW_REMOTE_SIGNUPS") != "1":
-            # Would create real subscribers and send real confirmation emails
+        if host not in LOCAL_HOSTS and (
+            os.environ.get("ALLOW_REMOTE_SIGNUPS") != "1" or not EMAIL_DOMAIN
+        ):
+            # Would create real subscribers and email whoever owns gmail's
+            # "loadtest" inbox
+            logging.warning(
+                "%s disabled for remote host: set ALLOW_REMOTE_SIGNUPS=1 and "
+                "LOADTEST_EMAIL_DOMAIN=<a domain you own>",
+                type(self).__name__,
+            )
             raise StopUser()
         super().on_start()
 
@@ -127,7 +143,7 @@ class RealSignup(_SignupUser):
             "csrfmiddlewaretoken": csrf,
             "timestamp": timestamp,
             "website": "",
-            "email": f"loadtest+{uuid.uuid4().hex[:12]}@gmail.com",
+            "email": valid_email("loadtest"),
         }
         with self.client.post(
             SIGNUP_PATH,
@@ -154,7 +170,9 @@ class SpamBot(_SignupUser):
         super().on_start()
         self.ip = random.choice(BOT_IPS)
 
-    def _spam_email(self, domain="gmail.com"):
+    def _spam_email(self, domain=None):
+        if domain is None:
+            return valid_email("spam")
         return f"spam+{uuid.uuid4().hex[:12]}@{domain}"
 
     def _post(self, name, data, headers=None):
@@ -237,7 +255,7 @@ class SpamBot(_SignupUser):
     def spoofed_forwarded_for(self):
         """Human-like, plus a fake X-Forwarded-For to dodge the per-IP limit.
         Must still be counted against the bot's real IP."""
-        data = self._form(f"smartbot+{uuid.uuid4().hex[:12]}@gmail.com", wait=3.5)
+        data = self._form(valid_email("smartbot"), wait=3.5)
         if data:
             headers = dict(self.headers(), **{"X-Forwarded-For": random_ip()})
             self._post("spoofed X-Forwarded-For", data, headers)
@@ -246,6 +264,6 @@ class SpamBot(_SignupUser):
     def smart_bot(self):
         """Behaves like a human with a real-looking address; only IP limits and
         the confirmation link stop it, so a few unconfirmed rows can appear."""
-        data = self._form(f"smartbot+{uuid.uuid4().hex[:12]}@gmail.com", wait=3.5)
+        data = self._form(valid_email("smartbot"), wait=3.5)
         if data:
             self._post("smart bot", data)

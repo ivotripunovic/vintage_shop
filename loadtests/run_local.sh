@@ -40,7 +40,7 @@ export WAITLIST_CHECK_DNS=True
 
 cp db.sqlite3 "$DB_COPY"
 python manage.py migrate --noinput >/dev/null
-python manage.py shell -c "from core.models import WaitlistSubscriber as W; W.objects.filter(email__regex=r'^(loadtest|spam|smartbot)\+').delete()"
+CLEANUP=1 python manage.py shell < loadtests/signup_report.py >/dev/null
 
 echo "Starting gunicorn on 127.0.0.1:${PORT} (1 CPU core, deploy/gunicorn.conf.py)..."
 taskset -c 0 gunicorn config.wsgi:application \
@@ -70,20 +70,7 @@ done
 
 echo
 echo "=== Spam check (from the load-test database) ==="
-python manage.py shell -c "
-from django.db.models import Count
-from core.models import WaitlistSubscriber as W
-real = W.objects.filter(email__startswith='loadtest+').count()
-spam = W.objects.filter(email__startswith='spam+').count()
-smart = W.objects.filter(email__startswith='smartbot+')
-per_ip = dict(smart.values_list('ip_address').annotate(n=Count('id')))
-spoofed = [ip for ip in per_ip if not ip.startswith('203.0.113.')]
-print(f'Real signups saved:                     {real}')
-print(f'Spam saved (must be 0):                 {spam}')
-print(f'Smart-bot rows (unconfirmed, never emailed): {smart.count()}')
-print(f'  per bot IP (must be <= 5 each):       {per_ip}')
-print(f'  stored under a spoofed IP (must be 0): {len(spoofed)}')
-"
+python manage.py shell < loadtests/signup_report.py
 
 echo
 echo "Reports: ${RESULTS}/stage-*.html (open in a browser)"

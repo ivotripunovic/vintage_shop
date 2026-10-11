@@ -71,6 +71,26 @@ journalctl -u vintage_shop -f        # every request, with its time in ms
 sudo tail -f /var/log/nginx/error.log  # 502/504s or limit_req rejections
 ```
 
+### Signups with valid and invalid emails (test server only)
+Never run this against production. On a test server (e.g. `vintage.pufna.com`):
+
+1. **Stop real emails** for the run. In the test server's `.env`, set `EMAIL_BACKEND=django.core.mail.backends.dummy.EmailBackend`, then `sudo systemctl restart vintage_shop`.
+2. **Run all user types from your machine**, with addresses on a domain you own (it needs MX records to pass the DNS check; `pufna.com` has them):
+   ```bash
+   ALLOW_REMOTE_SIGNUPS=1 LOADTEST_EMAIL_DOMAIN=pufna.com \
+   locust -f loadtests/locustfile.py --host https://vintage.pufna.com \
+       --headless -u 50 -r 5 -t 2m --csv loadtests/results/test-server
+   ```
+3. **Check and clean up** on the server:
+   ```bash
+   cd /srv/django/apps/vintage_shop
+   venv/bin/python manage.py shell < loadtests/signup_report.py            # must say PASS
+   CLEANUP=1 venv/bin/python manage.py shell < loadtests/signup_report.py  # delete test rows
+   ```
+4. Restore `EMAIL_BACKEND` in `.env` and restart.
+
+**Expect real signups to be rate limited.** Every simulated user comes from your one public IP, so nginx (10/min) and Django (20 attempts/hour, 5 new signups/day per IP) block most of them with 429s or "Previše pokušaja". In this run, `POST signup (real)` failures are the protection working, not a bug. The run verifies that floods are rejected cheaply, pages stay fast while signups are hammered, and no spam is saved. To also measure signup *throughput*, use `run_local.sh`, or run locust from several machines.
+
 ### 2. Find slow pages from real traffic
 Gunicorn's access log records how long each request took (`access_log_format` in `deploy/gunicorn.conf.py`). Summarise it on the server:
 
