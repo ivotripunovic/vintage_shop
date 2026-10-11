@@ -65,7 +65,7 @@ vintage_shop/
 ├── .env.example
 ├── .gitignore
 ├── README.md
-├── TECH_DECISIONS.md
+├── docs/             # Project documentation
 ├── config/           # Django settings
 ├── apps/             # Django applications
 │   ├── users/
@@ -124,10 +124,9 @@ python manage.py shell
 
 ## Documentation
 
-- [Product Requirements Document](../secondhand-marketplace-prd.md)
-- [Implementation Plan](../secondhand-marketplace-implementation-plan.md)
-- [Progress Tracker](../secondhand-marketplace-progress.md)
-- [Tech Decisions](./TECH_DECISIONS.md)
+- [Product Requirements Document](docs/product/prd.md)
+- [Progress Tracker](docs/product/progress.md)
+- [Tech Decisions](docs/product/tech-decisions.md)
 
 ---
 
