@@ -1,11 +1,13 @@
 import datetime
 
+from django.conf import settings
 from django.contrib import messages
 from django.core.cache import cache
 from django.core.signing import BadSignature
 from django.db import connection
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
 from django.shortcuts import redirect
+from django.templatetags.static import static
 from django.utils import timezone
 from django.views.decorators.cache import never_cache
 from django.views.decorators.http import require_POST, require_safe
@@ -158,3 +160,33 @@ def health(request):
             "database unavailable", status=503, content_type="text/plain"
         )
     return HttpResponse("ok", content_type="text/plain")
+
+
+@require_safe
+def manifest(request):
+    """Web app manifest, so phones can add the site to the home screen."""
+    icons = [
+        ("icons/icon-192.png", "192x192", "any"),
+        ("icons/icon-512.png", "512x512", "any"),
+        ("icons/icon-maskable-512.png", "512x512", "maskable"),
+    ]
+    data = {
+        "name": settings.SITE_NAME,
+        "short_name": settings.SITE_NAME,
+        "lang": "sr",
+        "start_url": "/",
+        "scope": "/",
+        "display": "standalone",
+        "background_color": "#ffffff",
+        "theme_color": "#ffffff",
+        "icons": [
+            {
+                "src": static(path),
+                "sizes": sizes,
+                "type": "image/png",
+                "purpose": purpose,
+            }
+            for path, sizes, purpose in icons
+        ],
+    }
+    return JsonResponse(data, content_type="application/manifest+json")

@@ -14,6 +14,7 @@ from allauth.urls import build_provider_urlpatterns
 from . import views
 from core.views import (
     health,
+    manifest,
     waitlist_confirm,
     waitlist_subscribe,
     waitlist_unsubscribe,
@@ -41,6 +42,7 @@ urlpatterns = [
         "favicon.ico",
         RedirectView.as_view(url=settings.STATIC_URL + "favicon.ico", permanent=True),
     ),
+    path("manifest.webmanifest", manifest, name="manifest"),
     path("health/", health, name="health"),
     path("waitlist/subscribe/", waitlist_subscribe, name="waitlist_subscribe"),
     path("waitlist/confirm/<str:token>/", waitlist_confirm, name="waitlist_confirm"),

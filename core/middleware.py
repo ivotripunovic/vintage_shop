@@ -6,6 +6,7 @@ from .forms import WaitlistSubscribeForm
 BYPASS_COOKIE = "vs_preview"
 WAITLIST_PREFIX = "/waitlist/"
 HEALTH_PATH = "/health/"
+MANIFEST_PATH = "/manifest.webmanifest"
 
 
 class ComingSoonMiddleware:
@@ -16,11 +17,11 @@ class ComingSoonMiddleware:
         if not getattr(settings, "COMING_SOON", False):
             return self.get_response(request)
 
-        # Admin, static/media assets, the favicon, and the uptime monitor's
-        # health check always pass through
+        # Admin, static/media assets, the favicon, the web app manifest, and
+        # the uptime monitor's health check always pass through
         if request.path.startswith(
             ("/admin/", "/static/", "/media/")
-        ) or request.path in (HEALTH_PATH, "/favicon.ico"):
+        ) or request.path in (HEALTH_PATH, "/favicon.ico", MANIFEST_PATH):
             return self.get_response(request)
 
         # Waitlist endpoints (subscribe, confirm, unsubscribe) always pass

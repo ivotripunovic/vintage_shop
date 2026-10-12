@@ -5,7 +5,12 @@
     {% load static %}
     <meta charset="UTF-8">
     <link rel="icon" href="{% static 'favicon.ico' %}" sizes="any">
-    <link rel="apple-touch-icon" href="{% static 'favicon.ico' %}">
+    <link rel="apple-touch-icon" href="{% static 'icons/apple-touch-icon-180.png' %}">
+    <link rel="manifest" href="{% url 'manifest' %}">
+    <meta name="theme-color" content="#ffffff">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="{{ SITE_NAME }}">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}{{ SITE_NAME }}{% endblock %}</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
