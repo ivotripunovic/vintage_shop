@@ -4,6 +4,7 @@ Seller profiles and subscription models.
 
 from django.db import models
 from django.utils import timezone
+
 from core.models import TimeStampedModel
 
 
@@ -26,9 +27,7 @@ class Seller(TimeStampedModel):
     shop_description = models.TextField(blank=True)
     shop_image = models.ImageField(upload_to="shop_images/", blank=True, null=True)
     location = models.CharField(max_length=255, blank=True)
-    status = models.CharField(
-        max_length=20, choices=STATUS_CHOICES, default="active"
-    )
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="active")
     is_verified = models.BooleanField(default=False)
 
     # Bank details (stored securely - consider encryption in production)
@@ -82,9 +81,7 @@ class SellerSubscription(TimeStampedModel):
     plan_type = models.CharField(max_length=50, default="monthly")
     start_date = models.DateField()
     end_date = models.DateField(null=True, blank=True)
-    status = models.CharField(
-        max_length=20, choices=STATUS_CHOICES, default="active"
-    )
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="active")
     amount = models.DecimalField(max_digits=10, decimal_places=2, default=9.99)
     renewal_date = models.DateField()
 

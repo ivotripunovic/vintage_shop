@@ -1,18 +1,18 @@
 import random
+from datetime import timedelta
 from decimal import Decimal
 from pathlib import Path
 
 from django.conf import settings
 from django.core.files import File
 from django.core.management.base import BaseCommand
-from django.utils.text import slugify
 from django.utils import timezone
-from datetime import timedelta
+from django.utils.text import slugify
 
-from users.models import User
-from sellers.models import Seller, SellerSubscription
+from products.management.seed_data import CONDITIONS, PRODUCTS, SELLERS
 from products.models import Product, ProductCategory, ProductCondition, ProductImage
-from products.management.seed_data import CONDITIONS, SELLERS, PRODUCTS
+from sellers.models import Seller, SellerSubscription
+from users.models import User
 
 SEED_IMAGES_DIR = Path(settings.BASE_DIR) / "seed_data" / "product_images"
 
@@ -35,19 +35,25 @@ class Command(BaseCommand):
             Seller.objects.filter(shop_name__in=seed_shop_names).delete()
             User.objects.filter(email__endswith="@seed.vs").delete()
             User.objects.filter(email__regex=r"^seller\d+@example\.com$").delete()
-            self.stdout.write(self.style.WARNING("Cleared products, conditions and seed sellers."))
+            self.stdout.write(
+                self.style.WARNING("Cleared products, conditions and seed sellers.")
+            )
 
         if not ProductCategory.objects.filter(parent__isnull=False).exists():
-            self.stdout.write(self.style.ERROR(
-                "No subcategories found. Run `python manage.py seed_categories` first."
-            ))
+            self.stdout.write(
+                self.style.ERROR(
+                    "No subcategories found. Run `python manage.py seed_categories` first."
+                )
+            )
             return
 
         images_available = SEED_IMAGES_DIR.exists()
         if not images_available:
-            self.stdout.write(self.style.WARNING(
-                "No images found. Run `python manage.py download_seed_images --key <KEY>` first."
-            ))
+            self.stdout.write(
+                self.style.WARNING(
+                    "No images found. Run `python manage.py download_seed_images --key <KEY>` first."
+                )
+            )
 
         conditions = self._seed_conditions()
         sellers = self._seed_sellers()
@@ -64,7 +70,9 @@ class Command(BaseCommand):
             conditions[data["name"]] = obj
             if is_new:
                 created += 1
-        self.stdout.write(f"Stanja: {created} kreirana, {len(CONDITIONS) - created} već postoje.")
+        self.stdout.write(
+            f"Stanja: {created} kreirana, {len(CONDITIONS) - created} već postoje."
+        )
         return conditions
 
     def _seed_sellers(self):
@@ -114,7 +122,9 @@ class Command(BaseCommand):
             if seller_created:
                 created += 1
 
-        self.stdout.write(f"Prodavci: {created} kreirani, {len(SELLERS) - created} već postoje.")
+        self.stdout.write(
+            f"Prodavci: {created} kreirani, {len(SELLERS) - created} već postoje."
+        )
         return sellers
 
     def _seed_products(self, sellers, conditions, attach_images=False):
@@ -126,9 +136,11 @@ class Command(BaseCommand):
             try:
                 category = ProductCategory.objects.get(slug=slug)
             except ProductCategory.DoesNotExist:
-                self.stdout.write(self.style.WARNING(
-                    f"  Kategorija sa slug '{slug}' nije pronađena, preskačem."
-                ))
+                self.stdout.write(
+                    self.style.WARNING(
+                        f"  Kategorija sa slug '{slug}' nije pronađena, preskačem."
+                    )
+                )
                 skipped_missing += len(templates)
                 continue
 

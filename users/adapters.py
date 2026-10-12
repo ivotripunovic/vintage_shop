@@ -1,7 +1,6 @@
-from django.utils import timezone
-
 from allauth.account.adapter import DefaultAccountAdapter
 from allauth.socialaccount.adapter import DefaultSocialAccountAdapter
+from django.utils import timezone
 
 
 class AccountAdapter(DefaultAccountAdapter):
@@ -24,6 +23,7 @@ class AccountAdapter(DefaultAccountAdapter):
 
     def get_signup_redirect_url(self, request):
         from django.urls import reverse
+
         return reverse("social-signup-complete")
 
     def get_login_redirect_url(self, request):

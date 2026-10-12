@@ -4,18 +4,19 @@ from datetime import timedelta
 
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
-from django.core.mail import send_mail, BadHeaderError
-from django.db.models import Q, Count, OuterRef, Subquery
-from django.http import JsonResponse, HttpResponseForbidden, HttpResponseBadRequest
+from django.core.mail import BadHeaderError, send_mail
+from django.db.models import Count, OuterRef, Q, Subquery
+from django.http import HttpResponseBadRequest, HttpResponseForbidden, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
-from sellers.models import Seller
 from products.models import Product
-from .models import Conversation, Message
+from sellers.models import Seller
+
 from .forms import MessageForm
+from .models import Conversation, Message
 
 logger = logging.getLogger(__name__)
 
@@ -32,7 +33,10 @@ def _assert_participant(conversation, user):
 def _notify_recipient_by_email(conversation, sender, message):
     """Email the other participant about a new message, if not on cooldown."""
     now = timezone.now()
-    if conversation.last_emailed_at and now - conversation.last_emailed_at < EMAIL_NOTIFY_COOLDOWN:
+    if (
+        conversation.last_emailed_at
+        and now - conversation.last_emailed_at < EMAIL_NOTIFY_COOLDOWN
+    ):
         return
 
     recipient = conversation.other_participant(sender)
@@ -69,9 +73,13 @@ Tim {site_name}
         conversation.last_emailed_at = now
         conversation.save(update_fields=["last_emailed_at"])
     except BadHeaderError:
-        logger.error("Invalid header in new-message email for conversation %s", conversation.pk)
+        logger.error(
+            "Invalid header in new-message email for conversation %s", conversation.pk
+        )
     except Exception:
-        logger.exception("Failed to send new-message email for conversation %s", conversation.pk)
+        logger.exception(
+            "Failed to send new-message email for conversation %s", conversation.pk
+        )
 
 
 @login_required
@@ -86,7 +94,9 @@ def chat_inbox(request):
     # Annotate unread count per conversation for current user
     conv_list = []
     for conv in conversations:
-        unread = conv.messages.filter(is_read=False).exclude(sender=request.user).count()
+        unread = (
+            conv.messages.filter(is_read=False).exclude(sender=request.user).count()
+        )
         last_msg = conv.messages.order_by("-created_at").first()
         conv_list.append((conv, unread, last_msg))
 
@@ -103,18 +113,24 @@ def chat_detail(request, pk):
         return HttpResponseForbidden()
 
     # Mark incoming messages as read
-    conversation.messages.filter(is_read=False).exclude(sender=request.user).update(is_read=True)
+    conversation.messages.filter(is_read=False).exclude(sender=request.user).update(
+        is_read=True
+    )
 
     messages_qs = list(
         conversation.messages.select_related("sender").order_by("created_at")[:100]
     )
     form = MessageForm()
-    return render(request, "chat/detail.html", {
-        "conversation": conversation,
-        "messages": messages_qs,
-        "form": form,
-        "last_id": messages_qs[-1].id if messages_qs else 0,
-    })
+    return render(
+        request,
+        "chat/detail.html",
+        {
+            "conversation": conversation,
+            "messages": messages_qs,
+            "form": form,
+            "last_id": messages_qs[-1].id if messages_qs else 0,
+        },
+    )
 
 
 @login_required
@@ -139,15 +155,17 @@ def chat_send(request, pk):
 
     _notify_recipient_by_email(conversation, request.user, msg)
 
-    return JsonResponse({
-        "ok": True,
-        "message": {
-            "id": msg.id,
-            "body": msg.body,
-            "created_at": msg.created_at.isoformat(),
-            "is_mine": True,
-        },
-    })
+    return JsonResponse(
+        {
+            "ok": True,
+            "message": {
+                "id": msg.id,
+                "body": msg.body,
+                "created_at": msg.created_at.isoformat(),
+                "is_mine": True,
+            },
+        }
+    )
 
 
 @login_required
@@ -162,8 +180,7 @@ def chat_poll(request, pk):
         after = 0
 
     new_messages = (
-        conversation.messages
-        .filter(id__gt=after)
+        conversation.messages.filter(id__gt=after)
         .select_related("sender")
         .order_by("created_at")
     )
@@ -183,10 +200,11 @@ def chat_poll(request, pk):
     ]
 
     unread_total = (
-        Message.objects
-        .filter(conversation__in=Conversation.objects.filter(
-            Q(buyer=request.user) | Q(seller__user=request.user)
-        ))
+        Message.objects.filter(
+            conversation__in=Conversation.objects.filter(
+                Q(buyer=request.user) | Q(seller__user=request.user)
+            )
+        )
         .filter(is_read=False)
         .exclude(sender=request.user)
         .count()
@@ -227,10 +245,11 @@ def chat_start(request):
 @login_required
 def chat_unread(request):
     count = (
-        Message.objects
-        .filter(conversation__in=Conversation.objects.filter(
-            Q(buyer=request.user) | Q(seller__user=request.user)
-        ))
+        Message.objects.filter(
+            conversation__in=Conversation.objects.filter(
+                Q(buyer=request.user) | Q(seller__user=request.user)
+            )
+        )
         .filter(is_read=False)
         .exclude(sender=request.user)
         .count()

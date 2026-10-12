@@ -4,28 +4,30 @@ User authentication views (registration, login, logout, password reset).
 
 import logging
 
-from django.shortcuts import render, redirect
+from django.conf import settings
+from django.contrib import messages
 from django.contrib.auth import login, logout
 from django.contrib.auth.decorators import login_required
-from django.contrib import messages
-from django.views.decorators.http import require_http_methods
-from django.views.decorators.csrf import csrf_protect
+from django.core.mail import BadHeaderError, send_mail
+from django.shortcuts import redirect, render
 from django.utils.crypto import get_random_string
-from django.core.mail import send_mail, BadHeaderError
-from django.conf import settings
+from django.views.decorators.csrf import csrf_protect
+from django.views.decorators.http import require_http_methods
 
 logger = logging.getLogger(__name__)
 
-from .models import User, VerificationToken
+from datetime import timedelta
+
+from django.utils import timezone
+
 from .forms import (
-    UserRegistrationForm,
     UserLoginForm,
+    UserPasswordChangeForm,
     UserPasswordResetForm,
     UserPasswordSetForm,
-    UserPasswordChangeForm,
+    UserRegistrationForm,
 )
-from django.utils import timezone
-from datetime import timedelta
+from .models import User, VerificationToken
 
 
 @csrf_protect
@@ -33,36 +35,36 @@ from datetime import timedelta
 def register_view(request):
     """Register a new user (buyer or seller)."""
     if request.user.is_authenticated:
-        return redirect('home')
-    
-    if request.method == 'POST':
+        return redirect("home")
+
+    if request.method == "POST":
         form = UserRegistrationForm(request.POST)
         if form.is_valid():
             user = form.save(commit=False)
             # Set email as not verified initially
             user.email_verified = False
             user.save()
-            
+
             # Send verification email
             send_verification_email(user)
-            
+
             messages.success(
                 request,
-                f'Nalog je kreiran! Proverite e-poštu na adresi {user.email} da biste verifikovali nalog.'
+                f"Nalog je kreiran! Proverite e-poštu na adresi {user.email} da biste verifikovali nalog.",
             )
-            return redirect('login')
+            return redirect("login")
         else:
             for errors in form.errors.values():
                 for error in errors:
                     messages.error(request, error)
     else:
         form = UserRegistrationForm()
-    
+
     context = {
-        'form': form,
-        'page_title': 'Register',
+        "form": form,
+        "page_title": "Register",
     }
-    return render(request, 'users/register.html', context)
+    return render(request, "users/register.html", context)
 
 
 @csrf_protect
@@ -70,45 +72,45 @@ def register_view(request):
 def login_view(request):
     """Login user."""
     if request.user.is_authenticated:
-        return redirect('home')
-    
-    if request.method == 'POST':
+        return redirect("home")
+
+    if request.method == "POST":
         form = UserLoginForm(request.POST)
         if form.is_valid():
             user = form.get_user()
-            
+
             # Check if email is verified
             if not user.email_verified:
                 messages.warning(
                     request,
-                    f'Molimo verifikujte e-poštu. Proverite {user.email} za link za verifikaciju.'
+                    f"Molimo verifikujte e-poštu. Proverite {user.email} za link za verifikaciju.",
                 )
-                return redirect('verify-email-resend')
-            
-            login(request, user, backend='django.contrib.auth.backends.ModelBackend')
-            
+                return redirect("verify-email-resend")
+
+            login(request, user, backend="django.contrib.auth.backends.ModelBackend")
+
             # Redirect to next page or home
-            next_url = request.GET.get('next', 'home')
+            next_url = request.GET.get("next", "home")
             return redirect(next_url)
         else:
             for error in form.non_field_errors():
                 messages.error(request, error)
     else:
         form = UserLoginForm()
-    
+
     context = {
-        'form': form,
-        'page_title': 'Login',
+        "form": form,
+        "page_title": "Login",
     }
-    return render(request, 'users/login.html', context)
+    return render(request, "users/login.html", context)
 
 
 @require_http_methods(["GET"])
-@login_required(login_url='login')
+@login_required(login_url="login")
 def logout_view(request):
     """Logout user."""
     logout(request)
-    return redirect('home')
+    return redirect("home")
 
 
 @csrf_protect
@@ -116,30 +118,29 @@ def logout_view(request):
 def password_reset_request_view(request):
     """Request password reset via email."""
     if request.user.is_authenticated:
-        return redirect('home')
-    
-    if request.method == 'POST':
+        return redirect("home")
+
+    if request.method == "POST":
         form = UserPasswordResetForm(request.POST)
         if form.is_valid():
             user = form.get_user()
             send_password_reset_email(user)
-            
+
             messages.success(
-                request,
-                f'Uputstva za resetovanje lozinke su poslata na {user.email}.'
+                request, f"Uputstva za resetovanje lozinke su poslata na {user.email}."
             )
-            return redirect('login')
+            return redirect("login")
         else:
             for error in form.non_field_errors():
                 messages.error(request, error)
     else:
         form = UserPasswordResetForm()
-    
+
     context = {
-        'form': form,
-        'page_title': 'Reset Password',
+        "form": form,
+        "page_title": "Reset Password",
     }
-    return render(request, 'users/password_reset_request.html', context)
+    return render(request, "users/password_reset_request.html", context)
 
 
 @csrf_protect
@@ -148,37 +149,42 @@ def password_reset_confirm_view(request, token):
     """Confirm password reset with token."""
     try:
         token_obj = VerificationToken.objects.get(
-            token=token,
-            token_type=VerificationToken.TOKEN_TYPE_PASSWORD
+            token=token, token_type=VerificationToken.TOKEN_TYPE_PASSWORD
         )
     except VerificationToken.DoesNotExist:
-        messages.error(request, 'Link za resetovanje lozinke je nevažeći ili je istekao.')
-        return redirect('password-reset-request')
+        messages.error(
+            request, "Link za resetovanje lozinke je nevažeći ili je istekao."
+        )
+        return redirect("password-reset-request")
 
     if not token_obj.is_valid():
-        messages.error(request, 'Link za resetovanje lozinke je nevažeći ili je istekao.')
-        return redirect('password-reset-request')
-    
+        messages.error(
+            request, "Link za resetovanje lozinke je nevažeći ili je istekao."
+        )
+        return redirect("password-reset-request")
+
     user = token_obj.user
-    
-    if request.method == 'POST':
+
+    if request.method == "POST":
         form = UserPasswordSetForm(user, request.POST)
         if form.is_valid():
             form.save()
-            
+
             # Mark token as used
             token_obj.mark_used()
-            
-            messages.success(request, 'Vaša lozinka je resetovana. Molimo prijavite se.')
-            return redirect('login')
+
+            messages.success(
+                request, "Vaša lozinka je resetovana. Molimo prijavite se."
+            )
+            return redirect("login")
     else:
         form = UserPasswordSetForm(user)
-    
+
     context = {
-        'form': form,
-        'page_title': 'Reset Password',
+        "form": form,
+        "page_title": "Reset Password",
     }
-    return render(request, 'users/password_reset_confirm.html', context)
+    return render(request, "users/password_reset_confirm.html", context)
 
 
 @require_http_methods(["GET", "POST"])
@@ -186,98 +192,99 @@ def verify_email_view(request, token):
     """Verify email with token."""
     try:
         token_obj = VerificationToken.objects.get(
-            token=token,
-            token_type=VerificationToken.TOKEN_TYPE_EMAIL
+            token=token, token_type=VerificationToken.TOKEN_TYPE_EMAIL
         )
     except VerificationToken.DoesNotExist:
-        messages.error(request, 'Link za verifikaciju je nevažeći ili je istekao.')
-        return redirect('home')
+        messages.error(request, "Link za verifikaciju je nevažeći ili je istekao.")
+        return redirect("home")
 
     if not token_obj.is_valid():
-        messages.error(request, 'Link za verifikaciju je nevažeći ili je istekao.')
-        return redirect('home')
-    
+        messages.error(request, "Link za verifikaciju je nevažeći ili je istekao.")
+        return redirect("home")
+
     # Mark email as verified
     user = token_obj.user
     user.email_verified = True
     user.email_verified_at = timezone.now()
     user.save()
-    
+
     # Mark token as used
     token_obj.mark_used()
-    
-    messages.success(request, 'E-pošta je verifikovana! Možete se prijaviti.')
-    return redirect('login')
+
+    messages.success(request, "E-pošta je verifikovana! Možete se prijaviti.")
+    return redirect("login")
 
 
 @csrf_protect
 @require_http_methods(["GET", "POST"])
 def verify_email_resend_view(request):
     """Resend email verification."""
-    if request.method == 'POST':
-        email = request.POST.get('email', '')
+    if request.method == "POST":
+        email = request.POST.get("email", "")
         try:
             user = User.objects.get(email=email)
             if user.email_verified:
-                messages.info(request, 'Ova e-pošta je već verifikovana.')
+                messages.info(request, "Ova e-pošta je već verifikovana.")
             else:
                 send_verification_email(user)
-                messages.success(request, f'Verifikacioni e-mail je poslat na {email}.')
+                messages.success(request, f"Verifikacioni e-mail je poslat na {email}.")
         except User.DoesNotExist:
-            messages.error(request, 'Nije pronađen nalog sa ovom e-adresom.')
-    
+            messages.error(request, "Nije pronađen nalog sa ovom e-adresom.")
+
     context = {
-        'page_title': 'Verify Email',
+        "page_title": "Verify Email",
     }
-    return render(request, 'users/verify_email_resend.html', context)
+    return render(request, "users/verify_email_resend.html", context)
 
 
 @csrf_protect
-@login_required(login_url='login')
+@login_required(login_url="login")
 @require_http_methods(["GET", "POST"])
 def password_change_view(request):
     """Change password for logged-in user."""
-    if request.method == 'POST':
+    if request.method == "POST":
         form = UserPasswordChangeForm(request.user, request.POST)
         if form.is_valid():
             form.save()
-            messages.success(request, 'Vaša lozinka je promenjena.')
-            return redirect('account-settings')
+            messages.success(request, "Vaša lozinka je promenjena.")
+            return redirect("account-settings")
     else:
         form = UserPasswordChangeForm(request.user)
-    
+
     context = {
-        'form': form,
-        'page_title': 'Change Password',
+        "form": form,
+        "page_title": "Change Password",
     }
-    return render(request, 'users/password_change.html', context)
+    return render(request, "users/password_change.html", context)
 
 
-@login_required(login_url='login')
+@login_required(login_url="login")
 def account_settings_view(request):
     """User account settings page."""
     context = {
-        'page_title': 'Account Settings',
+        "page_title": "Account Settings",
     }
-    return render(request, 'users/account_settings.html', context)
+    return render(request, "users/account_settings.html", context)
 
 
-@login_required(login_url='login')
+@login_required(login_url="login")
 def social_signup_complete_view(request):
     """Confirmation page shown after a successful social (Google/Facebook/Apple) registration."""
     context = {
-        'page_title': 'Dobrodošli',
+        "page_title": "Dobrodošli",
     }
-    return render(request, 'users/social_signup_complete.html', context)
+    return render(request, "users/social_signup_complete.html", context)
 
 
-@login_required(login_url='login')
+@login_required(login_url="login")
 @require_http_methods(["POST"])
 def social_become_seller_view(request):
     """Upgrade a social-registered user to seller and redirect to shop setup."""
-    from sellers.models import Seller, SellerSubscription
-    from django.utils.timezone import now
     from datetime import timedelta
+
+    from django.utils.timezone import now
+
+    from sellers.models import Seller, SellerSubscription
 
     user = request.user
     if not user.is_seller:
@@ -307,6 +314,7 @@ def social_become_seller_view(request):
 # ============================================================================
 # Email Sending Utilities
 # ============================================================================
+
 
 def send_verification_email(user):
     """Send email verification link to user."""

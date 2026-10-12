@@ -1,7 +1,8 @@
 """Admin configuration for products app."""
 
 from django.contrib import admin
-from .models import Product, ProductImage, ProductCategory, ProductCondition
+
+from .models import Product, ProductCategory, ProductCondition, ProductImage
 
 
 @admin.register(ProductCategory)
@@ -31,21 +32,17 @@ class ProductAdmin(admin.ModelAdmin):
     readonly_fields = ["created_at", "updated_at"]
     inlines = [ProductImageInline]
     fieldsets = (
-        ("Product Information", {
-            "fields": ("seller", "title", "description", "price")
-        }),
-        ("Classification", {
-            "fields": ("category", "condition")
-        }),
-        ("Inventory", {
-            "fields": ("stock",)
-        }),
-        ("Status", {
-            "fields": ("status",)
-        }),
-        ("Metadata", {
-            "fields": ("created_at", "updated_at", "is_deleted", "deleted_at")
-        }),
+        (
+            "Product Information",
+            {"fields": ("seller", "title", "description", "price")},
+        ),
+        ("Classification", {"fields": ("category", "condition")}),
+        ("Inventory", {"fields": ("stock",)}),
+        ("Status", {"fields": ("status",)}),
+        (
+            "Metadata",
+            {"fields": ("created_at", "updated_at", "is_deleted", "deleted_at")},
+        ),
     )
 
     def get_queryset(self, request):

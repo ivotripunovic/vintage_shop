@@ -13,7 +13,7 @@ from .settings import *  # noqa
 # This only applies to tests, production uses secure PBKDF2
 
 PASSWORD_HASHERS = [
-    'django.contrib.auth.hashers.MD5PasswordHasher',  # Fast for testing
+    "django.contrib.auth.hashers.MD5PasswordHasher",  # Fast for testing
 ]
 
 # ============================================================================
@@ -21,7 +21,11 @@ PASSWORD_HASHERS = [
 # ============================================================================
 
 # Disable slow/intercepting middleware
-MIDDLEWARE = [m for m in MIDDLEWARE if 'LoggingMiddleware' not in m and 'ComingSoonMiddleware' not in m]
+MIDDLEWARE = [
+    m
+    for m in MIDDLEWARE
+    if "LoggingMiddleware" not in m and "ComingSoonMiddleware" not in m
+]
 
 COMING_SOON = False
 
@@ -31,18 +35,18 @@ WAITLIST_EMAIL_ASYNC = False
 
 # Use simple in-memory cache for tests
 CACHES = {
-    'default': {
-        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
-        'LOCATION': 'unique-snowflake',
+    "default": {
+        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+        "LOCATION": "unique-snowflake",
     }
 }
 
 # Disable logging in tests
 LOGGING = {
-    'version': 1,
-    'disable_existing_loggers': False,
-    'handlers': {},
-    'loggers': {},
+    "version": 1,
+    "disable_existing_loggers": False,
+    "handlers": {},
+    "loggers": {},
 }
 
 # Skip migrations for faster test setup (if using pytest)

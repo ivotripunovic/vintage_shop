@@ -1,6 +1,7 @@
 """Admin configuration for orders app."""
 
 from django.contrib import admin
+
 from .models import Order, OrderItem
 
 
@@ -19,13 +20,17 @@ class OrderAdmin(admin.ModelAdmin):
     readonly_fields = ["created_at", "updated_at"]
     inlines = [OrderItemInline]
     fieldsets = (
-        ("Order Information", {
-            "fields": ("buyer", "status", "total_price")
-        }),
-        ("Shipping", {
-            "fields": ("shipping_name", "shipping_address", "shipping_phone", "tracking_number")
-        }),
-        ("Metadata", {
-            "fields": ("created_at", "updated_at")
-        }),
+        ("Order Information", {"fields": ("buyer", "status", "total_price")}),
+        (
+            "Shipping",
+            {
+                "fields": (
+                    "shipping_name",
+                    "shipping_address",
+                    "shipping_phone",
+                    "tracking_number",
+                )
+            },
+        ),
+        ("Metadata", {"fields": ("created_at", "updated_at")}),
     )

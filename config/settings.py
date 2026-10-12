@@ -6,7 +6,8 @@ Environment-based configuration using python-decouple.
 
 import os
 from pathlib import Path
-from decouple import config, Csv
+
+from decouple import Csv, config
 
 # Build paths inside the project
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -98,9 +99,7 @@ if DEBUG and not config("USE_POSTGRES", default=False, cast=bool):
 else:
     DATABASES = {
         "default": {
-            "ENGINE": config(
-                "DB_ENGINE", default="django.db.backends.postgresql"
-            ),
+            "ENGINE": config("DB_ENGINE", default="django.db.backends.postgresql"),
             "NAME": config("DB_NAME", default="vintage_shop"),
             "USER": config("DB_USER", default="postgres"),
             "PASSWORD": config("DB_PASSWORD", default="password"),
@@ -206,7 +205,9 @@ SOCIALACCOUNT_PROVIDERS = {
             "client_id": config("APPLE_CLIENT_ID", default=""),
             "secret": config("APPLE_SECRET", default=""),
             "key": config("APPLE_KEY_ID", default=""),
-            "certificate_key": config("APPLE_PRIVATE_KEY", default="").replace("\\n", "\n"),
+            "certificate_key": config("APPLE_PRIVATE_KEY", default="").replace(
+                "\\n", "\n"
+            ),
         }
     },
 }

@@ -2,8 +2,9 @@
 Orders and order items models.
 """
 
-from django.db import models
 from django.core.validators import MinValueValidator
+from django.db import models
+
 from core.models import TimeStampedModel
 
 
@@ -24,9 +25,7 @@ class Order(TimeStampedModel):
         on_delete=models.CASCADE,
         related_name="orders",
     )
-    status = models.CharField(
-        max_length=20, choices=STATUS_CHOICES, default="pending"
-    )
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="pending")
     total_price = models.DecimalField(max_digits=10, decimal_places=2)
 
     # Shipping information
@@ -52,15 +51,16 @@ class Order(TimeStampedModel):
     @property
     def item_count(self):
         """Total number of items in order."""
-        return self.items.aggregate(
-            total=models.Sum("quantity")
-        )["total"] or 0
+        return self.items.aggregate(total=models.Sum("quantity"))["total"] or 0
 
     def calculate_total(self):
         """Recalculate order total from items."""
-        total = self.items.aggregate(
-            total=models.Sum(models.F("quantity") * models.F("price_at_purchase"))
-        )["total"] or 0
+        total = (
+            self.items.aggregate(
+                total=models.Sum(models.F("quantity") * models.F("price_at_purchase"))
+            )["total"]
+            or 0
+        )
         self.total_price = total
         self.save()
 

@@ -3,6 +3,7 @@ Core views for Vintage Shop.
 """
 
 from django.shortcuts import render
+
 from products.models import Product, ProductCategory
 
 

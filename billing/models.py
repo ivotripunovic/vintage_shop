@@ -4,6 +4,7 @@ Billing, invoicing, and payment models.
 
 from django.db import models
 from django.utils import timezone
+
 from core.models import TimeStampedModel
 
 
@@ -24,7 +25,7 @@ class BillingPlan(models.Model):
     name = models.CharField(max_length=255)
     plan_type = models.CharField(max_length=50, choices=PLAN_TYPE_CHOICES)
     is_active = models.BooleanField(default=True)
-    
+
     # Flexible configuration stored as JSON
     config = models.JSONField(
         default=dict,
@@ -57,9 +58,7 @@ class Invoice(TimeStampedModel):
     invoice_number = models.CharField(max_length=50, unique=True, db_index=True)
     amount = models.DecimalField(max_digits=10, decimal_places=2)
     due_date = models.DateField()
-    status = models.CharField(
-        max_length=20, choices=STATUS_CHOICES, default="pending"
-    )
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="pending")
     billing_plan = models.ForeignKey(
         BillingPlan,
         on_delete=models.SET_NULL,
@@ -86,10 +85,7 @@ class Invoice(TimeStampedModel):
     @property
     def is_overdue(self):
         """Check if invoice is overdue."""
-        return (
-            self.status == "pending"
-            and timezone.now().date() > self.due_date
-        )
+        return self.status == "pending" and timezone.now().date() > self.due_date
 
     @property
     def days_until_due(self):

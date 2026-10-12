@@ -2,13 +2,12 @@
 Tests for social auth adapters.
 """
 
-import pytest
 from unittest.mock import MagicMock, patch
 
-from django.test import TestCase, RequestFactory
-from django.contrib.messages.storage.fallback import FallbackStorage
-
+import pytest
 from allauth.core.exceptions import ImmediateHttpResponse
+from django.contrib.messages.storage.fallback import FallbackStorage
+from django.test import RequestFactory, TestCase
 
 from .adapters import AccountAdapter, SocialAccountAdapter
 from .models import User
@@ -32,6 +31,7 @@ def _make_sociallogin(*, is_existing=False, email="user@example.com", process="l
 # ---------------------------------------------------------------------------
 # SocialAccountAdapter.pre_social_login
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.django_db
 class TestPreSocialLogin(TestCase):
@@ -86,6 +86,7 @@ class TestPreSocialLogin(TestCase):
 # SocialAccountAdapter.save_user
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.django_db
 class TestSaveUser(TestCase):
 
@@ -114,6 +115,7 @@ class TestSaveUser(TestCase):
 # ---------------------------------------------------------------------------
 # AccountAdapter.populate_username
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.django_db
 class TestPopulateUsername(TestCase):

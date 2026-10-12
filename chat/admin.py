@@ -1,4 +1,5 @@
 from django.contrib import admin
+
 from .models import Conversation, Message
 
 
@@ -19,16 +20,25 @@ class ConversationAdmin(admin.ModelAdmin):
 
     def message_count(self, obj):
         return obj.messages.count()
+
     message_count.short_description = "Poruka"
 
 
 @admin.register(Message)
 class MessageAdmin(admin.ModelAdmin):
-    list_display = ("id", "conversation", "sender", "body_preview", "is_read", "created_at")
+    list_display = (
+        "id",
+        "conversation",
+        "sender",
+        "body_preview",
+        "is_read",
+        "created_at",
+    )
     list_filter = ("is_read",)
     search_fields = ("sender__email", "body")
     readonly_fields = ("created_at",)
 
     def body_preview(self, obj):
         return obj.body[:60]
+
     body_preview.short_description = "Poruka"

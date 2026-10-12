@@ -1,0 +1,5 @@
+[flake8]
+max-line-length = 88
+# Conflicts with black formatting (per black docs)
+extend-ignore = E203,E701
+extend-exclude = venv,staticfiles,media

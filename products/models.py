@@ -2,9 +2,10 @@
 Product listings and related models.
 """
 
-from django.db import models
 from django.core.validators import MinValueValidator
-from core.models import TimeStampedModel, SoftDeleteModel
+from django.db import models
+
+from core.models import SoftDeleteModel, TimeStampedModel
 
 
 class ProductCategory(models.Model):
@@ -107,9 +108,7 @@ class Product(SoftDeleteModel):
         related_name="products",
     )
     stock = models.IntegerField(default=1, validators=[MinValueValidator(0)])
-    status = models.CharField(
-        max_length=20, choices=STATUS_CHOICES, default="draft"
-    )
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="draft")
 
     class Meta:
         ordering = ["-created_at"]

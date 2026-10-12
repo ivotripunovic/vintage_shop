@@ -1,10 +1,10 @@
 import pytest
 from django.db.utils import IntegrityError
 
-from users.models import User
-from sellers.models import Seller
-from products.models import Product, ProductCategory
 from chat.models import Conversation, Message
+from products.models import Product, ProductCategory
+from sellers.models import Seller
+from users.models import User
 
 
 @pytest.fixture
@@ -87,7 +87,9 @@ class TestMessage:
 
     def test_message_ordering(self, conversation, buyer, seller):
         m1 = Message.objects.create(conversation=conversation, sender=buyer, body="A")
-        m2 = Message.objects.create(conversation=conversation, sender=seller.user, body="B")
+        m2 = Message.objects.create(
+            conversation=conversation, sender=seller.user, body="B"
+        )
         messages = list(conversation.messages.all())
         assert messages[0] == m1
         assert messages[1] == m2
@@ -100,5 +102,7 @@ class TestMessage:
 
     def test_body_max_length(self, conversation, buyer):
         long_body = "x" * 2000
-        msg = Message.objects.create(conversation=conversation, sender=buyer, body=long_body)
+        msg = Message.objects.create(
+            conversation=conversation, sender=buyer, body=long_body
+        )
         assert len(msg.body) == 2000

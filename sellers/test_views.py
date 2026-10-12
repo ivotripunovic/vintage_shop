@@ -3,10 +3,11 @@ Tests for seller views.
 """
 
 import pytest
-from django.test import TestCase, Client
+from django.test import Client, TestCase
 from django.urls import reverse
 
 from users.models import User
+
 from .models import Seller, SellerSubscription
 
 
@@ -22,8 +23,10 @@ def _make_social_seller(email="google@example.com"):
     # Simulate what social_become_seller_view does
     user.is_seller = True
     user.save(update_fields=["is_seller"])
-    from django.utils.timezone import now
     from datetime import timedelta
+
+    from django.utils.timezone import now
+
     seller = Seller.objects.create(
         user=user,
         shop_name=user.username,
@@ -55,24 +58,30 @@ class TestShopSetupViewForSocialSeller(TestCase):
 
     def test_shop_setup_post_does_not_raise_integrity_error(self):
         """Submitting shop setup when Seller already exists must not crash."""
-        response = self.client.post(self.url, {
-            "shop_name": "My Vintage Shop",
-            "shop_slug": "my-vintage-shop",
-            "shop_description": "Great vintage items",
-            "location": "Belgrade",
-        })
+        response = self.client.post(
+            self.url,
+            {
+                "shop_name": "My Vintage Shop",
+                "shop_slug": "my-vintage-shop",
+                "shop_description": "Great vintage items",
+                "location": "Belgrade",
+            },
+        )
         # Should redirect to next step, not 500
         self.assertNotEqual(response.status_code, 500)
         self.assertEqual(response.status_code, 302)
 
     def test_shop_setup_post_updates_existing_seller(self):
         """Shop setup should update the existing Seller row, not create a new one."""
-        self.client.post(self.url, {
-            "shop_name": "Updated Shop",
-            "shop_slug": "updated-shop",
-            "shop_description": "Updated description",
-            "location": "Novi Sad",
-        })
+        self.client.post(
+            self.url,
+            {
+                "shop_name": "Updated Shop",
+                "shop_slug": "updated-shop",
+                "shop_description": "Updated description",
+                "location": "Novi Sad",
+            },
+        )
         seller = Seller.objects.get(user=self.user)
         self.assertEqual(seller.shop_name, "Updated Shop")
         self.assertEqual(Seller.objects.filter(user=self.user).count(), 1)

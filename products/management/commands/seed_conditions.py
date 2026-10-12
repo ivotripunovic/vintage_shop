@@ -1,6 +1,7 @@
 from django.core.management.base import BaseCommand
-from products.models import ProductCondition
+
 from products.management.seed_data import CONDITIONS
+from products.models import ProductCondition
 
 
 class Command(BaseCommand):
@@ -27,6 +28,8 @@ class Command(BaseCommand):
             if is_new:
                 created += 1
 
-        self.stdout.write(self.style.SUCCESS(
-            f"Stanja: {created} kreirana, {len(CONDITIONS) - created} već postoje."
-        ))
+        self.stdout.write(
+            self.style.SUCCESS(
+                f"Stanja: {created} kreirana, {len(CONDITIONS) - created} već postoje."
+            )
+        )

@@ -3,14 +3,15 @@ Crawl all internal links reachable from the home page and assert none return err
 Runs as both anonymous and authenticated (seller) user.
 """
 
-import pytest
 from html.parser import HTMLParser
+
+import pytest
 from django.test import TestCase
 from django.urls import reverse
 
-from users.models import User
-from sellers.models import Seller
 from products.models import Product, ProductCategory, ProductCondition
+from sellers.models import Seller
+from users.models import User
 
 
 class LinkExtractor(HTMLParser):
@@ -60,7 +61,9 @@ def crawl(client, seed_url, expected_ok=(200,), follow_redirects=False):
 
         # Only follow links on pages that rendered successfully
         if response.status_code == 200:
-            for href in extract_links(response.content.decode("utf-8", errors="ignore")):
+            for href in extract_links(
+                response.content.decode("utf-8", errors="ignore")
+            ):
                 if is_internal(href) and href not in visited and href not in queue:
                     queue.append(href)
 
@@ -107,13 +110,10 @@ class AnonymousLinkCrawlTest(TestCase):
     def test_no_broken_links_as_anonymous(self):
         visited = crawl(self.client, reverse("home"))
 
-        broken = {
-            url: code
-            for url, code in visited.items()
-            if code >= 400
-        }
+        broken = {url: code for url, code in visited.items() if code >= 400}
         self.assertEqual(
-            broken, {},
+            broken,
+            {},
             msg=f"Broken links found (anonymous): {broken}",
         )
 
@@ -175,13 +175,10 @@ class AuthenticatedLinkCrawlTest(TestCase):
     def test_no_broken_links_as_seller(self):
         visited = crawl(self.client, reverse("home"))
 
-        broken = {
-            url: code
-            for url, code in visited.items()
-            if code >= 400
-        }
+        broken = {url: code for url, code in visited.items() if code >= 400}
         self.assertEqual(
-            broken, {},
+            broken,
+            {},
             msg=f"Broken links found (seller): {broken}",
         )
 

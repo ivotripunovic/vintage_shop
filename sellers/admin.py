@@ -1,6 +1,7 @@
 """Admin configuration for sellers app."""
 
 from django.contrib import admin
+
 from .models import Seller, SellerSubscription
 
 
@@ -12,14 +13,26 @@ class SellerAdmin(admin.ModelAdmin):
     readonly_fields = ["created_at", "updated_at", "shop_slug"]
     fieldsets = (
         ("User", {"fields": ("user",)}),
-        ("Shop Information", {
-            "fields": ("shop_name", "shop_slug", "shop_description", "shop_image", "location")
-        }),
+        (
+            "Shop Information",
+            {
+                "fields": (
+                    "shop_name",
+                    "shop_slug",
+                    "shop_description",
+                    "shop_image",
+                    "location",
+                )
+            },
+        ),
         ("Status", {"fields": ("status", "is_verified")}),
-        ("Bank Details", {
-            "fields": ("bank_account_holder", "bank_name", "bank_account_number"),
-            "classes": ("collapse",),
-        }),
+        (
+            "Bank Details",
+            {
+                "fields": ("bank_account_holder", "bank_name", "bank_account_number"),
+                "classes": ("collapse",),
+            },
+        ),
         ("Metadata", {"fields": ("created_at", "updated_at")}),
     )
 

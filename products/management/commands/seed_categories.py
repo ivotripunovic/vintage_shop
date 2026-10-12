@@ -1,7 +1,7 @@
 from django.core.management.base import BaseCommand
 from django.utils.text import slugify
-from products.models import ProductCategory
 
+from products.models import ProductCategory
 
 # Hierarchy from Grupe.md
 # Strings = leaf node, dicts with "children" = intermediate node
@@ -154,6 +154,8 @@ class Command(BaseCommand):
 
         top = counters.get("top", 0)
         sub = counters.get("sub", 0)
-        self.stdout.write(self.style.SUCCESS(
-            f"Done. Created {top} top-level and {sub} subcategories ({top + sub} total)."
-        ))
+        self.stdout.write(
+            self.style.SUCCESS(
+                f"Done. Created {top} top-level and {sub} subcategories ({top + sub} total)."
+            )
+        )

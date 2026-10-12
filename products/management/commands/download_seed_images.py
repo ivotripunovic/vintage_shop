@@ -16,7 +16,9 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument("--key", required=True, help="Pexels API key")
-        parser.add_argument("--force", action="store_true", help="Re-download existing images")
+        parser.add_argument(
+            "--force", action="store_true", help="Re-download existing images"
+        )
 
     def handle(self, *args, **options):
         api_key = options["key"]
@@ -54,9 +56,11 @@ class Command(BaseCommand):
                     photos = resp.json().get("photos", [])
 
                     if not photos:
-                        self.stdout.write(self.style.WARNING(
-                            f"  No results for '{query}' (page {idx + 1})"
-                        ))
+                        self.stdout.write(
+                            self.style.WARNING(
+                                f"  No results for '{query}' (page {idx + 1})"
+                            )
+                        )
                         failed += 1
                         continue
 
@@ -67,14 +71,20 @@ class Command(BaseCommand):
 
                     downloaded += 1
                     done = downloaded + skipped + failed
-                    self.stdout.write(f"  [{done}/{total}] {subcategory} / {product['title'][:40]}")
+                    self.stdout.write(
+                        f"  [{done}/{total}] {subcategory} / {product['title'][:40]}"
+                    )
 
                     time.sleep(0.3)
 
                 except requests.RequestException as e:
-                    self.stdout.write(self.style.ERROR(f"  Failed: {product['title']} — {e}"))
+                    self.stdout.write(
+                        self.style.ERROR(f"  Failed: {product['title']} — {e}")
+                    )
                     failed += 1
 
-        self.stdout.write(self.style.SUCCESS(
-            f"\nDone. {downloaded} downloaded, {skipped} skipped, {failed} failed."
-        ))
+        self.stdout.write(
+            self.style.SUCCESS(
+                f"\nDone. {downloaded} downloaded, {skipped} skipped, {failed} failed."
+            )
+        )
