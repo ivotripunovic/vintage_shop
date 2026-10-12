@@ -15,6 +15,7 @@ from django.views.generic import RedirectView
 from core.views import (
     health,
     manifest,
+    robots,
     waitlist_confirm,
     waitlist_subscribe,
     waitlist_unsubscribe,
@@ -45,6 +46,7 @@ urlpatterns = [
         RedirectView.as_view(url=settings.STATIC_URL + "favicon.ico", permanent=True),
     ),
     path("manifest.webmanifest", manifest, name="manifest"),
+    path("robots.txt", robots, name="robots"),
     path("health/", health, name="health"),
     path("waitlist/subscribe/", waitlist_subscribe, name="waitlist_subscribe"),
     path("waitlist/confirm/<str:token>/", waitlist_confirm, name="waitlist_confirm"),

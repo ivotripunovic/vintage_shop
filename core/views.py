@@ -145,6 +145,23 @@ def waitlist_unsubscribe(request, token):
     return redirect("home")
 
 
+@require_safe
+def robots(request):
+    """De-index the whole site while it's gated, then unlock it at launch."""
+    if settings.COMING_SOON:
+        content = "User-agent: *\nDisallow: /\n"
+    else:
+        content = (
+            "User-agent: *\n"
+            "Disallow: /admin/\n"
+            "Disallow: /auth/\n"
+            "Disallow: /chat/\n"
+            "Disallow: /waitlist/\n"
+            "Allow: /\n"
+        )
+    return HttpResponse(content, content_type="text/plain")
+
+
 @never_cache
 @require_safe
 def health(request):

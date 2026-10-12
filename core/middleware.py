@@ -7,6 +7,7 @@ BYPASS_COOKIE = "vs_preview"
 WAITLIST_PREFIX = "/waitlist/"
 HEALTH_PATH = "/health/"
 MANIFEST_PATH = "/manifest.webmanifest"
+ROBOTS_PATH = "/robots.txt"
 
 
 class ComingSoonMiddleware:
@@ -21,7 +22,12 @@ class ComingSoonMiddleware:
         # the uptime monitor's health check always pass through
         if request.path.startswith(
             ("/admin/", "/static/", "/media/")
-        ) or request.path in (HEALTH_PATH, "/favicon.ico", MANIFEST_PATH):
+        ) or request.path in (
+            HEALTH_PATH,
+            "/favicon.ico",
+            MANIFEST_PATH,
+            ROBOTS_PATH,
+        ):
             return self.get_response(request)
 
         # Waitlist endpoints (subscribe, confirm, unsubscribe) always pass
