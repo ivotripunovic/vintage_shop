@@ -16,8 +16,11 @@ class ComingSoonMiddleware:
         if not getattr(settings, "COMING_SOON", False):
             return self.get_response(request)
 
-        # Admin and the uptime monitor's health check always pass through
-        if request.path.startswith("/admin/") or request.path == HEALTH_PATH:
+        # Admin, static/media assets, the favicon, and the uptime monitor's
+        # health check always pass through
+        if request.path.startswith(
+            ("/admin/", "/static/", "/media/")
+        ) or request.path in (HEALTH_PATH, "/favicon.ico"):
             return self.get_response(request)
 
         # Waitlist endpoints (subscribe, confirm, unsubscribe) always pass

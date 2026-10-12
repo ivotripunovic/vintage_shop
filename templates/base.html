@@ -2,7 +2,10 @@
 <html lang="sr">
 <head>
     {% load cache %}
+    {% load static %}
     <meta charset="UTF-8">
+    <link rel="icon" href="{% static 'favicon.ico' %}" sizes="any">
+    <link rel="apple-touch-icon" href="{% static 'favicon.ico' %}">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}{{ SITE_NAME }}{% endblock %}</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
