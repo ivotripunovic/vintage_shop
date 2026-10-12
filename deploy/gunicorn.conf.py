@@ -10,6 +10,11 @@ import os
 # Bind to Unix socket (Nginx proxies to this)
 bind = "unix:/run/vintage_shop/gunicorn.sock"
 
+# Control socket for `gunicornc` (gunicorn 25.1+). The default, ~/.gunicorn/,
+# is read-only under the service's ProtectSystem=strict, so keep it next to
+# the bind socket in the systemd RuntimeDirectory.
+control_socket = "/run/vintage_shop/gunicorn.ctl"
+
 
 def _cpu_cores():
     # Cores this process may run on (respects taskset/cgroup pinning)
