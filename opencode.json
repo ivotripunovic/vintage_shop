@@ -1,0 +1,25 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "permission": {
+    "bash": {
+      "*": "ask",
+      "ls *": "allow",
+      "pwd": "allow",
+      "which *": "allow",
+      "command -v *": "allow",
+      "git *": "allow",
+      "python manage.py *": "allow",
+      "python3 *": "allow",
+      "python -m py_compile*": "allow",
+      "pip index*": "allow",
+      "pip install*": "allow",
+      "venv/bin/*": "allow",
+      "pytest*": "allow",
+      "flake8*": "allow",
+      "black*": "allow",
+      "isort*": "allow",
+      "chmod*": "allow",
+      "source*": "allow"
+    }
+  }
+}
