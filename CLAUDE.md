@@ -9,9 +9,6 @@ Multi-vendor second-hand marketplace built with Django 5.2 and Python 3.9+. Sell
 ## Commands
 
 ```bash
-# Activate virtual environment (required before all commands)
-source venv/bin/activate
-
 # Run development server
 python manage.py runserver
 
@@ -30,11 +27,9 @@ pytest users/test_forms.py::TestClassName::test_method_name
 # Run with coverage
 pytest --cov
 
-# Code formatting and linting
-black .
-black --check .
+# Linting (isort + black run automatically on edited .py files via .claude hook)
 flake8
-isort .
+black --check .
 
 # Database
 python manage.py makemigrations
@@ -64,21 +59,7 @@ URLs use i18n patterns with language prefix (Serbian default, English secondary)
 
 ### Coming Soon Mode
 
-Controlled by two `.env` variables:
-
-```
-COMING_SOON=True          # show coming soon page to all visitors
-COMING_SOON_SECRET=xyz    # optional bypass secret (see below)
-```
-
-`core.middleware.ComingSoonMiddleware` intercepts all requests when `COMING_SOON=True`. Bypass rules (in priority order):
-
-1. `/admin/` URLs always pass through
-2. Staff and superusers always see the full site
-3. Visiting `/?preview=<COMING_SOON_SECRET>` sets a cookie that grants access for 7 days
-4. Everyone else sees `templates/core/coming_soon.html`
-
-To work on the site locally with coming soon enabled: log in via `/admin/` as a superuser.
+Pre-launch gate in `core.middleware.ComingSoonMiddleware`, toggled by `COMING_SOON` in `.env`. Details: `coming-soon` skill.
 
 ### Key Patterns
 
@@ -97,21 +78,4 @@ To work on the site locally with coming soon enabled: log in via `/admin/` as a 
 
 ### Deployment
 
-Production runs on a VPS with Gunicorn + Nginx on Ubuntu 22.04+. Scripts live in `deploy/`.
-
-- **Stack**: Gunicorn (Unix socket) → Nginx (reverse proxy + static files) → Let's Encrypt SSL
-- **Service**: systemd unit at `/etc/systemd/system/vintage_shop.service`, runs as `vintage_shop` user
-- **Config**: `deploy/gunicorn.conf.py` (2 workers, tuned for 1GB RAM VPS)
-
-```bash
-# Initial server setup (run once as root)
-sudo bash deploy/setup.sh <domain> <db_password>
-
-# Routine deployment (run as vintage_shop user)
-bash deploy/deploy.sh
-
-# Service management
-sudo systemctl status vintage_shop
-sudo systemctl restart vintage_shop
-journalctl -u vintage_shop -f   # view logs
-```
+Production: Gunicorn + Nginx on a VPS, push-to-deploy via `deploy/hooks/post-receive`. Details: `deploy` skill and `deploy/`.
