@@ -43,10 +43,14 @@ def _notify_recipient_by_email(conversation, sender, message):
     chat_url = f"{settings.SITE_DOMAIN}{reverse('chat_detail', args=[conversation.pk])}"
     site_name = settings.SITE_NAME
     name = recipient.first_name or recipient.email
+    if conversation.is_team and sender == conversation.buyer:
+        sender_name = conversation.buyer_label
+    else:
+        sender_name = sender.first_name or sender.email
     subject = f"Nova poruka na {site_name}"
     body = f"""Zdravo {name},
 
-Imate novu poruku od {sender.first_name or sender.email}:
+Imate novu poruku od {sender_name}:
 
 "{message.body[:200]}"
 
@@ -126,7 +130,8 @@ def chat_detail(request, pk):
         "chat/detail.html",
         {
             "conversation": conversation,
-            "messages": messages_qs,
+            # Not "messages": base.html renders that name as flash messages
+            "chat_messages": messages_qs,
             "form": form,
             "last_id": messages_qs[-1].id if messages_qs else 0,
         },
@@ -194,7 +199,11 @@ def chat_poll(request, pk):
             "body": m.body,
             "created_at": m.created_at.isoformat(),
             "is_mine": m.sender_id == request.user.id,
-            "sender": m.sender.email,
+            "sender": (
+                conversation.buyer_label
+                if m.sender_id == conversation.buyer_id
+                else m.sender.email
+            ),
         }
         for m in new_messages
     ]

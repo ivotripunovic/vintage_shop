@@ -20,7 +20,7 @@
                     <span class="text-xs text-neutral-400">{{ conv.seller.shop_name|slice:":1"|upper }}</span>
                 {% endif %}
             {% else %}
-                <span class="text-xs text-neutral-400">{{ conv.buyer.email|slice:":1"|upper }}</span>
+                <span class="text-xs text-neutral-400">{{ conv.buyer_label|slice:":1"|upper }}</span>
             {% endif %}
         </div>
 
@@ -30,7 +30,7 @@
                     {% if request.user == conv.buyer %}
                         {{ conv.seller.shop_name }}
                     {% else %}
-                        {{ conv.buyer.email }}
+                        {{ conv.buyer_label }}
                     {% endif %}
                 </span>
                 {% if last_msg %}

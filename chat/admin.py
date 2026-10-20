@@ -12,8 +12,16 @@ class MessageInline(admin.TabularInline):
 
 @admin.register(Conversation)
 class ConversationAdmin(admin.ModelAdmin):
-    list_display = ("id", "buyer", "seller", "product", "message_count", "updated_at")
-    list_filter = ("seller",)
+    list_display = (
+        "id",
+        "buyer",
+        "seller",
+        "product",
+        "is_team",
+        "message_count",
+        "updated_at",
+    )
+    list_filter = ("is_team", "seller")
     search_fields = ("buyer__email", "seller__shop_name", "product__title")
     readonly_fields = ("created_at", "updated_at")
     inlines = [MessageInline]

@@ -23,6 +23,8 @@ class Conversation(TimeStampedModel):
         related_name="chat_conversations",
     )
     last_emailed_at = models.DateTimeField(null=True, blank=True)
+    # Started by an admin from the review queue; the admin sits on the buyer side
+    is_team = models.BooleanField(default=False)
 
     class Meta:
         ordering = ["-updated_at"]
@@ -30,6 +32,13 @@ class Conversation(TimeStampedModel):
 
     def __str__(self):
         return f"{self.buyer} ↔ {self.seller} ({self.product})"
+
+    @property
+    def buyer_label(self):
+        """Name shown for the buyer side; team threads hide the admin's email."""
+        if self.is_team:
+            return f"Tim {settings.SITE_NAME}"
+        return self.buyer.email
 
     def other_participant(self, user):
         """Return the other user in the conversation."""
