@@ -2,8 +2,11 @@
 Product listings and related models.
 """
 
+from datetime import timedelta
+
 from django.core.validators import MinValueValidator
 from django.db import models
+from django.utils import timezone
 
 from core.models import SoftDeleteModel, TimeStampedModel
 
@@ -79,6 +82,7 @@ class Product(SoftDeleteModel):
         ("published", "Objavljeno"),
         ("sold", "Prodato"),
         ("archived", "Arhivirano"),
+        ("expired", "Isteklo"),
     )
 
     seller = models.ForeignKey(
@@ -109,6 +113,10 @@ class Product(SoftDeleteModel):
     )
     stock = models.IntegerField(default=1, validators=[MinValueValidator(0)])
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="draft")
+    # Start and end of the current listing period; each period uses one of the
+    # seller's monthly listing slots. expires_at is empty when it never expires.
+    listed_at = models.DateTimeField(null=True, blank=True, editable=False)
+    expires_at = models.DateTimeField(null=True, blank=True, editable=False)
 
     class Meta:
         ordering = ["-created_at"]
@@ -122,6 +130,28 @@ class Product(SoftDeleteModel):
 
     def __str__(self):
         return self.title
+
+    def save(self, *args, **kwargs):
+        """Start a new listing period when the product is published."""
+        if self.status == "published" and self.needs_new_listing_period:
+            self.listed_at = timezone.now()
+            expiry_days = self.seller.tier_settings["listing_expiry_days"]
+            self.expires_at = (
+                self.listed_at + timedelta(days=expiry_days)
+                if expiry_days is not None
+                else None
+            )
+            update_fields = kwargs.get("update_fields")
+            if update_fields is not None:
+                kwargs["update_fields"] = {*update_fields, "listed_at", "expires_at"}
+        super().save(*args, **kwargs)
+
+    @property
+    def needs_new_listing_period(self):
+        """Check if publishing would start a new period: first time, or expired."""
+        if self.listed_at is None:
+            return True
+        return self.expires_at is not None and self.expires_at <= timezone.now()
 
     @property
     def is_available(self):
