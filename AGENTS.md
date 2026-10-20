@@ -86,12 +86,32 @@ Pre-launch gate in `core.middleware.ComingSoonMiddleware`, toggled by `COMING_SO
   Executed by Claude Code (PostToolUse) and opencode (`.opencode/plugins/venv-format.ts`).
 - `.claude/hooks/venv.sh` (Claude Code SessionStart) and the opencode `shell.env`
   plugin hook both surface the project `venv/bin` on `PATH`.
+- `.claude/hooks/no-commit-on-main.sh` (Claude Code PreToolUse on Bash) blocks
+  `git commit` while `main` is checked out. opencode has no equivalent yet, so
+  follow "Working on Issues" below by hand there.
 
 ### Tracking Work
 
 - Bugs and enhancements: GitHub Issues, created with `gh issue create` using the templates in `.github/ISSUE_TEMPLATE/`.
 - Planned quick todos: `docs/TODO.md`. Link each entry to its issue number once one exists.
 - Dated progress notes: `docs/DAILY.md`.
+
+### Working on Issues
+
+Every enhancement or bug fix gets its own branch and pull request; never commit
+issue work straight to `main`.
+
+1. Start from an up-to-date `main`: `git switch main && git pull`.
+2. Create a branch named after the issue: `enhancement/<number>-<short-name>` or
+   `bug/<number>-<short-name>` (e.g. `enhancement/7-favourites-wishlist`). Tooling
+   and docs changes with no issue use `chore/<short-name>`.
+3. Commit on that branch, with `Refs #<number>` in the commit message.
+4. When the work is done and tests pass, push the branch to `origin` (never to the
+   `production` remote, which deploys) and open a PR with `gh pr create --base main`.
+   Put `Closes #<number>` in the PR body so merging closes the issue.
+5. If the work depends on another unmerged branch, branch from it and open the PR
+   against that branch instead of `main`, and say so in the PR body.
+6. Leave merging to the user unless they ask for it.
 
 ### Deployment
 
