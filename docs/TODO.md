@@ -16,4 +16,4 @@ Keep entries short. Move an item to `DAILY.md` or close its issue when it is don
 
 ## Bugs
 
-- [ ]
+- [ ] User dashboard is not present, links lead to non-existent content (from `DAILY.md`, 2026-05-07)
