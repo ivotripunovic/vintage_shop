@@ -87,6 +87,12 @@ Pre-launch gate in `core.middleware.ComingSoonMiddleware`, toggled by `COMING_SO
 - `.claude/hooks/venv.sh` (Claude Code SessionStart) and the opencode `shell.env`
   plugin hook both surface the project `venv/bin` on `PATH`.
 
+### Tracking Work
+
+- Bugs and feature requests: GitHub Issues, created with `gh issue create` using the templates in `.github/ISSUE_TEMPLATE/`.
+- Planned quick todos: `docs/TODO.md`. Link each entry to its issue number once one exists.
+- Dated progress notes: `docs/DAILY.md`.
+
 ### Deployment
 
 Production: Gunicorn + Nginx on a VPS, push-to-deploy via `deploy/hooks/post-receive`. Details: `deploy` skill and `deploy/`.
