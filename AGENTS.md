@@ -89,7 +89,7 @@ Pre-launch gate in `core.middleware.ComingSoonMiddleware`, toggled by `COMING_SO
 
 ### Tracking Work
 
-- Bugs and feature requests: GitHub Issues, created with `gh issue create` using the templates in `.github/ISSUE_TEMPLATE/`.
+- Bugs and enhancements: GitHub Issues, created with `gh issue create` using the templates in `.github/ISSUE_TEMPLATE/`.
 - Planned quick todos: `docs/TODO.md`. Link each entry to its issue number once one exists.
 - Dated progress notes: `docs/DAILY.md`.
 
