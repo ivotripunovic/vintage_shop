@@ -65,7 +65,10 @@ class TestTierSettings(TestCase):
         )
         self.assertIsNone(SellerTier.objects.get(tier="premijum").monthly_listing_limit)
         self.assertEqual(
-            SellerTier.objects.get(tier="premijum").monthly_price, Decimal("7000")
+            SellerTier.objects.get(tier="premijum").monthly_price, Decimal("9000")
+        )
+        self.assertEqual(
+            SellerTier.objects.get(tier="odrzivo").monthly_price, Decimal("6500")
         )
         self.assertEqual(SellerTier.objects.get(tier="garazna").listing_expiry_days, 30)
 
