@@ -32,6 +32,6 @@ class NavCategoryCacheTests(TestCase):
 
     def test_cached_nav_skips_category_queries(self):
         self.client.get("/")
-        # Only the featured-products query; no category queries for the nav
-        with self.assertNumQueries(1):
+        # Only the picked and Premijum product queries; no category queries for the nav
+        with self.assertNumQueries(2):
             self.client.get("/")

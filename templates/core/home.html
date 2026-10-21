@@ -1,36 +1,15 @@
 {% extends "base.html" %}
-{% load currency_filters %}
 {% block title %}{{ SITE_NAME }}{% endblock %}
 
 {% block content %}
 
-{% if featured_products %}
-<section class="mb-16">
-    <div class="flex justify-between items-baseline mb-8">
-        <h2 class="font-serif text-3xl font-light">Novo u ponudi</h2>
-        <a href="{% url 'products_browse' %}" class="text-xs uppercase tracking-widest text-stone-400 hover:text-stone-900 transition-colors">Pogledaj sve</a>
-    </div>
-    <div class="grid grid-cols-2 md:grid-cols-3 gap-6">
-        {% for product in featured_products %}
-        <a href="{% url 'product_detail' product.id %}" class="group">
-            <div class="aspect-square bg-neutral-100 overflow-hidden mb-3">
-                {% with image=product.images.all.0 %}
-                {% if image %}
-                    <img src="{{ image.image.url }}" alt="{{ image.alt_text }}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
-                {% else %}
-                    <div class="w-full h-full flex items-center justify-center">
-                        <span class="text-xs uppercase tracking-widest text-neutral-400">Nema slike</span>
-                    </div>
-                {% endif %}
-                {% endwith %}
-            </div>
-            {% if product.category %}<p class="text-xs uppercase tracking-widest text-stone-400 mb-1">{{ product.category.name }}</p>{% endif %}
-            <h3 class="text-sm text-stone-900 mb-1 truncate">{{ product.title }}</h3>
-            <p class="text-sm font-light text-stone-600">{{ product.price|rsd }}</p>
-        </a>
-        {% endfor %}
-    </div>
-</section>
+{% if picked_products %}
+    {% include "core/home_product_section.html" with heading="Izdvojeno" products=picked_products %}
+{% endif %}
+
+{% if premijum_products %}
+    {% url 'products_browse' as browse_url %}
+    {% include "core/home_product_section.html" with heading="Novo od Premijum prodavaca" products=premijum_products more_url=browse_url|add:"?premijum=1" %}
 {% endif %}
 
 

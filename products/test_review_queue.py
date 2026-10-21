@@ -93,6 +93,22 @@ def test_mark_reviewed_action(admin_client, admin_user, seller):
     assert product.reviewed_by == admin_user
 
 
+def test_pick_and_unpick_actions(admin_client, seller):
+    product = _product(seller, "Vase")
+
+    admin_client.post(
+        QUEUE_URL, {"action": "mark_picked", "_selected_action": [product.pk]}
+    )
+    product.refresh_from_db()
+    assert product.is_picked
+
+    admin_client.post(
+        QUEUE_URL, {"action": "unmark_picked", "_selected_action": [product.pk]}
+    )
+    product.refresh_from_db()
+    assert not product.is_picked
+
+
 def test_message_seller_starts_team_thread(admin_client, admin_user, seller):
     product = _product(seller, "Clock")
 
