@@ -25,6 +25,7 @@ from .forms import (
     UserPasswordChangeForm,
     UserPasswordResetForm,
     UserPasswordSetForm,
+    UserProfileForm,
     UserRegistrationForm,
 )
 from .models import User, VerificationToken
@@ -259,10 +260,26 @@ def password_change_view(request):
 
 
 @login_required(login_url="login")
+@require_http_methods(["GET", "POST"])
 def account_settings_view(request):
-    """User account settings page."""
+    """User account settings page; buyers also edit their picture and bio here."""
+    # Sellers edit their shop image and description in seller settings instead
+    profile_form = None
+    if not request.user.is_seller:
+        if request.method == "POST":
+            profile_form = UserProfileForm(
+                request.POST, request.FILES, instance=request.user
+            )
+            if profile_form.is_valid():
+                profile_form.save()
+                messages.success(request, "Vaš profil je sačuvan.")
+                return redirect("account-settings")
+        else:
+            profile_form = UserProfileForm(instance=request.user)
+
     context = {
         "page_title": "Account Settings",
+        "profile_form": profile_form,
     }
     return render(request, "users/account_settings.html", context)
 
