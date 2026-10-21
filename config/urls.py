@@ -39,6 +39,8 @@ urlpatterns = [
     path("products/", include("products.urls")),
     # Chat
     path("chat/", include("chat.urls")),
+    # Favourite sellers and wishlist
+    path("favourites/", include("favourites.urls")),
     # Home & Core
     path("", views.home_view, name="home"),
     path(

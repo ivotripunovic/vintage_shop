@@ -1,0 +1,11 @@
+{% if user.is_authenticated %}
+<form method="post" action="{% url 'favourite_seller_toggle' seller.id %}">
+    {% csrf_token %}
+    <input type="hidden" name="next" value="{{ request.get_full_path }}">
+    <button type="submit" class="border border-stone-900 text-xs uppercase tracking-widest px-5 py-2.5 transition-colors {% if is_favourite %}bg-stone-900 text-white hover:bg-stone-700{% else %}text-stone-900 hover:bg-neutral-50{% endif %}">
+        {% if is_favourite %}♥ Omiljena prodavnica{% else %}♡ Dodaj u omiljene{% endif %}
+    </button>
+</form>
+{% else %}
+<a href="{% url 'login' %}?next={{ request.get_full_path|urlencode }}" class="inline-block border border-stone-900 text-stone-900 text-xs uppercase tracking-widest px-5 py-2.5 hover:bg-neutral-50 transition-colors">♡ Dodaj u omiljene</a>
+{% endif %}

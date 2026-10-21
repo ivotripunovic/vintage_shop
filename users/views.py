@@ -277,9 +277,18 @@ def account_settings_view(request):
         else:
             profile_form = UserProfileForm(instance=request.user)
 
+    favourite_sellers = request.user.favourite_sellers.select_related("seller")
+    wishlist_items = (
+        request.user.wishlist_items.filter(product__is_deleted=False)
+        .select_related("product")
+        .prefetch_related("product__images")
+    )
+
     context = {
         "page_title": "Account Settings",
         "profile_form": profile_form,
+        "favourite_sellers": favourite_sellers,
+        "wishlist_items": wishlist_items,
     }
     return render(request, "users/account_settings.html", context)
 
