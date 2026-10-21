@@ -21,12 +21,12 @@ TIER_CHOICES = (
 DEFAULT_TIER_SETTINGS = {
     "premijum": {
         "monthly_listing_limit": None,
-        "monthly_price": Decimal("7000"),
+        "monthly_price": Decimal("9000"),
         "listing_expiry_days": None,
     },
     "odrzivo": {
         "monthly_listing_limit": 50,
-        "monthly_price": Decimal("1000"),
+        "monthly_price": Decimal("6500"),
         "listing_expiry_days": None,
     },
     "garazna": {
