@@ -47,8 +47,24 @@ class ReviewImageInline(ProductImageInline):
 
 @admin.register(Product)
 class ProductAdmin(admin.ModelAdmin):
-    list_display = ["title", "seller", "price", "status", "stock", "is_deleted"]
-    list_filter = ["status", "category", "condition", "created_at", "is_deleted"]
+    list_display = [
+        "title",
+        "seller",
+        "price",
+        "status",
+        "stock",
+        "is_picked",
+        "is_deleted",
+    ]
+    list_editable = ["is_picked"]
+    list_filter = [
+        "status",
+        "is_picked",
+        "category",
+        "condition",
+        "created_at",
+        "is_deleted",
+    ]
     search_fields = ["title", "seller__shop_name"]
     readonly_fields = ["created_at", "updated_at"]
     inlines = [ProductImageInline]
@@ -59,7 +75,7 @@ class ProductAdmin(admin.ModelAdmin):
         ),
         ("Classification", {"fields": ("category", "condition")}),
         ("Inventory", {"fields": ("stock",)}),
-        ("Status", {"fields": ("status",)}),
+        ("Status", {"fields": ("status", "is_picked")}),
         (
             "Metadata",
             {"fields": ("created_at", "updated_at", "is_deleted", "deleted_at")},
@@ -99,12 +115,13 @@ class NewAdAdmin(admin.ModelAdmin):
         "status",
         "listed_at",
         "is_reviewed",
+        "is_picked",
     ]
     list_display_links = ["thumbnail", "title"]
-    list_filter = [ReviewedFilter, "seller__tier", "status", "listed_at"]
+    list_filter = [ReviewedFilter, "seller__tier", "is_picked", "status", "listed_at"]
     search_fields = ["title", "seller__shop_name"]
     ordering = [F("reviewed_at").asc(nulls_first=True), "-listed_at"]
-    actions = ["mark_reviewed", "message_seller"]
+    actions = ["mark_reviewed", "mark_picked", "unmark_picked", "message_seller"]
     inlines = [ReviewImageInline]
     fields = [
         "seller",
@@ -119,6 +136,7 @@ class NewAdAdmin(admin.ModelAdmin):
         "expires_at",
         "reviewed_at",
         "reviewed_by",
+        "is_picked",
     ]
 
     def get_queryset(self, request):
@@ -164,6 +182,16 @@ class NewAdAdmin(admin.ModelAdmin):
             reviewed_at=timezone.now(), reviewed_by=request.user
         )
         self.message_user(request, f"{count} ad(s) marked as reviewed.")
+
+    @admin.action(description="Pick selected ads for the home page")
+    def mark_picked(self, request, queryset):
+        count = queryset.update(is_picked=True)
+        self.message_user(request, f"{count} ad(s) picked for the home page.")
+
+    @admin.action(description="Remove selected ads from the home page picks")
+    def unmark_picked(self, request, queryset):
+        count = queryset.update(is_picked=False)
+        self.message_user(request, f"{count} ad(s) removed from the home page picks.")
 
     @admin.action(description="Message the seller about this ad")
     def message_seller(self, request, queryset):

@@ -117,6 +117,8 @@ class Product(SoftDeleteModel):
     # seller's monthly listing slots. expires_at is empty when it never expires.
     listed_at = models.DateTimeField(null=True, blank=True, editable=False)
     expires_at = models.DateTimeField(null=True, blank=True, editable=False)
+    # Set by admins only; picked products are shown on the home page
+    is_picked = models.BooleanField(default=False, db_index=True)
     # Set when an admin checks the ad in the "New ads for review" queue
     reviewed_at = models.DateTimeField(null=True, blank=True)
     reviewed_by = models.ForeignKey(
