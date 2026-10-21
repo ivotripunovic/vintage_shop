@@ -29,6 +29,9 @@
                     <p class="text-xs uppercase tracking-widest text-stone-400 mt-1">Status</p>
                 </div>
             </div>
+            {% if not is_own_shop %}
+            <div class="mt-8">{% include "favourites/favourite_seller_button.html" %}</div>
+            {% endif %}
         </div>
     </div>
 </div>

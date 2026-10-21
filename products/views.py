@@ -314,9 +314,11 @@ def product_public_detail_view(request, product_id):
     )
 
     is_owner = (
+        request.user.is_authenticated and product.seller.user_id == request.user.id
+    )
+    in_wishlist = (
         request.user.is_authenticated
-        and hasattr(request.user, "seller")
-        and request.user.seller == product.seller
+        and product.wishlisted_by.filter(user=request.user).exists()
     )
 
     context = {
@@ -325,6 +327,7 @@ def product_public_detail_view(request, product_id):
         "related_products": related_products,
         "page_title": product.title,
         "is_owner": is_owner,
+        "in_wishlist": in_wishlist,
     }
 
     return render(request, "products/product_public_detail.html", context)
