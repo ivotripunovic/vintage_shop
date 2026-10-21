@@ -20,6 +20,11 @@ class User(AbstractUser):
     is_buyer = models.BooleanField(default=True)
     email_verified = models.BooleanField(default=False)
     email_verified_at = models.DateTimeField(null=True, blank=True)
+    # Buyer profile; sellers use their shop image and description instead
+    profile_picture = models.ImageField(
+        upload_to="profile_pictures/", blank=True, null=True
+    )
+    bio = models.CharField(max_length=300, blank=True)
 
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = ["username"]
