@@ -342,6 +342,7 @@ def category_products_view(request, category_id):
     # Get search and filter parameters
     search_query = request.GET.get("q", "")
     condition_filter = request.GET.get("condition")
+    premijum_only = request.GET.get("premijum") == "1"
     sort_by = request.GET.get("sort", "-created_at")
 
     # Include products from this category and all its subcategories
@@ -362,6 +363,10 @@ def category_products_view(request, category_id):
     # Apply condition filter
     if condition_filter:
         products = products.filter(condition_id=condition_filter)
+
+    # Only products from Premijum sellers
+    if premijum_only:
+        products = products.filter(seller__tier="premijum")
 
     # Apply sorting
     if sort_by in ["-created_at", "created_at", "-price", "price", "title"]:
@@ -386,6 +391,7 @@ def category_products_view(request, category_id):
         "search_query": search_query,
         "conditions": conditions,
         "selected_condition": condition_filter,
+        "premijum_only": premijum_only,
         "sort_by": sort_by,
         "page_title": f"{category.name} Products",
     }
@@ -402,6 +408,7 @@ def products_browse_view(request):
     search_query = request.GET.get("q", "")
     category_filter = request.GET.get("category")
     condition_filter = request.GET.get("condition")
+    premijum_only = request.GET.get("premijum") == "1"
     sort_by = request.GET.get("sort", "-created_at")
 
     # Start with published products
@@ -424,6 +431,10 @@ def products_browse_view(request):
     # Apply condition filter
     if condition_filter:
         products = products.filter(condition_id=condition_filter)
+
+    # Only products from Premijum sellers
+    if premijum_only:
+        products = products.filter(seller__tier="premijum")
 
     # Apply sorting
     if sort_by in ["-created_at", "created_at", "-price", "price", "title"]:
@@ -452,6 +463,7 @@ def products_browse_view(request):
         "conditions": conditions,
         "selected_category": category_filter,
         "selected_condition": condition_filter,
+        "premijum_only": premijum_only,
         "sort_by": sort_by,
         "page_title": "Browse Products",
     }

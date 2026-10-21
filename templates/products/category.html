@@ -42,10 +42,14 @@
                 <option value="title" {% if sort_by == "title" %}selected{% endif %}>Naziv A–Ž</option>
             </select>
         </div>
+        <label class="flex items-end gap-2 text-xs uppercase tracking-widest text-stone-500 pb-2.5">
+            <input type="checkbox" name="premijum" value="1" {% if premijum_only %}checked{% endif %}>
+            Samo Premijum prodavci
+        </label>
     </div>
     <div class="flex items-center gap-6">
         <button type="submit" class="text-xs uppercase tracking-widest bg-stone-900 text-white px-6 py-2.5 hover:bg-stone-700 transition-colors">Primeni</button>
-        {% if search_query or selected_condition %}
+        {% if search_query or selected_condition or premijum_only %}
             <a href="{% url 'category_products' category.id %}" class="text-xs uppercase tracking-widest text-stone-400 hover:text-stone-900 transition-colors">Obriši</a>
         {% endif %}
     </div>
@@ -91,9 +95,9 @@
     <div class="border border-neutral-200 p-16 text-center">
         <h2 class="font-serif text-2xl font-light mb-3">Nisu pronađeni artikli</h2>
         <p class="text-xs text-stone-400 mb-6">
-            {% if search_query or selected_condition %}Try adjusting your filters.{% else %}Još nema proizvoda u {{ category.name }}.{% endif %}
+            {% if search_query or selected_condition or premijum_only %}Try adjusting your filters.{% else %}Još nema proizvoda u {{ category.name }}.{% endif %}
         </p>
-        {% if search_query or selected_condition %}
+        {% if search_query or selected_condition or premijum_only %}
             <a href="{% url 'category_products' category.id %}" class="text-xs uppercase tracking-widest bg-stone-900 text-white px-6 py-2.5 hover:bg-stone-700 transition-colors inline-block">Obriši filtere</a>
         {% else %}
             <a href="{% url 'products_browse' %}" class="text-xs uppercase tracking-widest bg-stone-900 text-white px-6 py-2.5 hover:bg-stone-700 transition-colors inline-block">Pogledaj sve</a>
