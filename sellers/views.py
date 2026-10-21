@@ -2,8 +2,6 @@
 Views for seller onboarding, dashboard, and account management.
 """
 
-from datetime import date, timedelta
-
 from django.contrib import messages
 from django.contrib.auth import authenticate, login
 from django.contrib.auth.decorators import login_required
@@ -11,7 +9,6 @@ from django.core.paginator import Paginator
 from django.db import models, transaction
 from django.db.models import Count, Q
 from django.shortcuts import get_object_or_404, redirect, render
-from django.utils.timezone import now
 from django.views.decorators.http import require_http_methods
 
 from products.models import Product, ProductCondition
@@ -23,7 +20,7 @@ from .forms import (
     SellerRegistrationForm,
     ShopSetupForm,
 )
-from .models import Seller, SellerSubscription
+from .models import Seller
 
 
 @require_http_methods(["GET", "POST"])
@@ -114,16 +111,7 @@ def seller_bank_details_view(request):
 
                 # Create initial subscription if doesn't exist
                 if not seller.active_subscription:
-                    start_date = now().date()
-                    renewal_date = start_date + timedelta(days=30)
-                    SellerSubscription.objects.create(
-                        seller=seller,
-                        plan_type="monthly",
-                        start_date=start_date,
-                        renewal_date=renewal_date,
-                        status="active",
-                        amount=9.99,
-                    )
+                    seller.create_initial_subscription()
 
                 messages.success(
                     request, "Bank details saved! Your seller account is ready."
@@ -158,16 +146,7 @@ def seller_dashboard_view(request):
 
     # If newly created, also create subscription
     if created and not seller.active_subscription:
-        start_date = now().date()
-        renewal_date = start_date + timedelta(days=30)
-        SellerSubscription.objects.create(
-            seller=seller,
-            plan_type="monthly",
-            start_date=start_date,
-            renewal_date=renewal_date,
-            status="active",
-            amount=9.99,
-        )
+        seller.create_initial_subscription()
 
     # Get seller statistics
     total_products = seller.products.count()
@@ -187,6 +166,8 @@ def seller_dashboard_view(request):
         "draft_products": draft_products,
         "subscription": subscription,
         "recent_products": recent_products,
+        "listing_limit": seller.monthly_listing_limit,
+        "listings_left": seller.listings_left_this_month(),
     }
 
     return render(request, "sellers/dashboard.html", context)
@@ -259,7 +240,13 @@ def seller_products_list_view(request):
 
     products = seller.products.all()
 
-    if status_filter and status_filter in ["draft", "published", "sold", "archived"]:
+    if status_filter and status_filter in [
+        "draft",
+        "published",
+        "sold",
+        "archived",
+        "expired",
+    ]:
         products = products.filter(status=status_filter)
 
     # Count by status
@@ -269,6 +256,7 @@ def seller_products_list_view(request):
         "draft": seller.products.filter(status="draft").count(),
         "sold": seller.products.filter(status="sold").count(),
         "archived": seller.products.filter(status="archived").count(),
+        "expired": seller.products.filter(status="expired").count(),
     }
 
     context = {

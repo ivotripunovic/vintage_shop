@@ -280,11 +280,7 @@ def social_signup_complete_view(request):
 @require_http_methods(["POST"])
 def social_become_seller_view(request):
     """Upgrade a social-registered user to seller and redirect to shop setup."""
-    from datetime import timedelta
-
-    from django.utils.timezone import now
-
-    from sellers.models import Seller, SellerSubscription
+    from sellers.models import Seller
 
     user = request.user
     if not user.is_seller:
@@ -298,15 +294,7 @@ def social_become_seller_view(request):
                 shop_name=user.get_full_name() or base_slug,
                 shop_slug=base_slug,
             )
-            start_date = now().date()
-            SellerSubscription.objects.create(
-                seller=seller,
-                plan_type="monthly",
-                start_date=start_date,
-                renewal_date=start_date + timedelta(days=30),
-                status="active",
-                amount=9.99,
-            )
+            seller.create_initial_subscription()
 
     return redirect("seller_shop_setup")
 

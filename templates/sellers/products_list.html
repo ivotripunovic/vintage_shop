@@ -18,6 +18,7 @@
     <a href="{% url 'seller_products_list' %}?status=draft" class="px-4 py-3 text-xs uppercase tracking-widest {% if current_status == 'draft' %}text-stone-900 border-b-2 border-stone-900{% else %}text-stone-400 hover:text-stone-600{% endif %} transition-colors">Nacrti ({{ status_counts.draft }})</a>
     <a href="{% url 'seller_products_list' %}?status=sold" class="px-4 py-3 text-xs uppercase tracking-widest {% if current_status == 'sold' %}text-stone-900 border-b-2 border-stone-900{% else %}text-stone-400 hover:text-stone-600{% endif %} transition-colors">Prodato ({{ status_counts.sold }})</a>
     <a href="{% url 'seller_products_list' %}?status=archived" class="px-4 py-3 text-xs uppercase tracking-widest {% if current_status == 'archived' %}text-stone-900 border-b-2 border-stone-900{% else %}text-stone-400 hover:text-stone-600{% endif %} transition-colors">Arhivirano ({{ status_counts.archived }})</a>
+    <a href="{% url 'seller_products_list' %}?status=expired" class="px-4 py-3 text-xs uppercase tracking-widest {% if current_status == 'expired' %}text-stone-900 border-b-2 border-stone-900{% else %}text-stone-400 hover:text-stone-600{% endif %} transition-colors">Isteklo ({{ status_counts.expired }})</a>
 </div>
 
 {% if products %}
@@ -34,7 +35,7 @@
                         </svg>
                     </div>
                 {% endif %}
-                <span class="absolute top-2 right-2 text-xs uppercase tracking-widest px-2 py-1 {% if product.status == 'published' %}bg-emerald-700 text-white{% elif product.status == 'draft' %}bg-amber-100 text-amber-800{% elif product.status == 'sold' %}bg-neutral-700 text-white{% else %}bg-neutral-200 text-neutral-600{% endif %}">
+                <span class="absolute top-2 right-2 text-xs uppercase tracking-widest px-2 py-1 {% if product.status == 'published' %}bg-emerald-700 text-white{% elif product.status == 'draft' %}bg-amber-100 text-amber-800{% elif product.status == 'sold' %}bg-neutral-700 text-white{% elif product.status == 'expired' %}bg-red-100 text-red-700{% else %}bg-neutral-200 text-neutral-600{% endif %}">
                     {{ product.get_status_display }}
                 </span>
             </div>
@@ -47,10 +48,10 @@
                 </div>
 
                 <div class="space-y-2">
-                    {% if product.status == 'draft' %}
+                    {% if product.status == 'draft' or product.status == 'expired' %}
                         <form method="post" action="{% url 'product_publish' product.id %}">
                             {% csrf_token %}
-                            <button type="submit" class="w-full text-xs uppercase tracking-widest bg-stone-900 text-white py-2 hover:bg-stone-700 transition-colors">Objavi</button>
+                            <button type="submit" class="w-full text-xs uppercase tracking-widest bg-stone-900 text-white py-2 hover:bg-stone-700 transition-colors">{% if product.status == 'expired' %}Ponovo objavi{% else %}Objavi{% endif %}</button>
                         </form>
                     {% elif product.status == 'published' %}
                         <form method="post" action="{% url 'product_unpublish' product.id %}">

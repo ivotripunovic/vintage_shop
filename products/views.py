@@ -40,7 +40,7 @@ def product_create_view(request):
         return redirect("seller_register")
 
     if request.method == "POST":
-        form = ProductForm(request.POST)
+        form = ProductForm(request.POST, seller=seller)
         if form.is_valid():
             product = form.save(commit=False)
             product.seller = seller
@@ -49,7 +49,7 @@ def product_create_view(request):
             messages.success(request, "Product created successfully. Now add images.")
             return redirect("product_images", product_id=product.id)
     else:
-        form = ProductForm()
+        form = ProductForm(seller=seller)
 
     context = {
         "form": form,
@@ -72,13 +72,13 @@ def product_edit_view(request, product_id):
     product = get_object_or_404(Product, id=product_id, seller=seller)
 
     if request.method == "POST":
-        form = ProductForm(request.POST, instance=product)
+        form = ProductForm(request.POST, instance=product, seller=seller)
         if form.is_valid():
             product = form.save()
             messages.success(request, "Proizvod je uspešno ažuriran.")
             return redirect("product_detail", product_id=product.id)
     else:
-        form = ProductForm(instance=product)
+        form = ProductForm(instance=product, seller=seller)
 
     context = {
         "form": form,
@@ -256,6 +256,10 @@ def product_publish_view(request, product_id):
     if not product.images.exists():
         messages.error(request, "Please add at least one image before publishing.")
         return redirect("product_images", product_id=product.id)
+
+    if not seller.can_publish(product):
+        messages.error(request, seller.listing_limit_message())
+        return redirect("seller_products_list")
 
     product.publish()
     messages.success(

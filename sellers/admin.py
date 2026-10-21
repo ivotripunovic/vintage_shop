@@ -2,13 +2,13 @@
 
 from django.contrib import admin
 
-from .models import Seller, SellerSubscription
+from .models import Seller, SellerSubscription, SellerTier
 
 
 @admin.register(Seller)
 class SellerAdmin(admin.ModelAdmin):
-    list_display = ["shop_name", "user", "status", "is_verified", "created_at"]
-    list_filter = ["status", "is_verified", "created_at"]
+    list_display = ["shop_name", "user", "tier", "status", "is_verified", "created_at"]
+    list_filter = ["tier", "status", "is_verified", "created_at"]
     search_fields = ["shop_name", "user__email"]
     readonly_fields = ["created_at", "updated_at", "shop_slug"]
     fieldsets = (
@@ -25,7 +25,7 @@ class SellerAdmin(admin.ModelAdmin):
                 )
             },
         ),
-        ("Status", {"fields": ("status", "is_verified")}),
+        ("Status", {"fields": ("tier", "status", "is_verified")}),
         (
             "Bank Details",
             {
@@ -35,6 +35,24 @@ class SellerAdmin(admin.ModelAdmin):
         ),
         ("Metadata", {"fields": ("created_at", "updated_at")}),
     )
+
+
+@admin.register(SellerTier)
+class SellerTierAdmin(admin.ModelAdmin):
+    list_display = [
+        "tier",
+        "monthly_listing_limit",
+        "monthly_price",
+        "listing_expiry_days",
+    ]
+    list_editable = ["monthly_listing_limit", "monthly_price", "listing_expiry_days"]
+
+    # The three tiers are fixed in code; admins only edit their settings
+    def has_add_permission(self, request):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
 
 
 @admin.register(SellerSubscription)

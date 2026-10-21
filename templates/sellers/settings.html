@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load currency_filters %}
 {% block title %}Podešavanja prodavnice — {{ SITE_NAME }}{% endblock %}
 
 {% block content %}
@@ -68,7 +69,7 @@
             </div>
             <div>
                 <p class="text-xs uppercase tracking-widest text-stone-400 mb-1">Mesečno</p>
-                <p class="text-sm text-stone-900">${{ subscription.amount }}</p>
+                <p class="text-sm text-stone-900">{{ subscription.amount|rsd }}</p>
             </div>
             <div>
                 <p class="text-xs uppercase tracking-widest text-stone-400 mb-1">Obnavlja se</p>

@@ -1,0 +1,3 @@
+# Hourly: take down listings past their expiry date (Garazna tier by default).
+# Installed by setup.sh to /etc/cron.d/expire-listings.
+5 * * * * django cd /srv/django/apps/vintage_shop && venv/bin/python manage.py expire_listings >> logs/expire-listings.log 2>&1

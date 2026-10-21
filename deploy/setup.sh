@@ -295,6 +295,12 @@ install -m 755 "${APP_DIR}/deploy/backup-db.sh" /usr/local/bin/backup-db.sh
 install -m 644 "${APP_DIR}/deploy/backup-db.cron" /etc/cron.d/backup-db
 /usr/local/bin/backup-db.sh
 
+# --- 17. Hourly listing expiry -------------------------------------------
+
+echo "==> Installing hourly listing expiry..."
+# Runs as the app user, so it can stay pointed at the repo checkout
+install -m 644 "${APP_DIR}/deploy/expire-listings.cron" /etc/cron.d/expire-listings
+
 # --- Done -----------------------------------------------------------------
 
 echo ""
