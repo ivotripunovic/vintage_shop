@@ -117,6 +117,15 @@ class Product(SoftDeleteModel):
     # seller's monthly listing slots. expires_at is empty when it never expires.
     listed_at = models.DateTimeField(null=True, blank=True, editable=False)
     expires_at = models.DateTimeField(null=True, blank=True, editable=False)
+    # Set when an admin checks the ad in the "New ads for review" queue
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+    reviewed_by = models.ForeignKey(
+        "users.User",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="reviewed_products",
+    )
 
     class Meta:
         ordering = ["-created_at"]
@@ -177,6 +186,15 @@ class Product(SoftDeleteModel):
         """Mark product as sold."""
         self.status = "sold"
         self.save()
+
+
+class NewAd(Product):
+    """Published products, as shown in the admin review queue."""
+
+    class Meta:
+        proxy = True
+        verbose_name = "New ad"
+        verbose_name_plural = "New ads for review"
 
 
 class ProductImage(TimeStampedModel):
