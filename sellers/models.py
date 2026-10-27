@@ -80,6 +80,11 @@ class Seller(TimeStampedModel):
         return self.status == "suspended"
 
     @property
+    def is_active_shop(self):
+        """Check if the shop is open to buyers."""
+        return self.status == "active"
+
+    @property
     def active_subscription(self):
         """Get the active subscription for this seller."""
         return self.subscriptions.filter(status="active").first()

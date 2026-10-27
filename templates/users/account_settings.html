@@ -77,6 +77,7 @@
         <ul class="divide-y divide-neutral-200">
             {% for favourite in favourite_sellers %}
             <li class="flex items-center justify-between gap-4 py-3">
+                {% if favourite.seller.is_active_shop %}
                 <a href="{% url 'shop_detail' favourite.seller.shop_slug %}" class="flex items-center gap-4 min-w-0 group">
                     {% if favourite.seller.shop_image %}
                         <img src="{{ favourite.seller.shop_image.url }}" alt="{{ favourite.seller.shop_name }}" class="w-12 h-12 object-cover flex-shrink-0">
@@ -85,8 +86,18 @@
                     {% endif %}
                     <span class="text-sm text-stone-900 truncate group-hover:underline">{{ favourite.seller.shop_name }}</span>
                 </a>
-                <form method="post" action="{% url 'favourite_seller_toggle' favourite.seller.id %}">
+                {% else %}
+                <div class="flex items-center gap-4 min-w-0">
+                    <div class="w-12 h-12 bg-neutral-100 flex-shrink-0"></div>
+                    <div class="min-w-0">
+                        <p class="text-sm text-stone-400 truncate">{{ favourite.seller.shop_name }}</p>
+                        <p class="text-xs text-stone-400">Prodavnica trenutno nije aktivna</p>
+                    </div>
+                </div>
+                {% endif %}
+                <form method="post" action="{% url 'favourite_seller_update' favourite.seller.id %}">
                     {% csrf_token %}
+                    <input type="hidden" name="action" value="remove">
                     <input type="hidden" name="next" value="{% url 'account-settings' %}#omiljeni">
                     <button type="submit" class="text-xs uppercase tracking-widest text-stone-400 hover:text-red-600 transition-colors">Ukloni</button>
                 </form>
@@ -112,7 +123,7 @@
                         <div class="w-12 h-12 bg-neutral-100 flex-shrink-0"></div>
                     {% endif %}
                     <div class="min-w-0">
-                        {% if product.status == "published" %}
+                        {% if product.is_listed %}
                             <a href="{% url 'product_detail' product.id %}" class="block text-sm text-stone-900 truncate hover:underline">{{ product.title }}</a>
                             <p class="text-xs text-stone-500">{{ product.price|rsd }}</p>
                         {% else %}
@@ -121,8 +132,9 @@
                         {% endif %}
                     </div>
                 </div>
-                <form method="post" action="{% url 'wishlist_toggle' product.id %}">
+                <form method="post" action="{% url 'wishlist_update' product.id %}">
                     {% csrf_token %}
+                    <input type="hidden" name="action" value="remove">
                     <input type="hidden" name="next" value="{% url 'account-settings' %}#lista-zelja">
                     <button type="submit" class="text-xs uppercase tracking-widest text-stone-400 hover:text-red-600 transition-colors">Ukloni</button>
                 </form>

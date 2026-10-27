@@ -301,7 +301,13 @@ def product_public_detail_view(request, product_id):
     Public product detail page (for buyers).
     Shows product images, description, price, seller info, and related products.
     """
-    product = get_object_or_404(Product, id=product_id, status="published")
+    product = get_object_or_404(
+        Product.objects.select_related("seller"),
+        id=product_id,
+        status="published",
+        is_deleted=False,
+        seller__status="active",
+    )
 
     # Get product images
     images = product.images.all().order_by("order")

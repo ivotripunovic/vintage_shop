@@ -280,7 +280,7 @@ def account_settings_view(request):
     favourite_sellers = request.user.favourite_sellers.select_related("seller")
     wishlist_items = (
         request.user.wishlist_items.filter(product__is_deleted=False)
-        .select_related("product")
+        .select_related("product__seller")
         .prefetch_related("product__images")
     )
 

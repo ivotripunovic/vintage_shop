@@ -1,6 +1,7 @@
 {% if user.is_authenticated %}
-<form method="post" action="{% url 'wishlist_toggle' product.id %}">
+<form method="post" action="{% url 'wishlist_update' product.id %}">
     {% csrf_token %}
+    <input type="hidden" name="action" value="{% if in_wishlist %}remove{% else %}add{% endif %}">
     <input type="hidden" name="next" value="{{ request.get_full_path }}">
     <button type="submit" class="h-full border border-stone-900 text-xs uppercase tracking-widest px-6 py-4 transition-colors {% if in_wishlist %}bg-stone-900 text-white hover:bg-stone-700{% else %}text-stone-900 hover:bg-neutral-50{% endif %}">
         {% if in_wishlist %}♥ Sačuvano{% else %}♡ Sačuvaj{% endif %}

@@ -174,6 +174,15 @@ class Product(SoftDeleteModel):
         """Check if product is published."""
         return self.status == "published"
 
+    @property
+    def is_listed(self):
+        """Check if buyers can see the product: published, not deleted, shop active."""
+        return (
+            self.status == "published"
+            and not self.is_deleted
+            and self.seller.is_active_shop
+        )
+
     def publish(self):
         """Publish the product."""
         self.status = "published"
