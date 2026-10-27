@@ -3,9 +3,11 @@ Tests for seller forms.
 """
 
 from datetime import timedelta
+from unittest import mock
 
 import pytest
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.db import IntegrityError
 from django.test import TestCase
 from django.utils import timezone
 from django.utils.datastructures import MultiValueDict
@@ -178,6 +180,57 @@ class SellerAccountSettingsFormTests(TestCase):
                 )
             else:
                 raise
+
+
+class SellerAccountSettingsFormCommitTests(TestCase):
+    """The settings form only writes to the database when committing."""
+
+    def setUp(self):
+        self.user = User.objects.create_user(
+            email="commit@example.com",
+            username="commit@example.com",
+            password="testpass123",
+            is_seller=True,
+        )
+        self.seller, _ = Seller.objects.get_or_create(
+            user=self.user,
+            defaults={"shop_name": "Commit Shop", "shop_slug": "commit-shop"},
+        )
+        self.original_name = self.seller.shop_name
+
+    def _form(self):
+        form = SellerAccountSettingsForm(
+            data={"shop_name": "Renamed Shop", "email": "new@example.com"},
+            instance=self.seller,
+            user=self.user,
+        )
+        self.assertTrue(form.is_valid(), form.errors)
+        return form
+
+    def test_commit_false_writes_nothing(self):
+        self._form().save(commit=False)
+        self.assertEqual(self.user.email, "commit@example.com")
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.email, "commit@example.com")
+        self.seller.refresh_from_db()
+        self.assertEqual(self.seller.shop_name, self.original_name)
+
+    def test_save_m2m_after_commit_false_saves_email(self):
+        form = self._form()
+        seller = form.save(commit=False)
+        seller.save()
+        form.save_m2m()
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.email, "new@example.com")
+        self.assertEqual(self.user.username, "new@example.com")
+
+    def test_failed_user_save_rolls_back_seller(self):
+        form = self._form()
+        with mock.patch.object(User, "save", side_effect=IntegrityError):
+            with self.assertRaises(IntegrityError):
+                form.save()
+        self.seller.refresh_from_db()
+        self.assertEqual(self.seller.shop_name, self.original_name)
 
 
 class SellerTraderConfirmationFormTests(TestCase):
