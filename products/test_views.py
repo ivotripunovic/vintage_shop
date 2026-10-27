@@ -1,5 +1,5 @@
 """
-Tests for product view counting, wishlist counts and recent viewers.
+View tests for product view counting, wishlist counts and recent viewers.
 """
 
 from unittest import mock
@@ -17,6 +17,12 @@ from products.popularity import (
 )
 from sellers.models import Seller
 from users.models import User
+
+BROWSER_UA = "Mozilla/5.0 (X11; Linux x86_64) Firefox/130.0"
+
+
+def browser():
+    return Client(HTTP_USER_AGENT=BROWSER_UA)
 
 
 class ProductPopularityTests(TestCase):
@@ -49,7 +55,7 @@ class ProductPopularityTests(TestCase):
             username=f"buyer{n}@test.com",
             password="testpass123",
         )
-        client = Client()
+        client = browser()
         client.force_login(user)
         return user, client
 
@@ -69,16 +75,16 @@ class ProductPopularityTests(TestCase):
         self.assertEqual(self._view_count(), 2)
 
     def test_anonymous_session_counts_once(self):
-        client = Client()
+        client = browser()
         client.get(self.url)
         client.get(self.url)
         self.assertEqual(self._view_count(), 1)
-        Client().get(self.url)
+        browser().get(self.url)
         self.assertEqual(self._view_count(), 2)
         self.assertEqual(ProductView.objects.filter(user=None).count(), 2)
 
     def test_owner_view_not_counted(self):
-        client = Client()
+        client = browser()
         client.force_login(self.seller_user)
         client.get(self.url)
         self.assertEqual(self._view_count(), 0)
@@ -88,13 +94,26 @@ class ProductPopularityTests(TestCase):
         Client(HTTP_USER_AGENT="Mozilla/5.0 (compatible; Googlebot/2.1)").get(self.url)
         self.assertEqual(self._view_count(), 0)
 
+    def test_request_without_user_agent_not_counted(self):
+        Client().get(self.url)
+        self.assertEqual(self._view_count(), 0)
+
+    def test_head_request_not_counted(self):
+        browser().head(self.url)
+        self.assertEqual(self._view_count(), 0)
+
+    def test_prefetch_not_counted(self):
+        browser().get(self.url, HTTP_SEC_PURPOSE="prefetch;prerender")
+        browser().get(self.url, HTTP_PURPOSE="prefetch")
+        self.assertEqual(self._view_count(), 0)
+
     def test_page_shows_view_and_wishlist_counts(self):
         buyer, client = self._buyer(1)
         WishlistItem.objects.create(user=buyer, product=self.product)
         WishlistItem.objects.create(user=self._buyer(2)[0], product=self.product)
         response = client.get(self.url)
         self.assertEqual(response.context["product"].view_count, 1)
-        self.assertEqual(response.context["wishlist_count"], 2)
+        self.assertEqual(response.context["product"].wishlist_count, 2)
         self.assertContains(response, "Pregledi")
 
     def test_recent_viewers_excludes_current_visitor(self):
@@ -121,7 +140,7 @@ class ProductPopularityTests(TestCase):
     def test_seller_list_shows_counts(self):
         self._buyer(1)[1].get(self.url)
         WishlistItem.objects.create(user=self._buyer(2)[0], product=self.product)
-        client = Client()
+        client = browser()
         client.force_login(self.seller_user)
         response = client.get(reverse("seller_products_list"))
         listed = response.context["products"][0]

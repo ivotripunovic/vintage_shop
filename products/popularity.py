@@ -6,7 +6,6 @@ import re
 import time
 
 from django.core.cache import cache
-from django.db import IntegrityError, transaction
 from django.db.models import F
 
 from .models import Product, ProductView
@@ -14,7 +13,12 @@ from .models import Product, ProductView
 # How long a visit counts towards "viewed in the last N minutes"
 RECENT_VIEWER_WINDOW = 15 * 60
 
-BOT_UA_RE = re.compile(r"bot|crawl|spider|slurp|preview", re.IGNORECASE)
+BOT_UA_RE = re.compile(
+    r"bot|crawl|spider|slurp|preview|headless|curl|wget|python-requests|httpx"
+    r"|go-http-client|okhttp|facebookexternalhit|whatsapp|telegram",
+    re.IGNORECASE,
+)
+PREFETCH_HEADERS = ("HTTP_SEC_PURPOSE", "HTTP_PURPOSE", "HTTP_X_MOZ")
 
 
 def _recent_viewers_key(product_id):
@@ -30,29 +34,36 @@ def visitor_id(request):
     return f"s{request.session.session_key}"
 
 
+def is_countable_request(request):
+    """Check the request is a real page view: a GET from a browser, not a prefetch."""
+    if request.method != "GET":
+        return False
+    user_agent = request.META.get("HTTP_USER_AGENT", "")
+    if not user_agent or BOT_UA_RE.search(user_agent):
+        return False
+    return not any(
+        "prefetch" in request.META.get(header, "").lower()
+        for header in PREFETCH_HEADERS
+    )
+
+
 def record_view(request, product):
     """
     Count a unique view of the product and mark the visitor as a recent viewer.
-    Owners and bots are ignored. Returns the visitor id, or None if ignored.
+    The caller skips the product's owner. Bots and prefetches are ignored.
+    Returns the visitor id, or None if ignored.
     """
-    user = request.user
-    if user.is_authenticated and product.seller.user_id == user.pk:
-        return None
-    if BOT_UA_RE.search(request.META.get("HTTP_USER_AGENT", "")):
+    if not is_countable_request(request):
         return None
 
+    user = request.user
     vid = visitor_id(request)
     if user.is_authenticated:
         lookup = {"user": user}
     else:
         lookup = {"user": None, "session_key": request.session.session_key}
 
-    try:
-        with transaction.atomic():
-            _, created = ProductView.objects.get_or_create(product=product, **lookup)
-    except IntegrityError:
-        # A parallel request created the same view first
-        created = False
+    _, created = ProductView.objects.get_or_create(product=product, **lookup)
     if created:
         Product.objects.filter(pk=product.pk).update(view_count=F("view_count") + 1)
         product.view_count += 1

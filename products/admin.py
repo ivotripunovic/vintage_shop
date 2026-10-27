@@ -227,3 +227,7 @@ class ProductViewAdmin(admin.ModelAdmin):
     list_display = ["product", "user", "session_key", "created_at"]
     readonly_fields = ["product", "user", "session_key", "created_at"]
     search_fields = ["product__title", "user__email"]
+    list_select_related = ["product", "user"]
+
+    def has_add_permission(self, request):
+        return False
