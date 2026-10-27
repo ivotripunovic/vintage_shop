@@ -2,8 +2,11 @@
 Marking a product as sold to a buyer from chat (issue #9).
 """
 
+from datetime import timedelta
+
 from django.test import TestCase
 from django.urls import reverse
+from django.utils import timezone
 
 from chat.models import Conversation
 from orders.models import Sale
@@ -87,6 +90,53 @@ class MarkSoldTests(TestCase):
         Product.objects.filter(pk=self.product.pk).update(status="sold")
         response = self.client.get(self.url)
         self.assertRedirects(response, reverse("seller_products_list"))
+
+    def test_draft_and_archived_cannot_be_sold(self):
+        for status in ("draft", "archived"):
+            Product.objects.filter(pk=self.product.pk).update(status=status)
+            response = self.client.post(self.url, {"buyer": self.buyer.pk})
+            self.assertRedirects(response, reverse("seller_products_list"))
+        self.assertFalse(Sale.objects.exists())
+
+    def test_expired_listing_sale_keeps_listing_period(self):
+        expired = timezone.now() - timedelta(days=1)
+        Product.objects.filter(pk=self.product.pk).update(
+            status="expired", stock=2, expires_at=expired
+        )
+        self.client.post(self.url, {"buyer": self.buyer.pk})
+        self.product.refresh_from_db()
+        self.assertEqual((self.product.stock, self.product.status), (1, "expired"))
+        self.assertEqual(self.product.expires_at, expired)
+
+    def test_published_listing_period_not_restarted(self):
+        expired = timezone.now() - timedelta(days=1)
+        Product.objects.filter(pk=self.product.pk).update(stock=2, expires_at=expired)
+        self.client.post(self.url, {"buyer": self.buyer.pk})
+        self.product.refresh_from_db()
+        self.assertEqual(self.product.expires_at, expired)
+
+    def test_resubmit_after_last_item_sold_is_rejected(self):
+        other = _make_user("other@test.com")
+        Conversation.objects.create(
+            buyer=other, seller=self.seller, product=self.product
+        )
+        self.client.post(self.url, {"buyer": self.buyer.pk})
+        self.client.post(self.url, {"buyer": other.pk})
+        self.assertEqual(Sale.objects.count(), 1)
+        self.product.refresh_from_db()
+        self.assertEqual(self.product.stock, 0)
+
+    def test_non_numeric_buyer_is_a_form_error(self):
+        response = self.client.post(self.url, {"buyer": "abc"})
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(Sale.objects.exists())
+
+    def test_chat_hides_mark_sold_once_buyer_bought(self):
+        Product.objects.filter(pk=self.product.pk).update(stock=2)
+        self.client.post(self.url, {"buyer": self.buyer.pk})
+        conversation = Conversation.objects.get()
+        response = self.client.get(reverse("chat_detail", args=[conversation.pk]))
+        self.assertNotContains(response, "Prodato ovom kupcu")
 
     def test_buyer_preselected_from_chat(self):
         response = self.client.get(self.url, {"buyer": self.buyer.pk})

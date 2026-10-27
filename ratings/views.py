@@ -50,6 +50,9 @@ def rate_sale_view(request, sale_id):
         rating.subject = sale.seller.user if is_buyer else sale.buyer
         try:
             with transaction.atomic():
+                # Lock the sale so two sides rating at once see each other's
+                # rating and the second one releases both
+                Sale.objects.select_for_update().get(pk=sale.pk)
                 rating.save()
                 # Both sides have rated: release both now
                 if sale.ratings.count() == 2:

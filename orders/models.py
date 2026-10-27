@@ -108,6 +108,19 @@ class OrderItem(TimeStampedModel):
         return self.quantity * self.price_at_purchase
 
 
+# Products a seller can record a sale for: live, or live until recently
+SELLABLE_STATUSES = ("published", "expired")
+
+
+def can_be_sold(product):
+    """Check the product is live (or recently expired) and has stock left."""
+    return (
+        product.status in SELLABLE_STATUSES
+        and product.stock > 0
+        and not product.is_deleted
+    )
+
+
 class Sale(TimeStampedModel):
     """A product the seller marked as sold to a buyer they talked to in chat."""
 

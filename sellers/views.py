@@ -11,6 +11,7 @@ from django.db.models import Count, Q
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_http_methods
 
+from orders.models import SELLABLE_STATUSES
 from products.models import Product, ProductCondition
 from ratings.models import Rating
 from ratings.services import rating_summary
@@ -265,6 +266,7 @@ def seller_products_list_view(request):
         "products": products,
         "status_counts": status_counts,
         "current_status": status_filter or "all",
+        "sellable_statuses": SELLABLE_STATUSES,
     }
 
     return render(request, "sellers/products_list.html", context)
