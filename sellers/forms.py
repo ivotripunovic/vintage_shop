@@ -7,7 +7,7 @@ from django.core.exceptions import ValidationError
 
 from users.models import User
 
-from .models import Seller, SellerSubscription
+from .models import TRADER_STATEMENT, Seller, SellerSubscription
 
 
 class SellerRegistrationForm(forms.Form):
@@ -174,6 +174,11 @@ class SellerAccountSettingsForm(forms.ModelForm):
             }
         )
     )
+    is_trader = forms.BooleanField(
+        required=False,
+        label=TRADER_STATEMENT,
+        widget=forms.CheckboxInput(attrs={"class": "mt-1"}),
+    )
 
     class Meta:
         model = Seller
@@ -212,6 +217,10 @@ class SellerAccountSettingsForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         if user:
             self.fields["email"].initial = user.email
+        # An outdated confirmation starts unticked so the seller re-confirms
+        self.fields["is_trader"].initial = (
+            self.instance.is_trader and not self.instance.trader_statement_outdated
+        )
 
     def clean_email(self):
         """Validate that new email is unique if changed."""
@@ -230,6 +239,12 @@ class SellerAccountSettingsForm(forms.ModelForm):
             self.user.email = email
             self.user.username = email
             self.user.save()
+
+        # Keep the original confirmation while the statement is unchanged
+        if not self.cleaned_data.get("is_trader"):
+            seller.clear_trader()
+        elif not seller.is_trader or seller.trader_statement_outdated:
+            seller.confirm_trader()
 
         if commit:
             seller.save()

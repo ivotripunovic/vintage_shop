@@ -5,6 +5,7 @@ Tests for seller views.
 import pytest
 from django.test import Client, TestCase
 from django.urls import reverse
+from django.utils.timezone import now
 
 from users.models import User
 
@@ -91,3 +92,32 @@ class TestShopSetupViewForSocialSeller(TestCase):
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, self.user.username)  # shop_name prefilled
+
+
+class TestTraderConfirmation(TestCase):
+    """Sellers confirm trader status in settings; buyers see a badge."""
+
+    def setUp(self):
+        self.user = _make_social_seller("trader@example.com")
+        self.seller = self.user.seller_profile
+        self.client.force_login(self.user)
+
+    def test_settings_post_confirms_trader(self):
+        response = self.client.post(
+            reverse("seller_settings"),
+            {
+                "shop_name": self.seller.shop_name,
+                "email": self.user.email,
+                "is_trader": "on",
+            },
+        )
+        self.assertEqual(response.status_code, 302)
+        self.seller.refresh_from_db()
+        self.assertIsNotNone(self.seller.trader_confirmed_at)
+
+    def test_shop_detail_shows_badge_only_when_confirmed(self):
+        url = reverse("shop_detail", args=[self.seller.shop_slug])
+        self.assertNotContains(self.client.get(url), "Trgovac")
+        self.seller.trader_confirmed_at = now()
+        self.seller.save()
+        self.assertContains(self.client.get(url), "Trgovac")

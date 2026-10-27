@@ -34,7 +34,7 @@
     </div>
 </div>
 
-<div class="border border-neutral-200 p-6 mb-8 grid grid-cols-2 gap-6">
+<div class="border border-neutral-200 p-6 mb-8 grid grid-cols-2 md:grid-cols-3 gap-6">
     <div>
         <p class="text-xs uppercase tracking-widest text-stone-400 mb-1">Paket</p>
         <p class="text-sm text-stone-900">{{ seller.get_tier_display }}</p>
@@ -42,6 +42,10 @@
     <div>
         <p class="text-xs uppercase tracking-widest text-stone-400 mb-1">Novi oglasi ovog meseca</p>
         <p class="text-sm text-stone-900">{% if listing_limit is None %}Neograničeno{% else %}Preostalo {{ listings_left }} od {{ listing_limit }}{% endif %}</p>
+    </div>
+    <div>
+        <p class="text-xs uppercase tracking-widest text-stone-400 mb-1">Status trgovca</p>
+        <p class="text-sm text-stone-900">{% if seller.is_trader %}Potvrđeno {{ seller.trader_confirmed_at|date:"d.m.Y." }}{% else %}<a href="{% url 'seller_settings' %}" class="underline">Nije potvrđeno</a>{% endif %}</p>
     </div>
 </div>
 
