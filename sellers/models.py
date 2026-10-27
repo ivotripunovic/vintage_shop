@@ -37,6 +37,12 @@ DEFAULT_TIER_SETTINGS = {
 }
 
 
+# Draft wording, pending confirmation by the legal side
+TRADER_STATEMENT = (
+    "Potvrđujem da sam trgovac u smislu Zakona o trgovini Republike Srbije."
+)
+
+
 class Seller(TimeStampedModel):
     """Seller profile linked to User."""
 
@@ -60,6 +66,8 @@ class Seller(TimeStampedModel):
     is_verified = models.BooleanField(default=False)
     # Set by admins only; decides the monthly listing limit and price
     tier = models.CharField(max_length=20, choices=TIER_CHOICES, default="garazna")
+    # When the seller confirmed TRADER_STATEMENT; None means not confirmed
+    trader_confirmed_at = models.DateTimeField(null=True, blank=True)
 
     # Bank details (stored securely - consider encryption in production)
     bank_account_holder = models.CharField(max_length=255)
@@ -83,6 +91,11 @@ class Seller(TimeStampedModel):
     def is_active_shop(self):
         """Check if the shop is open to buyers."""
         return self.status == "active"
+
+    @property
+    def is_trader(self):
+        """Check if the seller has confirmed they are a trader."""
+        return self.trader_confirmed_at is not None
 
     @property
     def active_subscription(self):

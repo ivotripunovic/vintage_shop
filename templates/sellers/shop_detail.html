@@ -18,6 +18,7 @@
         <div class="md:col-span-2">
             <h1 class="font-serif text-5xl font-light mb-3">{{ seller.shop_name }}</h1>
             {% if seller.location %}<p class="text-xs uppercase tracking-widest text-stone-400 mb-5">{{ seller.location }}</p>{% endif %}
+            {% if seller.is_trader %}<p class="inline-block text-xs uppercase tracking-widest text-stone-700 border border-stone-300 px-2 py-1 mb-5">Trgovac</p>{% endif %}
             <p class="text-sm text-stone-500 leading-relaxed mb-8">{{ seller.shop_description }}</p>
             <div class="flex gap-12">
                 <div>

@@ -4,10 +4,11 @@ Forms for seller onboarding and account management.
 
 from django import forms
 from django.core.exceptions import ValidationError
+from django.utils import timezone
 
 from users.models import User
 
-from .models import Seller, SellerSubscription
+from .models import TRADER_STATEMENT, Seller, SellerSubscription
 
 
 class SellerRegistrationForm(forms.Form):
@@ -174,6 +175,11 @@ class SellerAccountSettingsForm(forms.ModelForm):
             }
         )
     )
+    is_trader = forms.BooleanField(
+        required=False,
+        label=TRADER_STATEMENT,
+        widget=forms.CheckboxInput(attrs={"class": "mt-1"}),
+    )
 
     class Meta:
         model = Seller
@@ -212,6 +218,7 @@ class SellerAccountSettingsForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         if user:
             self.fields["email"].initial = user.email
+        self.fields["is_trader"].initial = self.instance.is_trader
 
     def clean_email(self):
         """Validate that new email is unique if changed."""
@@ -230,6 +237,12 @@ class SellerAccountSettingsForm(forms.ModelForm):
             self.user.email = email
             self.user.username = email
             self.user.save()
+
+        # Keep the original confirmation time while it stays confirmed
+        if not self.cleaned_data.get("is_trader"):
+            seller.trader_confirmed_at = None
+        elif seller.trader_confirmed_at is None:
+            seller.trader_confirmed_at = timezone.now()
 
         if commit:
             seller.save()

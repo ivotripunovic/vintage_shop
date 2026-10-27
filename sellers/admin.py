@@ -7,8 +7,22 @@ from .models import Seller, SellerSubscription, SellerTier
 
 @admin.register(Seller)
 class SellerAdmin(admin.ModelAdmin):
-    list_display = ["shop_name", "user", "tier", "status", "is_verified", "created_at"]
-    list_filter = ["tier", "status", "is_verified", "created_at"]
+    list_display = [
+        "shop_name",
+        "user",
+        "tier",
+        "status",
+        "is_verified",
+        "is_trader",
+        "created_at",
+    ]
+    list_filter = [
+        "tier",
+        "status",
+        "is_verified",
+        ("trader_confirmed_at", admin.EmptyFieldListFilter),
+        "created_at",
+    ]
     search_fields = ["shop_name", "user__email"]
     readonly_fields = ["created_at", "updated_at", "shop_slug"]
     fieldsets = (
@@ -25,7 +39,10 @@ class SellerAdmin(admin.ModelAdmin):
                 )
             },
         ),
-        ("Status", {"fields": ("tier", "status", "is_verified")}),
+        (
+            "Status",
+            {"fields": ("tier", "status", "is_verified", "trader_confirmed_at")},
+        ),
         (
             "Bank Details",
             {
@@ -35,6 +52,10 @@ class SellerAdmin(admin.ModelAdmin):
         ),
         ("Metadata", {"fields": ("created_at", "updated_at")}),
     )
+
+    @admin.display(boolean=True, description="Trader")
+    def is_trader(self, obj):
+        return obj.is_trader
 
 
 @admin.register(SellerTier)
