@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}Ocenite prodaju — {{ SITE_NAME }}{% endblock %}
+
+{% block content %}
+
+<div class="max-w-2xl mx-auto">
+    <h1 class="font-serif text-4xl font-light mb-2">Ocenite prodaju</h1>
+    <p class="text-xs uppercase tracking-widest text-stone-400 mb-10">{{ sale.product_title }} · {{ other_name }}</p>
+
+    <form method="post" class="border border-neutral-200 p-8 space-y-8">
+        {% csrf_token %}
+        <p class="text-sm text-stone-600">Vaša ocena ostaje skrivena dok i druga strana ne oceni prodaju, ili najkasnije 14 dana od prodaje. Posle objave ocena se ne može menjati.</p>
+
+        <div>
+            <p class="text-xs uppercase tracking-widest text-stone-500 mb-3">{{ form.score.label }}</p>
+            <div class="flex gap-4">
+                {% for radio in form.score %}
+                <label class="flex items-center gap-1.5 text-sm text-stone-800 cursor-pointer">
+                    {{ radio.tag }} {{ radio.choice_label }} ★
+                </label>
+                {% endfor %}
+            </div>
+            {% if form.score.errors %}<p class="text-xs text-red-600 mt-1">{{ form.score.errors.0 }}</p>{% endif %}
+        </div>
+
+        <div>
+            <p class="text-xs uppercase tracking-widest text-stone-500 mb-3">Pojedinačne ocene (nije obavezno)</p>
+            <div class="space-y-3">
+                {% for field in form.aspect_fields %}
+                <div class="flex items-center justify-between gap-4">
+                    <label for="{{ field.id_for_label }}" class="text-sm text-stone-700">{{ field.label }}</label>
+                    <select name="{{ field.html_name }}" id="{{ field.id_for_label }}" class="border border-neutral-300 px-3 py-1.5 text-sm">
+                        {% for value, label in field.field.choices %}
+                        <option value="{{ value }}" {% if field.value|stringformat:"s" == value|stringformat:"s" %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div>
+            <label for="{{ form.text.id_for_label }}" class="block text-xs uppercase tracking-widest text-stone-500 mb-2">Kako je prošla prodaja? (do 1000 znakova)</label>
+            {{ form.text }}
+            {% if form.text.errors %}<p class="text-xs text-red-600 mt-1">{{ form.text.errors.0 }}</p>{% endif %}
+        </div>
+
+        <button type="submit" class="text-xs uppercase tracking-widest bg-stone-900 text-white px-5 py-2.5 hover:bg-stone-700 transition-colors">Pošalji ocenu</button>
+    </form>
+</div>
+
+{% endblock %}

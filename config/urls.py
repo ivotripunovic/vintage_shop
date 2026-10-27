@@ -43,6 +43,8 @@ urlpatterns = [
     path("favourites/", include("favourites.urls")),
     # Sales marked by sellers
     path("sales/", include("orders.urls")),
+    # Ratings between buyers and sellers
+    path("ratings/", include("ratings.urls")),
     # Home & Core
     path("", views.home_view, name="home"),
     path(

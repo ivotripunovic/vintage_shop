@@ -12,7 +12,10 @@ from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
+from orders.models import Sale
 from products.models import Product
+from ratings.models import Rating
+from ratings.services import can_rate, rating_summary
 from sellers.models import Seller
 
 from .forms import MessageForm
@@ -125,6 +128,22 @@ def chat_detail(request, pk):
         conversation.messages.select_related("sender").order_by("created_at")[:100]
     )
     form = MessageForm()
+
+    # Sellers see the buyer's rating; either side gets a prompt to rate the sale
+    is_seller_side = request.user == conversation.seller.user
+    buyer_rating = None
+    if is_seller_side and not conversation.is_team:
+        buyer_rating = rating_summary(conversation.buyer, Rating.SELLER_TO_BUYER)
+    sale_to_rate = None
+    if conversation.product_id:
+        sale = (
+            Sale.objects.select_related("seller")
+            .filter(product_id=conversation.product_id, buyer=conversation.buyer)
+            .first()
+        )
+        if sale and can_rate(sale, request.user):
+            sale_to_rate = sale
+
     return render(
         request,
         "chat/detail.html",
@@ -134,6 +153,8 @@ def chat_detail(request, pk):
             "chat_messages": messages_qs,
             "form": form,
             "last_id": messages_qs[-1].id if messages_qs else 0,
+            "buyer_rating": buyer_rating,
+            "sale_to_rate": sale_to_rate,
         },
     )
 

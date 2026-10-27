@@ -12,6 +12,8 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_http_methods
 
 from products.models import Product, ProductCondition
+from ratings.models import Rating
+from ratings.services import rating_summary
 from users.models import User
 
 from .forms import (
@@ -355,6 +357,10 @@ def shop_detail_view(request, shop_slug):
         "page_title": seller.shop_name,
         "is_own_shop": seller.user_id == request.user.id,
         "is_favourite": is_favourite,
+        "seller_rating": rating_summary(seller.user, Rating.BUYER_TO_SELLER),
+        "recent_ratings": Rating.objects.visible()
+        .filter(subject=seller.user, direction=Rating.BUYER_TO_SELLER)
+        .select_related("sale")[:5],
     }
 
     return render(request, "sellers/shop_detail.html", context)

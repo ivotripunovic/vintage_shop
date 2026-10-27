@@ -20,6 +20,9 @@ from datetime import timedelta
 
 from django.utils import timezone
 
+from ratings.models import Rating
+from ratings.services import pending_sales
+
 from .forms import (
     UserLoginForm,
     UserPasswordChangeForm,
@@ -284,11 +287,17 @@ def account_settings_view(request):
         .prefetch_related("product__images")
     )
 
+    received_ratings = (
+        Rating.objects.visible().filter(subject=request.user).select_related("sale")
+    )
+
     context = {
         "page_title": "Account Settings",
         "profile_form": profile_form,
         "favourite_sellers": favourite_sellers,
         "wishlist_items": wishlist_items,
+        "pending_sales": pending_sales(request.user),
+        "received_ratings": received_ratings[:20],
     }
     return render(request, "users/account_settings.html", context)
 

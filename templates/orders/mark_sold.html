@@ -18,6 +18,7 @@
                     <label class="flex items-center gap-4 py-3 cursor-pointer">
                         <input type="radio" name="buyer" value="{{ buyer.pk }}" {% if selected == buyer.pk|stringformat:"s" %}checked{% endif %} required>
                         <span class="text-sm text-stone-900">{{ buyer.email }}</span>
+                        <span class="ml-auto text-xs text-stone-400">{% if buyer.rating_count %}{{ buyer.rating_average|floatformat:1 }} / 5 ({{ buyer.rating_count }}){% else %}bez ocena{% endif %}</span>
                     </label>
                 </li>
                 {% endfor %}

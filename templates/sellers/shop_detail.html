@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% load currency_filters %}
+{% load currency_filters rating_tags %}
 {% block title %}{{ seller.shop_name }} — {{ SITE_NAME }}{% endblock %}
 
 {% block content %}
@@ -23,6 +23,15 @@
                 <div>
                     <p class="text-3xl font-light text-stone-900">{{ seller.published_count }}</p>
                     <p class="text-xs uppercase tracking-widest text-stone-400 mt-1">Aktivni oglasi</p>
+                </div>
+                <div>
+                    {% if seller_rating.count %}
+                    <p class="text-3xl font-light text-stone-900">{{ seller_rating.average|floatformat:1 }} <span class="text-lg text-amber-600">★</span></p>
+                    <p class="text-xs uppercase tracking-widest text-stone-400 mt-1">Ocena ({{ seller_rating.count }})</p>
+                    {% else %}
+                    <p class="text-3xl font-light text-stone-300">—</p>
+                    <p class="text-xs uppercase tracking-widest text-stone-400 mt-1">Još nema ocena</p>
+                    {% endif %}
                 </div>
                 <div>
                     <p class="text-sm {% if seller.status == 'active' %}text-emerald-700{% else %}text-red-600{% endif %}">{{ seller.get_status_display }}</p>
@@ -76,6 +85,27 @@
         </div>
     {% endif %}
 </div>
+
+{% if seller_rating.count %}
+<div id="ocene" class="border border-neutral-200 p-8 mb-12">
+    <div class="flex flex-wrap justify-between items-baseline gap-4 mb-2">
+        <h2 class="font-serif text-3xl font-light">Ocene kupaca</h2>
+        <p class="text-sm text-stone-500"><span class="text-amber-600 tracking-widest">{{ seller_rating.average|stars }}</span> {{ seller_rating.average|floatformat:1 }} / 5 · {{ seller_rating.count }} ocena</p>
+    </div>
+    {% if seller_rating.aspects %}
+    <div class="flex flex-wrap gap-x-8 gap-y-2 mb-4">
+        {% for label, average in seller_rating.aspects %}
+        <p class="text-xs uppercase tracking-widest text-stone-400">{{ label }} <span class="text-stone-800">{{ average|floatformat:1 }}</span></p>
+        {% endfor %}
+    </div>
+    {% endif %}
+    <ul class="divide-y divide-neutral-200 border-t border-neutral-200">
+        {% for rating in recent_ratings %}
+            {% include "ratings/rating_item.html" with next=request.get_full_path|add:"#ocene" %}
+        {% endfor %}
+    </ul>
+</div>
+{% endif %}
 
 <div class="text-center">
     <a href="{% url 'shops_browse' %}" class="text-xs uppercase tracking-widest text-stone-400 hover:text-stone-900 transition-colors">Svi prodavci</a>

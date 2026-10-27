@@ -10,6 +10,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_http_methods
 
 from products.models import Product
+from ratings.services import buyer_averages
 from users.models import User
 
 from .models import Sale
@@ -64,6 +65,12 @@ def product_mark_sold_view(request, product_id):
                 request, f"„{product.title}“ je označen kao prodat kupcu {buyer.email}."
             )
             return redirect("seller_products_list")
+
+    # Show each buyer's rating from other sellers next to their name
+    candidates = list(candidates)
+    averages = buyer_averages(candidates)
+    for buyer in candidates:
+        buyer.rating_average, buyer.rating_count = averages.get(buyer.pk, (None, 0))
 
     context = {
         "page_title": "Označi kao prodato",
