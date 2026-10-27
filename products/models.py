@@ -4,6 +4,7 @@ Product listings and related models.
 
 from datetime import timedelta
 
+from django.conf import settings
 from django.core.validators import MinValueValidator
 from django.db import models
 from django.utils import timezone
@@ -128,6 +129,8 @@ class Product(SoftDeleteModel):
         blank=True,
         related_name="reviewed_products",
     )
+    # Unique viewers, kept in step with ProductView rows by products.popularity
+    view_count = models.PositiveIntegerField(default=0, editable=False)
 
     class Meta:
         ordering = ["-created_at"]
@@ -206,6 +209,41 @@ class NewAd(Product):
         proxy = True
         verbose_name = "New ad"
         verbose_name_plural = "New ads for review"
+
+
+class ProductView(TimeStampedModel):
+    """One unique viewer of a product: a user, or an anonymous session."""
+
+    product = models.ForeignKey(
+        Product,
+        on_delete=models.CASCADE,
+        related_name="views",
+    )
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="product_views",
+    )
+    session_key = models.CharField(max_length=40, blank=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["product", "user"],
+                condition=models.Q(user__isnull=False),
+                name="unique_product_view_user",
+            ),
+            models.UniqueConstraint(
+                fields=["product", "session_key"],
+                condition=models.Q(user__isnull=True),
+                name="unique_product_view_session",
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.user or self.session_key} → {self.product}"
 
 
 class ProductImage(TimeStampedModel):

@@ -46,6 +46,10 @@
                     <span>{{ product.price|rsd }}</span>
                     <span>{{ product.stock }} na stanju</span>
                 </div>
+                <div class="flex justify-between text-xs text-stone-400 mb-3">
+                    <span>{{ product.view_count }} pregleda</span>
+                    <span>{{ product.wishlist_count }} sačuvano</span>
+                </div>
 
                 <div class="space-y-2">
                     {% if product.status == 'draft' or product.status == 'expired' %}

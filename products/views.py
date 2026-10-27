@@ -15,6 +15,7 @@ from sellers.models import Seller
 
 from .forms import BulkProductImageForm, ProductForm, ProductImageForm
 from .models import Product, ProductImage
+from .popularity import recent_viewer_count, record_view
 
 
 def _get_seller_or_403(request):
@@ -326,6 +327,7 @@ def product_public_detail_view(request, product_id):
         request.user.is_authenticated
         and product.wishlisted_by.filter(user=request.user).exists()
     )
+    vid = record_view(request, product)
 
     context = {
         "product": product,
@@ -334,6 +336,8 @@ def product_public_detail_view(request, product_id):
         "page_title": product.title,
         "is_owner": is_owner,
         "in_wishlist": in_wishlist,
+        "wishlist_count": product.wishlisted_by.count(),
+        "recent_viewers": recent_viewer_count(product.pk, exclude=vid),
     }
 
     return render(request, "products/product_public_detail.html", context)

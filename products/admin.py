@@ -8,7 +8,14 @@ from django.utils.html import format_html
 
 from chat.models import Conversation
 
-from .models import NewAd, Product, ProductCategory, ProductCondition, ProductImage
+from .models import (
+    NewAd,
+    Product,
+    ProductCategory,
+    ProductCondition,
+    ProductImage,
+    ProductView,
+)
 
 
 @admin.register(ProductCategory)
@@ -213,3 +220,10 @@ class NewAdAdmin(admin.ModelAdmin):
             defaults={"is_team": True},
         )
         return redirect("chat_detail", pk=conversation.pk)
+
+
+@admin.register(ProductView)
+class ProductViewAdmin(admin.ModelAdmin):
+    list_display = ["product", "user", "session_key", "created_at"]
+    readonly_fields = ["product", "user", "session_key", "created_at"]
+    search_fields = ["product__title", "user__email"]
