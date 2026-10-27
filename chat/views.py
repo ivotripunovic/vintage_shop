@@ -12,7 +12,9 @@ from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
+from orders.models import Sale, can_be_sold
 from products.models import Product
+from ratings.services import buyer_averages, can_rate
 from sellers.models import Seller
 
 from .forms import MessageForm
@@ -125,6 +127,33 @@ def chat_detail(request, pk):
         conversation.messages.select_related("sender").order_by("created_at")[:100]
     )
     form = MessageForm()
+
+    # Sellers see the buyer's rating and can record the sale; either side gets
+    # a prompt to rate a recorded sale
+    is_seller_side = (
+        request.user == conversation.seller.user and not conversation.is_team
+    )
+    buyer_rating = None
+    if is_seller_side:
+        average, count = buyer_averages([conversation.buyer]).get(
+            conversation.buyer.pk, (None, 0)
+        )
+        buyer_rating = {"average": average, "count": count}
+    sale = None
+    if conversation.product_id:
+        sale = (
+            Sale.objects.select_related("seller")
+            .filter(product_id=conversation.product_id, buyer=conversation.buyer)
+            .first()
+        )
+    sale_to_rate = sale if sale and can_rate(sale, request.user) else None
+    can_mark_sold = (
+        is_seller_side
+        and sale is None
+        and conversation.product is not None
+        and can_be_sold(conversation.product)
+    )
+
     return render(
         request,
         "chat/detail.html",
@@ -134,6 +163,9 @@ def chat_detail(request, pk):
             "chat_messages": messages_qs,
             "form": form,
             "last_id": messages_qs[-1].id if messages_qs else 0,
+            "buyer_rating": buyer_rating,
+            "sale_to_rate": sale_to_rate,
+            "can_mark_sold": can_mark_sold,
         },
     )
 

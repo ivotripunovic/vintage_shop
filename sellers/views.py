@@ -11,7 +11,10 @@ from django.db.models import Count, Q
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_http_methods
 
+from orders.models import SELLABLE_STATUSES
 from products.models import Product, ProductCondition
+from ratings.models import Rating
+from ratings.services import rating_summary
 from users.models import User
 
 from .forms import (
@@ -263,6 +266,7 @@ def seller_products_list_view(request):
         "products": products,
         "status_counts": status_counts,
         "current_status": status_filter or "all",
+        "sellable_statuses": SELLABLE_STATUSES,
     }
 
     return render(request, "sellers/products_list.html", context)
@@ -355,6 +359,10 @@ def shop_detail_view(request, shop_slug):
         "page_title": seller.shop_name,
         "is_own_shop": seller.user_id == request.user.id,
         "is_favourite": is_favourite,
+        "seller_rating": rating_summary(seller.user, Rating.BUYER_TO_SELLER),
+        "recent_ratings": Rating.objects.visible()
+        .filter(subject=seller.user, direction=Rating.BUYER_TO_SELLER)
+        .select_related("sale")[:5],
     }
 
     return render(request, "sellers/shop_detail.html", context)
