@@ -24,7 +24,15 @@ class SellerAdmin(admin.ModelAdmin):
         "created_at",
     ]
     search_fields = ["shop_name", "user__email"]
-    readonly_fields = ["created_at", "updated_at", "shop_slug"]
+    # Trader fields are the seller's own statement; staff can only clear them
+    readonly_fields = [
+        "created_at",
+        "updated_at",
+        "shop_slug",
+        "trader_confirmed_at",
+        "trader_statement",
+    ]
+    actions = ["clear_trader_confirmation"]
     fieldsets = (
         ("User", {"fields": ("user",)}),
         (
@@ -41,8 +49,9 @@ class SellerAdmin(admin.ModelAdmin):
         ),
         (
             "Status",
-            {"fields": ("tier", "status", "is_verified", "trader_confirmed_at")},
+            {"fields": ("tier", "status", "is_verified")},
         ),
+        ("Trader", {"fields": ("trader_confirmed_at", "trader_statement")}),
         (
             "Bank Details",
             {
@@ -53,9 +62,11 @@ class SellerAdmin(admin.ModelAdmin):
         ("Metadata", {"fields": ("created_at", "updated_at")}),
     )
 
-    @admin.display(boolean=True, description="Trader")
-    def is_trader(self, obj):
-        return obj.is_trader
+    @admin.action(description="Clear trader confirmation")
+    def clear_trader_confirmation(self, request, queryset):
+        for seller in queryset:
+            seller.clear_trader()
+            seller.save()
 
 
 @admin.register(SellerTier)

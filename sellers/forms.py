@@ -4,7 +4,6 @@ Forms for seller onboarding and account management.
 
 from django import forms
 from django.core.exceptions import ValidationError
-from django.utils import timezone
 
 from users.models import User
 
@@ -218,7 +217,10 @@ class SellerAccountSettingsForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         if user:
             self.fields["email"].initial = user.email
-        self.fields["is_trader"].initial = self.instance.is_trader
+        # An outdated confirmation starts unticked so the seller re-confirms
+        self.fields["is_trader"].initial = (
+            self.instance.is_trader and not self.instance.trader_statement_outdated
+        )
 
     def clean_email(self):
         """Validate that new email is unique if changed."""
@@ -238,11 +240,11 @@ class SellerAccountSettingsForm(forms.ModelForm):
             self.user.username = email
             self.user.save()
 
-        # Keep the original confirmation time while it stays confirmed
+        # Keep the original confirmation while the statement is unchanged
         if not self.cleaned_data.get("is_trader"):
-            seller.trader_confirmed_at = None
-        elif seller.trader_confirmed_at is None:
-            seller.trader_confirmed_at = timezone.now()
+            seller.clear_trader()
+        elif not seller.is_trader or seller.trader_statement_outdated:
+            seller.confirm_trader()
 
         if commit:
             seller.save()

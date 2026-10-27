@@ -5,6 +5,7 @@ Seller profiles and subscription models.
 from datetime import timedelta
 from decimal import Decimal
 
+from django.contrib import admin
 from django.db import models
 from django.utils import timezone
 
@@ -68,6 +69,8 @@ class Seller(TimeStampedModel):
     tier = models.CharField(max_length=20, choices=TIER_CHOICES, default="garazna")
     # When the seller confirmed TRADER_STATEMENT; None means not confirmed
     trader_confirmed_at = models.DateTimeField(null=True, blank=True)
+    # The exact statement text the seller agreed to, kept if the wording changes
+    trader_statement = models.TextField(blank=True)
 
     # Bank details (stored securely - consider encryption in production)
     bank_account_holder = models.CharField(max_length=255)
@@ -93,9 +96,25 @@ class Seller(TimeStampedModel):
         return self.status == "active"
 
     @property
+    @admin.display(boolean=True, description="Trader", ordering="trader_confirmed_at")
     def is_trader(self):
         """Check if the seller has confirmed they are a trader."""
         return self.trader_confirmed_at is not None
+
+    @property
+    def trader_statement_outdated(self):
+        """Check if the seller confirmed an earlier wording of the statement."""
+        return self.is_trader and self.trader_statement != TRADER_STATEMENT
+
+    def confirm_trader(self):
+        """Record that the seller agreed to the current trader statement."""
+        self.trader_confirmed_at = timezone.now()
+        self.trader_statement = TRADER_STATEMENT
+
+    def clear_trader(self):
+        """Remove the seller's trader confirmation."""
+        self.trader_confirmed_at = None
+        self.trader_statement = ""
 
     @property
     def active_subscription(self):

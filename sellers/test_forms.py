@@ -13,7 +13,7 @@ from django.utils.datastructures import MultiValueDict
 from users.models import User
 
 from .forms import SellerAccountSettingsForm
-from .models import Seller
+from .models import TRADER_STATEMENT, Seller
 
 
 class SellerAccountSettingsFormTests(TestCase):
@@ -212,28 +212,52 @@ class SellerTraderConfirmationFormTests(TestCase):
         seller = self._save(is_trader=True)
         seller.refresh_from_db()
         self.assertIsNotNone(seller.trader_confirmed_at)
+        self.assertEqual(seller.trader_statement, TRADER_STATEMENT)
         self.assertTrue(seller.is_trader)
 
     def test_resaving_keeps_original_confirmation_time(self):
         confirmed_at = timezone.now() - timedelta(days=10)
         self.seller.trader_confirmed_at = confirmed_at
+        self.seller.trader_statement = TRADER_STATEMENT
         self.seller.save()
         seller = self._save(is_trader=True)
         seller.refresh_from_db()
         self.assertEqual(seller.trader_confirmed_at, confirmed_at)
 
     def test_unchecking_clears_confirmation(self):
-        self.seller.trader_confirmed_at = timezone.now()
+        self.seller.confirm_trader()
         self.seller.save()
         seller = self._save(is_trader=False)
         seller.refresh_from_db()
         self.assertIsNone(seller.trader_confirmed_at)
+        self.assertEqual(seller.trader_statement, "")
         self.assertFalse(seller.is_trader)
 
     def test_initial_reflects_confirmation(self):
         form = SellerAccountSettingsForm(instance=self.seller, user=self.user)
         self.assertFalse(form.fields["is_trader"].initial)
-        self.seller.trader_confirmed_at = timezone.now()
+        self.seller.confirm_trader()
         self.seller.save()
         form = SellerAccountSettingsForm(instance=self.seller, user=self.user)
         self.assertTrue(form.fields["is_trader"].initial)
+
+    def _confirm_old_wording(self):
+        old_time = timezone.now() - timedelta(days=10)
+        self.seller.trader_confirmed_at = old_time
+        self.seller.trader_statement = "Old wording"
+        self.seller.save()
+        return old_time
+
+    def test_outdated_confirmation_starts_unticked(self):
+        self._confirm_old_wording()
+        self.assertTrue(self.seller.trader_statement_outdated)
+        form = SellerAccountSettingsForm(instance=self.seller, user=self.user)
+        self.assertFalse(form.fields["is_trader"].initial)
+
+    def test_reconfirming_records_new_statement_and_time(self):
+        old_time = self._confirm_old_wording()
+        seller = self._save(is_trader=True)
+        seller.refresh_from_db()
+        self.assertEqual(seller.trader_statement, TRADER_STATEMENT)
+        self.assertGreater(seller.trader_confirmed_at, old_time)
+        self.assertFalse(seller.trader_statement_outdated)
