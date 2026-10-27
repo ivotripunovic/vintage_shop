@@ -50,6 +50,7 @@ INSTALLED_APPS = [
     "billing",
     "core",
     "chat",
+    "favourites",
 ]
 
 MIDDLEWARE = [

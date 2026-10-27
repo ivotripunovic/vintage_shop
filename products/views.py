@@ -301,7 +301,13 @@ def product_public_detail_view(request, product_id):
     Public product detail page (for buyers).
     Shows product images, description, price, seller info, and related products.
     """
-    product = get_object_or_404(Product, id=product_id, status="published")
+    product = get_object_or_404(
+        Product.objects.select_related("seller"),
+        id=product_id,
+        status="published",
+        is_deleted=False,
+        seller__status="active",
+    )
 
     # Get product images
     images = product.images.all().order_by("order")
@@ -314,9 +320,11 @@ def product_public_detail_view(request, product_id):
     )
 
     is_owner = (
+        request.user.is_authenticated and product.seller.user_id == request.user.id
+    )
+    in_wishlist = (
         request.user.is_authenticated
-        and hasattr(request.user, "seller")
-        and request.user.seller == product.seller
+        and product.wishlisted_by.filter(user=request.user).exists()
     )
 
     context = {
@@ -325,6 +333,7 @@ def product_public_detail_view(request, product_id):
         "related_products": related_products,
         "page_title": product.title,
         "is_owner": is_owner,
+        "in_wishlist": in_wishlist,
     }
 
     return render(request, "products/product_public_detail.html", context)

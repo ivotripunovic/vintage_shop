@@ -343,11 +343,18 @@ def shop_detail_view(request, shop_slug):
     page_number = request.GET.get("page", 1)
     page_obj = paginator.get_page(page_number)
 
+    is_favourite = (
+        request.user.is_authenticated
+        and seller.favourited_by.filter(user=request.user).exists()
+    )
+
     context = {
         "seller": seller,
         "page_obj": page_obj,
         "products": page_obj.object_list,
         "page_title": seller.shop_name,
+        "is_own_shop": seller.user_id == request.user.id,
+        "is_favourite": is_favourite,
     }
 
     return render(request, "sellers/shop_detail.html", context)
