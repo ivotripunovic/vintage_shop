@@ -8,7 +8,7 @@ Keep entries short. Move an item to `DAILY.md` or close its issue when it is don
 
 ## Next
 
-- [ ] Let buyers and sellers rate each other after a sale (#9)
+- [ ]
 
 ## Later
 
