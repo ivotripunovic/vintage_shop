@@ -4,6 +4,7 @@ Forms for seller onboarding and account management.
 
 from django import forms
 from django.core.exceptions import ValidationError
+from django.db import transaction
 
 from users.models import User
 
@@ -231,14 +232,13 @@ class SellerAccountSettingsForm(forms.ModelForm):
         return email
 
     def save(self, commit=True):
-        """Save seller and update user email."""
+        """
+        Save seller and update user email.
+
+        With commit=False nothing is written; call save_m2m() after saving
+        the seller to also save the email change.
+        """
         seller = super().save(commit=False)
-        # Update user email if changed
-        email = self.cleaned_data.get("email")
-        if email != self.user.email:
-            self.user.email = email
-            self.user.username = email
-            self.user.save()
 
         # Keep the original confirmation while the statement is unchanged
         if not self.cleaned_data.get("is_trader"):
@@ -247,5 +247,18 @@ class SellerAccountSettingsForm(forms.ModelForm):
             seller.confirm_trader()
 
         if commit:
-            seller.save()
+            with transaction.atomic():
+                seller.save()
+                self._save_related()
+        else:
+            self.save_m2m = self._save_related
         return seller
+
+    def _save_related(self):
+        """Save the user's email change and any many-to-many data."""
+        email = self.cleaned_data.get("email")
+        if email != self.user.email:
+            self.user.email = email
+            self.user.username = email
+            self.user.save()
+        self._save_m2m()
