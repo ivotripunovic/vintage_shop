@@ -6,7 +6,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
 from django.db import models, transaction
-from django.db.models import Q
+from django.db.models import Count, Q
 from django.http import HttpResponseForbidden, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_http_methods
@@ -15,6 +15,7 @@ from sellers.models import Seller
 
 from .forms import BulkProductImageForm, ProductForm, ProductImageForm
 from .models import Product, ProductImage
+from .popularity import recent_viewer_count, record_view
 
 
 def _get_seller_or_403(request):
@@ -302,7 +303,9 @@ def product_public_detail_view(request, product_id):
     Shows product images, description, price, seller info, and related products.
     """
     product = get_object_or_404(
-        Product.objects.select_related("seller"),
+        Product.objects.select_related("seller").annotate(
+            wishlist_count=Count("wishlisted_by")
+        ),
         id=product_id,
         status="published",
         is_deleted=False,
@@ -326,6 +329,7 @@ def product_public_detail_view(request, product_id):
         request.user.is_authenticated
         and product.wishlisted_by.filter(user=request.user).exists()
     )
+    vid = None if is_owner else record_view(request, product)
 
     context = {
         "product": product,
@@ -334,6 +338,7 @@ def product_public_detail_view(request, product_id):
         "page_title": product.title,
         "is_owner": is_owner,
         "in_wishlist": in_wishlist,
+        "recent_viewers": recent_viewer_count(product.pk, exclude=vid),
     }
 
     return render(request, "products/product_public_detail.html", context)

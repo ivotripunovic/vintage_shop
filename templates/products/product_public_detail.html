@@ -63,6 +63,20 @@
                 <span class="text-xs uppercase tracking-widest text-stone-400">Objavljeno</span>
                 <span class="text-xs uppercase tracking-widest text-stone-800">{{ product.created_at|date:"M d, Y" }}</span>
             </div>
+            <div class="flex justify-between">
+                <span class="text-xs uppercase tracking-widest text-stone-400">Pregledi</span>
+                <span class="text-xs uppercase tracking-widest text-stone-800">{{ product.view_count }}</span>
+            </div>
+            <div class="flex justify-between">
+                <span class="text-xs uppercase tracking-widest text-stone-400">Sačuvano</span>
+                <span class="text-xs uppercase tracking-widest text-stone-800">{{ product.wishlist_count }}</span>
+            </div>
+            {% if recent_viewers %}
+            <div class="flex justify-between">
+                <span class="text-xs uppercase tracking-widest text-stone-400">Gledalo nedavno</span>
+                <span class="text-xs uppercase tracking-widest text-amber-700">{{ recent_viewers }} u posl. 15 min</span>
+            </div>
+            {% endif %}
         </div>
 
         <div class="border-t border-neutral-200 py-5">

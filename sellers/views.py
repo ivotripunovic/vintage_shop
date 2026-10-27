@@ -238,7 +238,7 @@ def seller_products_list_view(request):
     # Get filter parameters
     status_filter = request.GET.get("status")
 
-    products = seller.products.all()
+    products = seller.products.annotate(wishlist_count=Count("wishlisted_by"))
 
     if status_filter and status_filter in [
         "draft",
