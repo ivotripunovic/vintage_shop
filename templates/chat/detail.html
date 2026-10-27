@@ -23,6 +23,9 @@
     <div>
         <a href="{% url 'product_detail' conversation.product.pk %}" class="text-sm text-stone-900 hover:underline">{{ conversation.product.title }}</a>
     </div>
+    {% if request.user == conversation.seller.user and not conversation.is_team and conversation.product.status != 'sold' and conversation.product.stock > 0 %}
+    <a href="{% url 'product_mark_sold' conversation.product.pk %}?buyer={{ conversation.buyer.pk }}" class="ml-auto flex-shrink-0 text-xs uppercase tracking-widest border border-neutral-300 text-stone-600 px-3 py-2 hover:border-stone-900 hover:text-stone-900 transition-colors">Prodato ovom kupcu</a>
+    {% endif %}
 </div>
 {% endif %}
 

@@ -41,6 +41,8 @@ urlpatterns = [
     path("chat/", include("chat.urls")),
     # Favourite sellers and wishlist
     path("favourites/", include("favourites.urls")),
+    # Sales marked by sellers
+    path("sales/", include("orders.urls")),
     # Home & Core
     path("", views.home_view, name="home"),
     path(

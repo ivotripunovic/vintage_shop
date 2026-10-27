@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}Označi kao prodato — {{ SITE_NAME }}{% endblock %}
+
+{% block content %}
+
+<div class="max-w-2xl mx-auto">
+    <h1 class="font-serif text-4xl font-light mb-2">Označi kao prodato</h1>
+    <p class="text-xs uppercase tracking-widest text-stone-400 mb-10">{{ product.title }}</p>
+
+    <div class="border border-neutral-200 p-8">
+        {% if candidates %}
+        <form method="post" class="space-y-6">
+            {% csrf_token %}
+            <p class="text-sm text-stone-600">Izaberite kupca kome ste prodali artikal. Posle prodaje oboje možete oceniti jedno drugo.</p>
+            <ul class="divide-y divide-neutral-200 border-y border-neutral-200">
+                {% for buyer in candidates %}
+                <li>
+                    <label class="flex items-center gap-4 py-3 cursor-pointer">
+                        <input type="radio" name="buyer" value="{{ buyer.pk }}" {% if selected == buyer.pk|stringformat:"s" %}checked{% endif %} required>
+                        <span class="text-sm text-stone-900">{{ buyer.email }}</span>
+                    </label>
+                </li>
+                {% endfor %}
+            </ul>
+            {% if product.stock > 1 %}
+            <p class="text-xs text-stone-400">Na stanju: {{ product.stock }}. Prodaja smanjuje stanje za jedan.</p>
+            {% endif %}
+            <div class="flex gap-3">
+                <button type="submit" class="text-xs uppercase tracking-widest bg-stone-900 text-white px-5 py-2.5 hover:bg-stone-700 transition-colors">Potvrdi prodaju</button>
+                <a href="{% url 'seller_products_list' %}" class="text-xs uppercase tracking-widest border border-neutral-200 text-stone-500 px-5 py-2.5 hover:border-stone-400 hover:text-stone-900 transition-colors">Odustani</a>
+            </div>
+        </form>
+        {% else %}
+        <p class="text-sm text-stone-600 mb-6">Niko vam još nije pisao o ovom artiklu. Prodaju možete zabeležiti samo kupcu sa kojim ste se dogovorili preko poruka.</p>
+        <a href="{% url 'seller_products_list' %}" class="text-xs uppercase tracking-widest border border-neutral-200 text-stone-500 px-5 py-2.5 hover:border-stone-400 hover:text-stone-900 transition-colors inline-block">Nazad na proizvode</a>
+        {% endif %}
+    </div>
+</div>
+
+{% endblock %}
