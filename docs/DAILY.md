@@ -1,6 +1,7 @@
 # 2026-10-27
 - Item popularity (#8, PR #20): unique view count per user/session, wishlist save count and "viewed in last 15 min" on the product page; views and saves in the seller's product list. Owner, bots, HEAD and prefetch requests are not counted
 - Buyer/seller ratings (#9, PR #22): sellers mark a product sold to a buyer from chat (new `orders.Sale`); both sides then rate within 14 days (overall 1–5, optional aspects, text). Ratings stay hidden until both rate or the window closes. The rated person can reply once or report to admin. New Moje ocene page, and Poruke/Ocene entries with badges in the user menu
+- Trader confirmation (#3, PR #24): sellers tick a "trgovac" statement in shop settings; the time and exact statement text are stored, a Trgovac badge shows on the shop page and the status on the dashboard. Admin can see and clear it but not set it. Wording is a draft pending legal sign-off; changing `TRADER_STATEMENT` asks sellers to re-confirm. Follow-up bug #25 (settings form saves email with `commit=False`)
 
 # 2026-05-07
 - Fixed certificate for domain and www.domain, nginx could not restart because of its runaway processes 
