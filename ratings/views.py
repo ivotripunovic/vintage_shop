@@ -4,6 +4,7 @@ Rate a sale, reply to a rating, and report a rating.
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.core.paginator import Paginator
 from django.db import IntegrityError, transaction
 from django.http import HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect, render
@@ -15,17 +16,43 @@ from orders.models import Sale
 
 from .forms import RatingForm, ReplyForm, ReportForm
 from .models import Rating, RatingReport
-from .services import can_rate, rating_direction
+from .services import can_rate, pending_sales, rating_direction, rating_summary
 
 
 def _redirect_back(request):
-    """Go back to the page the form was on, or to the account ratings section."""
+    """Go back to the page the form was on, or to the user's ratings page."""
     next_url = request.POST.get("next")
     if next_url and url_has_allowed_host_and_scheme(
         next_url, allowed_hosts={request.get_host()}, require_https=request.is_secure()
     ):
         return redirect(next_url)
-    return redirect("account-settings")
+    return redirect("my_ratings")
+
+
+@login_required(login_url="login")
+def my_ratings_view(request):
+    """Sales waiting for the user's rating, ratings received and given."""
+    user = request.user
+    received = (
+        Rating.objects.visible().filter(subject=user).select_related("sale__seller")
+    )
+    page_obj = Paginator(received, 20).get_page(request.GET.get("page", 1))
+    given = Rating.objects.filter(author=user).select_related("sale__seller")[:20]
+
+    seller_profile = getattr(user, "seller_profile", None) if user.is_seller else None
+    context = {
+        "page_title": "Moje ocene",
+        "pending_sales": pending_sales(user),
+        "page_obj": page_obj,
+        "received": page_obj.object_list,
+        "given": given,
+        "seller_profile": seller_profile,
+        "as_seller": (
+            rating_summary(user, Rating.BUYER_TO_SELLER) if seller_profile else None
+        ),
+        "as_buyer": rating_summary(user, Rating.SELLER_TO_BUYER),
+    }
+    return render(request, "ratings/my_ratings.html", context)
 
 
 @login_required(login_url="login")
@@ -38,7 +65,7 @@ def rate_sale_view(request, sale_id):
         return HttpResponseForbidden()
     if not can_rate(sale, request.user):
         messages.error(request, "Ovu prodaju više ne možete oceniti.")
-        return redirect("account-settings")
+        return redirect("my_ratings")
 
     is_buyer = direction == Rating.BUYER_TO_SELLER
     form = RatingForm(request.POST or None, direction=direction)
@@ -59,13 +86,13 @@ def rate_sale_view(request, sale_id):
                     sale.ratings.update(released_at=timezone.now())
         except IntegrityError:
             messages.error(request, "Ovu prodaju ste već ocenili.")
-            return redirect("account-settings")
+            return redirect("my_ratings")
         messages.success(
             request,
             "Hvala na oceni. Biće objavljena kada i druga strana oceni prodaju "
             "ili najkasnije 14 dana od prodaje.",
         )
-        return redirect("account-settings")
+        return redirect("my_ratings")
 
     context = {
         "page_title": "Ocenite prodaju",

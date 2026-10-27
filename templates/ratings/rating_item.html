@@ -1,12 +1,12 @@
 {% load rating_tags %}
-{# One released rating. Needs `rating`; the rated person also gets reply/report forms, which return to `next`. #}
+{# One rating. Needs `rating`; the rated person also gets reply/report forms, which return to `next`. #}
 <li class="py-5">
     <div class="flex justify-between items-baseline gap-4 mb-1">
         <span class="text-amber-600 tracking-widest" title="{{ rating.score }} / 5">{{ rating.score|stars }}</span>
-        <span class="text-xs text-stone-400">{{ rating.created_at|date:"d.m.Y" }}</span>
+        <span class="text-xs text-stone-400">{% if not rating.is_released %}<span class="text-amber-700 mr-2">Čeka ocenu druge strane</span>{% endif %}{{ rating.created_at|date:"d.m.Y" }}</span>
     </div>
     <p class="text-xs uppercase tracking-widest text-stone-400 mb-2">
-        {% if rating.direction == "buyer_to_seller" %}Kupac{% else %}Prodavac{% endif %} · {{ rating.sale.product_title }}
+        {% if rating.author_id == request.user.pk %}Vaša ocena za {% if rating.direction == "buyer_to_seller" %}{{ rating.sale.seller.shop_name }}{% else %}kupca{% endif %}{% elif rating.direction == "buyer_to_seller" %}Kupac{% else %}Prodavac{% endif %} · {{ rating.sale.product_title }}
     </p>
     {% if rating.aspect_scores %}
     <p class="text-xs text-stone-500 mb-2">

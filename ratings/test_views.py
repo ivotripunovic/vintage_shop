@@ -56,7 +56,7 @@ class RatingTestCase(TestCase):
 class RateSaleTests(RatingTestCase):
     def test_buyer_rates_seller_with_aspects(self):
         response = self._rate(self.buyer, score=4, accuracy=5, communication="")
-        self.assertRedirects(response, reverse("account-settings"))
+        self.assertRedirects(response, reverse("my_ratings"))
         rating = Rating.objects.get()
         self.assertEqual(rating.direction, Rating.BUYER_TO_SELLER)
         self.assertEqual(
@@ -97,7 +97,7 @@ class RateSaleTests(RatingTestCase):
     def test_window_closes(self):
         self._age_sale(1)
         response = self._rate(self.buyer)
-        self.assertRedirects(response, reverse("account-settings"))
+        self.assertRedirects(response, reverse("my_ratings"))
         self.assertFalse(Rating.objects.exists())
 
 
@@ -150,16 +150,51 @@ class SummaryAndPendingTests(RatingTestCase):
         self._age_sale(1)
         self.assertEqual(list(pending_sales(self.seller_user)), [])
 
-    def test_account_page_prompts_and_lists_received(self):
+    def test_my_ratings_prompts_and_lists_received(self):
         self.client.force_login(self.buyer)
-        response = self.client.get(reverse("account-settings"))
+        response = self.client.get(reverse("my_ratings"))
         self.assertContains(response, reverse("rate_sale", args=[self.sale.pk]))
         self._rate(self.buyer)
         self._rate(self.seller_user, text="Odličan kupac")
         self.client.force_login(self.buyer)
-        response = self.client.get(reverse("account-settings"))
+        response = self.client.get(reverse("my_ratings"))
         self.assertNotContains(response, reverse("rate_sale", args=[self.sale.pk]))
         self.assertContains(response, "Odličan kupac")
+        self.assertEqual(response.context["as_buyer"]["count"], 1)
+
+    def test_my_ratings_shows_given_rating_waiting(self):
+        self._rate(self.buyer, text="Sve super")
+        response = self.client.get(reverse("my_ratings"))
+        self.assertContains(response, "Vaša ocena za seller")
+        self.assertContains(response, "Čeka ocenu druge strane")
+        self.assertEqual(list(response.context["received"]), [])
+
+    def test_my_ratings_seller_summary(self):
+        self.client.force_login(self.seller_user)
+        response = self.client.get(reverse("my_ratings"))
+        self.assertIsNotNone(response.context["as_seller"])
+        self.client.force_login(self.buyer)
+        response = self.client.get(reverse("my_ratings"))
+        self.assertIsNone(response.context["as_seller"])
+
+    def test_my_ratings_requires_login(self):
+        response = self.client.get(reverse("my_ratings"))
+        self.assertEqual(response.status_code, 302)
+        self.assertIn(reverse("login"), response.url)
+
+    def test_menu_links_and_pending_badge(self):
+        self.client.force_login(self.buyer)
+        response = self.client.get(reverse("account-settings"))
+        self.assertEqual(response.context["pending_ratings_count"], 1)
+        self.assertContains(response, f'href="{reverse("my_ratings")}"')
+        self.assertContains(response, "chat-badge-menu")
+        self._rate(self.buyer)
+        response = self.client.get(reverse("account-settings"))
+        self.assertEqual(response.context["pending_ratings_count"], 0)
+
+    def test_no_pending_count_for_anonymous(self):
+        response = self.client.get(reverse("home"))
+        self.assertNotIn("pending_ratings_count", response.context)
 
     def test_chat_shows_buyer_rating_and_prompt(self):
         conversation = Conversation.objects.create(

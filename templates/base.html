@@ -218,10 +218,19 @@
                         <div class="relative group">
                             <button class="text-xs uppercase tracking-widest text-stone-500 hover:text-stone-900 transition-colors flex items-center gap-1">
                                 Nalog
+                                {% if pending_ratings_count %}<span class="w-1.5 h-1.5 rounded-full bg-amber-500" title="Ocene na čekanju"></span>{% endif %}
                                 <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
                             </button>
                             <div class="hidden group-hover:block absolute right-0 top-full mt-0 w-48 bg-white border border-neutral-200 z-50 shadow-sm">
                                 <span class="block px-4 py-2.5 text-xs text-stone-400 border-b border-neutral-100 truncate">{{ user.email }}</span>
+                                <a href="{% url 'chat_inbox' %}" class="flex items-center justify-between px-4 py-2.5 text-xs uppercase tracking-widest text-stone-500 hover:bg-neutral-50 hover:text-stone-900">
+                                    Poruke
+                                    <span id="chat-badge-menu" class="bg-stone-900 text-white rounded-full w-4 h-4 flex items-center justify-center leading-none" style="display:none;font-size:9px"></span>
+                                </a>
+                                <a href="{% url 'my_ratings' %}" class="flex items-center justify-between px-4 py-2.5 text-xs uppercase tracking-widest text-stone-500 hover:bg-neutral-50 hover:text-stone-900">
+                                    Ocene
+                                    {% if pending_ratings_count %}<span class="bg-amber-500 text-white rounded-full w-4 h-4 flex items-center justify-center leading-none" style="font-size:9px">{% if pending_ratings_count > 9 %}9+{% else %}{{ pending_ratings_count }}{% endif %}</span>{% endif %}
+                                </a>
                                 <a href="{% url 'account-settings' %}" class="block px-4 py-2.5 text-xs uppercase tracking-widest text-stone-500 hover:bg-neutral-50 hover:text-stone-900">Podešavanja</a>
                                 <a href="{% url 'logout' %}" class="block px-4 py-2.5 text-xs uppercase tracking-widest text-stone-500 hover:bg-neutral-50 hover:text-stone-900">Odjava</a>
                             </div>
@@ -347,6 +356,10 @@
                             <a href="{% url 'chat_inbox' %}" class="flex items-center gap-2 py-1.5 text-xs uppercase tracking-widest text-stone-600 hover:text-stone-900">
                                 Poruke
                                 <span id="chat-badge-mobile" class="bg-stone-900 text-white rounded-full w-4 h-4 flex items-center justify-center leading-none" style="display:none;font-size:9px"></span>
+                            </a>
+                            <a href="{% url 'my_ratings' %}" class="flex items-center gap-2 py-1.5 text-xs uppercase tracking-widest text-stone-600 hover:text-stone-900">
+                                Ocene
+                                {% if pending_ratings_count %}<span class="bg-amber-500 text-white rounded-full w-4 h-4 flex items-center justify-center leading-none" style="font-size:9px">{% if pending_ratings_count > 9 %}9+{% else %}{{ pending_ratings_count }}{% endif %}</span>{% endif %}
                             </a>
                             <a href="{% url 'account-settings' %}" class="block py-1.5 text-xs uppercase tracking-widest text-stone-600 hover:text-stone-900">Podešavanja naloga</a>
                             <a href="{% url 'logout' %}" class="block py-1.5 text-xs uppercase tracking-widest text-stone-600 hover:text-stone-900">Odjava</a>
@@ -515,7 +528,7 @@
 <script>
 (function () {
     function updateBadge(count) {
-        ["chat-badge", "chat-badge-topbar", "chat-badge-mobile", "chat-badge-bottom"].forEach(function (id) {
+        ["chat-badge", "chat-badge-topbar", "chat-badge-mobile", "chat-badge-bottom", "chat-badge-menu"].forEach(function (id) {
             var el = document.getElementById(id);
             if (!el) return;
             if (count > 0) {

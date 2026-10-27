@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% load rating_tags %}
+{% block title %}Moje ocene — {{ SITE_NAME }}{% endblock %}
+
+{% block content %}
+{% url 'my_ratings' as ratings_url %}
+
+<div class="max-w-2xl mx-auto">
+    <h1 class="font-serif text-4xl font-light mb-10">Moje ocene</h1>
+
+    <div class="grid grid-cols-1 {% if as_seller %}sm:grid-cols-2{% endif %} gap-6 mb-6">
+        {% if as_seller %}
+        <div class="border border-neutral-200 p-6">
+            <p class="text-xs uppercase tracking-widest text-stone-400 mb-2">Kao prodavac</p>
+            {% if as_seller.count %}
+            <p class="text-3xl font-light text-stone-900">{{ as_seller.average|floatformat:1 }} <span class="text-lg text-amber-600">★</span></p>
+            <p class="text-xs text-stone-400 mt-1">{{ as_seller.count }} ocena · <a href="{% url 'shop_detail' seller_profile.shop_slug %}#ocene" class="hover:text-stone-900 underline">na stranici prodavnice</a></p>
+            {% else %}
+            <p class="text-sm text-stone-400">Još nema ocena</p>
+            {% endif %}
+        </div>
+        {% endif %}
+        <div class="border border-neutral-200 p-6">
+            <p class="text-xs uppercase tracking-widest text-stone-400 mb-2">Kao kupac</p>
+            {% if as_buyer.count %}
+            <p class="text-3xl font-light text-stone-900">{{ as_buyer.average|floatformat:1 }} <span class="text-lg text-amber-600">★</span></p>
+            <p class="text-xs text-stone-400 mt-1">{{ as_buyer.count }} ocena · vide je samo prodavci</p>
+            {% else %}
+            <p class="text-sm text-stone-400">Još nema ocena</p>
+            {% endif %}
+        </div>
+    </div>
+
+    {% if pending_sales %}
+    <div class="border border-amber-200 bg-amber-50 p-8 mb-6">
+        <p class="text-xs uppercase tracking-widest text-stone-700 mb-4">Čekaju vašu ocenu</p>
+        <ul class="divide-y divide-amber-200">
+            {% for sale in pending_sales %}
+            <li class="flex items-center justify-between gap-4 py-3">
+                <div class="min-w-0">
+                    <p class="text-sm text-stone-900 truncate">{{ sale.product_title }}</p>
+                    <p class="text-xs text-stone-500">
+                        {% if sale.buyer_id == user.pk %}Prodavac: {{ sale.seller.shop_name }}{% else %}Kupac: {{ sale.buyer.email }}{% endif %} · {{ sale.created_at|date:"d.m.Y" }}
+                    </p>
+                </div>
+                <a href="{% url 'rate_sale' sale.pk %}" class="flex-shrink-0 text-xs uppercase tracking-widest bg-stone-900 text-white px-4 py-2 hover:bg-stone-700 transition-colors">Oceni</a>
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+
+    <div id="dobijene" class="border border-neutral-200 p-8 mb-6">
+        <p class="text-xs uppercase tracking-widest text-stone-700 mb-2">Ocene koje ste dobili</p>
+        {% if received %}
+        <ul class="divide-y divide-neutral-200">
+            {% for rating in received %}
+                {% include "ratings/rating_item.html" with next=ratings_url|add:"#dobijene" %}
+            {% endfor %}
+        </ul>
+        {% if page_obj.has_other_pages %}
+        <div class="flex justify-center items-center gap-2 mt-4">
+            {% if page_obj.has_previous %}<a href="?page={{ page_obj.previous_page_number }}#dobijene" class="px-4 py-2 border border-neutral-200 text-xs uppercase tracking-widest hover:border-stone-400">Prethodna</a>{% endif %}
+            <span class="px-4 py-2 text-xs text-stone-400">{{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span>
+            {% if page_obj.has_next %}<a href="?page={{ page_obj.next_page_number }}#dobijene" class="px-4 py-2 border border-neutral-200 text-xs uppercase tracking-widest hover:border-stone-400">Sledeća</a>{% endif %}
+        </div>
+        {% endif %}
+        {% else %}
+        <p class="text-sm text-stone-400">Još nemate objavljenih ocena. Ocene se objavljuju kada obe strane ocene prodaju, ili 14 dana posle prodaje.</p>
+        {% endif %}
+    </div>
+
+    <div class="border border-neutral-200 p-8 mb-6">
+        <p class="text-xs uppercase tracking-widest text-stone-700 mb-2">Ocene koje ste dali</p>
+        {% if given %}
+        <ul class="divide-y divide-neutral-200">
+            {% for rating in given %}
+                {% include "ratings/rating_item.html" %}
+            {% endfor %}
+        </ul>
+        {% else %}
+        <p class="text-sm text-stone-400">Još niste ocenili nijednu prodaju.</p>
+        {% endif %}
+    </div>
+</div>
+
+{% endblock %}
