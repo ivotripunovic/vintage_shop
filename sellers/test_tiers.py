@@ -15,7 +15,7 @@ from products.forms import ProductForm
 from products.models import Product, ProductImage
 from users.models import User
 
-from .models import SellerTier
+from .models import INVOICE_DUE_DAYS, SellerTier
 
 
 def _make_seller(email="seller@example.com", tier="garazna"):
@@ -80,6 +80,41 @@ class TestTierSettings(TestCase):
     def test_initial_subscription_uses_tier_price(self):
         seller = _make_seller()
         self.assertEqual(seller.active_subscription.amount, Decimal("0"))
+
+
+class TestChangeTier(TestCase):
+    def test_upgrade_restarts_subscription_and_creates_invoice(self):
+        seller = _make_seller()
+        old_subscription = seller.active_subscription
+        invoice = seller.change_tier("premijum")
+
+        seller.refresh_from_db()
+        old_subscription.refresh_from_db()
+        self.assertEqual(seller.tier, "premijum")
+        self.assertEqual(old_subscription.status, "cancelled")
+        self.assertEqual(seller.active_subscription.amount, Decimal("9000"))
+        self.assertEqual(invoice.status, "pending")
+        self.assertEqual(invoice.amount, Decimal("9000"))
+        self.assertTrue(invoice.invoice_number)
+        self.assertEqual(
+            invoice.due_date, invoice.period_start + timedelta(days=INVOICE_DUE_DAYS)
+        )
+
+    def test_downgrade_to_free_cancels_pending_invoice(self):
+        seller = _make_seller()
+        old_invoice = seller.change_tier("odrzivo")
+        self.assertIsNone(seller.change_tier("garazna"))
+
+        old_invoice.refresh_from_db()
+        self.assertEqual(old_invoice.status, "cancelled")
+        self.assertEqual(seller.active_subscription.amount, Decimal("0"))
+        self.assertEqual(seller.subscriptions.filter(status="active").count(), 1)
+
+    def test_same_tier_changes_nothing(self):
+        seller = _make_seller(tier="odrzivo")
+        self.assertIsNone(seller.change_tier("odrzivo"))
+        self.assertEqual(seller.subscriptions.count(), 1)
+        self.assertFalse(seller.invoices.exists())
 
 
 class TestListingLimit(TestCase):

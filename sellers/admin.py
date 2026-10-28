@@ -2,7 +2,27 @@
 
 from django.contrib import admin
 
-from .models import Seller, SellerSubscription, SellerTier
+from .models import TIER_CHOICES, Seller, SellerSubscription, SellerTier
+
+
+def _move_to_tier_action(tier, label):
+    """Build an admin action that moves the selected sellers to a tier."""
+
+    def action(modeladmin, request, queryset):
+        moved = invoiced = 0
+        for seller in queryset:
+            if seller.tier == tier:
+                continue
+            if seller.change_tier(tier):
+                invoiced += 1
+            moved += 1
+        modeladmin.message_user(
+            request,
+            f"{moved} seller(s) moved to {label}, {invoiced} invoice(s) created.",
+        )
+
+    action.__name__ = f"move_to_{tier}"
+    return admin.action(description=f"Move to {label}")(action)
 
 
 @admin.register(Seller)
@@ -24,15 +44,19 @@ class SellerAdmin(admin.ModelAdmin):
         "created_at",
     ]
     search_fields = ["shop_name", "user__email"]
-    # Trader fields are the seller's own statement; staff can only clear them
+    # Trader fields are the seller's own statement; staff can only clear them.
+    # Tier changes go through the move_to_* actions so billing follows.
     readonly_fields = [
         "created_at",
         "updated_at",
         "shop_slug",
+        "tier",
         "trader_confirmed_at",
         "trader_statement",
     ]
-    actions = ["clear_trader_confirmation"]
+    actions = ["clear_trader_confirmation"] + [
+        _move_to_tier_action(tier, label) for tier, label in TIER_CHOICES
+    ]
     fieldsets = (
         ("User", {"fields": ("user",)}),
         (

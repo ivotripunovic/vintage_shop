@@ -82,6 +82,24 @@ class Invoice(TimeStampedModel):
     def __str__(self):
         return f"{self.invoice_number} - {self.seller.shop_name}"
 
+    def save(self, *args, **kwargs):
+        if not self.invoice_number:
+            self.invoice_number = self.next_invoice_number()
+        super().save(*args, **kwargs)
+
+    @classmethod
+    def next_invoice_number(cls):
+        """Next sequential number for this year, e.g. 2026-0001."""
+        year = timezone.localdate().year
+        last = (
+            cls.objects.filter(invoice_number__startswith=f"{year}-")
+            .order_by("-invoice_number")
+            .values_list("invoice_number", flat=True)
+            .first()
+        )
+        sequence = int(last.split("-")[1]) + 1 if last else 1
+        return f"{year}-{sequence:04d}"
+
     @property
     def is_overdue(self):
         """Check if invoice is overdue."""
@@ -114,6 +132,11 @@ class Invoice(TimeStampedModel):
             # Suspend seller if payment overdue
             if not self.seller.is_suspended:
                 self.seller.suspend()
+
+    def cancel(self):
+        """Cancel the invoice, e.g. when the seller changes tier."""
+        self.status = "cancelled"
+        self.save()
 
 
 class Payment(TimeStampedModel):
