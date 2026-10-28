@@ -6,7 +6,7 @@ from datetime import timedelta
 from decimal import Decimal
 
 from django.contrib import admin
-from django.db import models
+from django.db import models, transaction
 from django.utils import timezone
 
 from core.models import TimeStampedModel
@@ -36,6 +36,10 @@ DEFAULT_TIER_SETTINGS = {
         "listing_expiry_days": 30,
     },
 }
+
+
+# Days a seller has to pay the invoice for a paid tier
+INVOICE_DUE_DAYS = 8
 
 
 # Draft wording, pending confirmation by the legal side
@@ -177,6 +181,34 @@ class Seller(TimeStampedModel):
             renewal_date=start_date + timedelta(days=30),
             status="active",
             amount=self.tier_settings["monthly_price"],
+        )
+
+    @transaction.atomic
+    def change_tier(self, new_tier):
+        """Move the seller to a tier, restarting the subscription at its price.
+
+        Returns the new pending invoice, or None for a free or unchanged tier.
+        """
+        if new_tier == self.tier:
+            return None
+        self.tier = new_tier
+        self.save()
+
+        for subscription in self.subscriptions.filter(status="active"):
+            subscription.cancel()
+        subscription = self.create_initial_subscription()
+
+        # Pending invoices were for the old tier
+        for invoice in self.invoices.filter(status="pending"):
+            invoice.cancel()
+
+        if not subscription.amount:
+            return None
+        return self.invoices.create(
+            amount=subscription.amount,
+            due_date=subscription.start_date + timedelta(days=INVOICE_DUE_DAYS),
+            period_start=subscription.start_date,
+            period_end=subscription.renewal_date,
         )
 
     def suspend(self):

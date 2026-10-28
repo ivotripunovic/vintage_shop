@@ -45,3 +45,36 @@ class TestSellerAdminTraderFields(TestCase):
 
     def test_is_trader_column_sorts_by_confirmation_time(self):
         self.assertEqual(Seller.is_trader.fget.admin_order_field, "trader_confirmed_at")
+
+
+class TestSellerAdminTierActions(TestCase):
+    """Staff change tiers through actions so billing follows."""
+
+    def setUp(self):
+        user = User.objects.create_user(
+            email="tiers@example.com",
+            username="tiers@example.com",
+            password="testpass123",
+            is_seller=True,
+        )
+        self.seller = user.seller_profile
+        self.model_admin = SellerAdmin(Seller, admin.site)
+        self.model_admin.message_user = lambda request, message: None
+        self.request = RequestFactory().get("/")
+        self.request.user = User.objects.create_superuser(
+            email="admin@example.com",
+            username="admin@example.com",
+            password="testpass123",
+        )
+
+    def test_tier_is_readonly(self):
+        self.assertIn("tier", self.model_admin.get_readonly_fields(self.request))
+
+    def test_move_action_changes_tier_and_invoices(self):
+        actions = self.model_admin.get_actions(self.request)
+        func = actions["move_to_premijum"][0]
+        func(self.model_admin, self.request, Seller.objects.filter(pk=self.seller.pk))
+
+        self.seller.refresh_from_db()
+        self.assertEqual(self.seller.tier, "premijum")
+        self.assertEqual(self.seller.invoices.filter(status="pending").count(), 1)
