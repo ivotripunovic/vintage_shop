@@ -1,4 +1,3 @@
-import json
 import logging
 from datetime import timedelta
 
@@ -27,18 +26,38 @@ logger = logging.getLogger(__name__)
 EMAIL_NOTIFY_COOLDOWN = timedelta(minutes=10)
 
 
+def _user_conversations(user):
+    """Conversations the user takes part in, as buyer or as seller."""
+    return Conversation.objects.filter(Q(buyer=user) | Q(seller__user=user))
+
+
+def _unread_total(user):
+    """Unread messages addressed to the user across all their conversations."""
+    return (
+        Message.objects.filter(conversation__in=_user_conversations(user))
+        .filter(is_read=False)
+        .exclude(sender=user)
+        .count()
+    )
+
+
 def _assert_participant(conversation, user):
     """Return True if user is buyer or seller's user, else False."""
     return user == conversation.buyer or user == conversation.seller.user
 
 
 def _notify_recipient_by_email(conversation, sender, message):
-    """Email the other participant about a new message, if not on cooldown."""
+    """Email the other participant about a new message, if not on cooldown.
+
+    The cooldown is tracked per recipient, so a reply is still emailed to
+    someone who was just the sender.
+    """
     now = timezone.now()
-    if (
-        conversation.last_emailed_at
-        and now - conversation.last_emailed_at < EMAIL_NOTIFY_COOLDOWN
-    ):
+    cooldown_field = (
+        "seller_emailed_at" if sender == conversation.buyer else "buyer_emailed_at"
+    )
+    last_emailed = getattr(conversation, cooldown_field)
+    if last_emailed and now - last_emailed < EMAIL_NOTIFY_COOLDOWN:
         return
 
     recipient = conversation.other_participant(sender)
@@ -76,8 +95,8 @@ Tim {site_name}
             [recipient.email],
             fail_silently=False,
         )
-        conversation.last_emailed_at = now
-        conversation.save(update_fields=["last_emailed_at"])
+        setattr(conversation, cooldown_field, now)
+        conversation.save(update_fields=[cooldown_field])
     except BadHeaderError:
         logger.error(
             "Invalid header in new-message email for conversation %s", conversation.pk
@@ -90,21 +109,34 @@ Tim {site_name}
 
 @login_required
 def chat_inbox(request):
+    last_message = Message.objects.filter(conversation=OuterRef("pk")).order_by(
+        "-created_at", "-id"
+    )
     conversations = (
-        Conversation.objects.filter(
-            Q(buyer=request.user) | Q(seller__user=request.user)
-        )
+        _user_conversations(request.user)
         .select_related("buyer", "seller", "product")
+        .annotate(
+            unread=Count(
+                "messages",
+                filter=Q(messages__is_read=False) & ~Q(messages__sender=request.user),
+            ),
+            last_body=Subquery(last_message.values("body")[:1]),
+            last_created_at=Subquery(last_message.values("created_at")[:1]),
+        )
         .order_by("-updated_at")
     )
-    # Annotate unread count per conversation for current user
-    conv_list = []
-    for conv in conversations:
-        unread = (
-            conv.messages.filter(is_read=False).exclude(sender=request.user).count()
+    conv_list = [
+        (
+            conv,
+            conv.unread,
+            (
+                {"body": conv.last_body, "created_at": conv.last_created_at}
+                if conv.last_created_at
+                else None
+            ),
         )
-        last_msg = conv.messages.order_by("-created_at").first()
-        conv_list.append((conv, unread, last_msg))
+        for conv in conversations
+    ]
 
     return render(request, "chat/inbox.html", {"conv_list": conv_list})
 
@@ -123,9 +155,12 @@ def chat_detail(request, pk):
         is_read=True
     )
 
+    # Latest 100, shown oldest first; older ones aren't paged in
     messages_qs = list(
-        conversation.messages.select_related("sender").order_by("created_at")[:100]
-    )
+        conversation.messages.select_related("sender").order_by("-created_at", "-id")[
+            :100
+        ]
+    )[::-1]
     form = MessageForm()
 
     # Sellers see the buyer's rating and can record the sale; either side gets
@@ -240,18 +275,9 @@ def chat_poll(request, pk):
         for m in new_messages
     ]
 
-    unread_total = (
-        Message.objects.filter(
-            conversation__in=Conversation.objects.filter(
-                Q(buyer=request.user) | Q(seller__user=request.user)
-            )
-        )
-        .filter(is_read=False)
-        .exclude(sender=request.user)
-        .count()
+    return JsonResponse(
+        {"messages": payload, "unread_total": _unread_total(request.user)}
     )
-
-    return JsonResponse({"messages": payload, "unread_total": unread_total})
 
 
 @login_required
@@ -285,14 +311,4 @@ def chat_start(request):
 
 @login_required
 def chat_unread(request):
-    count = (
-        Message.objects.filter(
-            conversation__in=Conversation.objects.filter(
-                Q(buyer=request.user) | Q(seller__user=request.user)
-            )
-        )
-        .filter(is_read=False)
-        .exclude(sender=request.user)
-        .count()
-    )
-    return JsonResponse({"count": count})
+    return JsonResponse({"count": _unread_total(request.user)})

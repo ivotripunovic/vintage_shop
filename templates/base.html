@@ -539,13 +539,32 @@
             }
         });
     }
+    window.updateChatBadge = updateBadge;
+
+    // The chat detail page polls for messages and updates the badge itself
+    if (window.chatPageOwnsBadge) return;
+
+    // Poll only while the tab is visible; refresh as soon as it comes back
+    var timer = null;
     function poll() {
+        clearTimeout(timer);
+        timer = null;
         fetch("{% url 'chat_unread' %}")
             .then(function (r) { return r.json(); })
             .then(function (d) { updateBadge(d.count); })
             .catch(function () {})
-            .finally(function () { setTimeout(poll, 15000); });
+            .finally(function () {
+                if (!document.hidden) timer = setTimeout(poll, 15000);
+            });
     }
+    document.addEventListener("visibilitychange", function () {
+        if (document.hidden) {
+            clearTimeout(timer);
+            timer = null;
+        } else {
+            poll();
+        }
+    });
     poll();
 })();
 </script>
