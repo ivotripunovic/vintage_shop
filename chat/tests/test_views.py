@@ -188,6 +188,19 @@ class TestChatDetail:
         bodies = [m.body for m in res.context["chat_messages"]]
         assert bodies == [f"m{i}" for i in range(5, 105)]
         assert res.context["last_id"] == Message.objects.latest("id").id
+        assert res.context["has_older"] is True
+        assert "Prikazano je poslednjih 100 poruka" in res.content.decode()
+
+    def test_no_older_notice_when_thread_fits(self, client, buyer, conversation):
+        Message.objects.bulk_create(
+            Message(conversation=conversation, sender=buyer, body=f"m{i}")
+            for i in range(100)
+        )
+        client.force_login(buyer)
+        res = client.get(reverse("chat_detail", args=[conversation.pk]))
+        assert len(res.context["chat_messages"]) == 100
+        assert res.context["has_older"] is False
+        assert "Prikazano je poslednjih" not in res.content.decode()
 
     def test_does_not_mark_own_messages_read(self, client, buyer, conversation):
         msg = Message.objects.create(
