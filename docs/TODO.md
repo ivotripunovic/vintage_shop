@@ -12,7 +12,9 @@ Keep entries short. Move an item to `DAILY.md` or close its issue when it is don
 
 ## Later
 
-- [ ] Chat: load older messages in long threads; the page only shows the latest 100, with a notice since #36 (follow-up from #31)
+- [ ] Chat: load older messages in long threads; the page only shows the latest 100, with a notice since #36 (follow-up from #31).
+  Only worth doing if production threads get near 100 messages; check with
+  `Conversation.objects.annotate(n=Count("messages")).aggregate(Max("n"))`
 
 ## Bugs
 
