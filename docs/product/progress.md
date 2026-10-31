@@ -11,11 +11,11 @@
 | Phase | Title | Status | Target End Date | Completion % |
 |-------|-------|--------|-----------------|--------------|
 | 1 | Core Infrastructure | ✅ Complete | Week 2 | 100% |
-| 2 | Seller Features | ✅ Complete | Week 5 | 100% |
+| 2 | Seller Features | 🟢 In Progress | Week 5 | 95% |
 | 3 | Buyer Features | 🔴 Not Started | Week 8 | 0% |
 | 4 | Billing & Admin | 🔴 Not Started | Week 11 | 0% |
 | 5 | Testing & Launch | 🔴 Not Started | Week 13 | 0% |
-| **Total** | **MVP Complete** | 🟡 In Progress | - | **38%** (68/187 tasks) |
+| **Total** | **MVP Complete** | 🟡 In Progress | - | **40%** (66/166 tasks) |
 
 ---
 
@@ -45,13 +45,12 @@
 - [x] ProductImage model (images and ordering)
 - [x] ProductCategory model (categories)
 - [x] Condition choices model (New, Like New, Good, Fair)
-- [x] Order model (user, status, total_price, timestamps)
-- [x] OrderItem model (product, order, quantity, price)
+- [x] Sale model (product, seller, buyer), replacing the original Order/OrderItem models
 - [x] Invoice model (seller, amount, due_date, status)
 - [x] Payment model (invoice, verified_at, verified_by)
 - [x] BillingPlan model (flexible pricing support)
 
-**Subtask Progress**: 14/14
+**Subtask Progress**: 13/13
 
 ### 1.3 User Authentication
 - [x] Custom User model (email as username)
@@ -71,13 +70,13 @@
 
 **Subtask Progress**: 4/4
 
-**Phase 1 Total Progress**: 32/32 tasks
+**Phase 1 Total Progress**: 31/31 tasks
 
 ---
 
 ## Phase 2: Seller Features (Weeks 3-5)
 
-**Status**: ✅ In Progress | **Target**: Week 5 | **Progress**: 100% (36/36)
+**Status**: 🟢 In Progress | **Target**: Week 5 | **Progress**: 95% (35/37)
 
 ### 2.1 Seller Onboarding Flow
 - [x] Seller registration page (separate from buyer)
@@ -125,17 +124,18 @@
 ### 2.5 Seller Dashboard
 - [x] Dashboard overview page
 - [x] Total products widget
-- [x] Active products widget
-- [x] Total sales widget (if applicable)
-- [x] MRR (Monthly Recurring Revenue) widget
-- [x] Recent orders widget
-- [x] Subscription status widget (next due date)
-- [x] Quick action buttons (add product, view orders)
+- [x] Published products widget
+- [x] Draft products and shop status widgets
+- [ ] Total sales widget
+- [x] Recent products list
+- [ ] Recent sales list
+- [x] Subscription status widget (plan, monthly amount, renewal date)
+- [x] Quick action button (add product)
 - [x] Account settings page (email, password, bank details)
 
-**Subtask Progress**: 9/9
+**Subtask Progress**: 8/10
 
-**Phase 2 Total Progress**: 36/36 tasks ✅ **COMPLETE**
+**Phase 2 Total Progress**: 35/37 tasks
 
 ---
 
@@ -168,54 +168,26 @@
 - [ ] Seller profile link
 - [ ] Related products (same seller)
 - [ ] Related products (same category)
-- [ ] Add to cart button
 - [ ] Out of stock message and handling
 
-**Subtask Progress**: 0/10
+**Subtask Progress**: 0/9
 
-### 3.3 Shopping Cart
-- [ ] Cart model/session storage
-- [ ] Add to cart functionality
-- [ ] View cart page
-- [ ] Update item quantity in cart
-- [ ] Remove item from cart
-- [ ] Cart persistence (session or database)
-- [ ] Cart summary (total items, total price)
-- [ ] Discount/coupon support (future, skip for MVP)
+### 3.3 Purchases
+- [ ] Buyer's purchases page (sales where they are the buyer)
+- [ ] Link to the product and the seller's shop
+- [ ] Link to the chat with the seller
 
-**Subtask Progress**: 0/8
+**Subtask Progress**: 0/3
 
-### 3.4 Checkout Flow
-- [ ] Shipping address form
-- [ ] Order summary review page
-- [ ] Place order button
-- [ ] Order confirmation page
-- [ ] Order confirmation email
-- [ ] Payment method selection (for future payment integration)
-
-**Subtask Progress**: 0/6
-
-### 3.5 Order Management
-- [ ] Order list view (buyer's orders only)
-- [ ] Order detail page
-- [ ] Order status display (pending, processing, shipped, delivered)
-- [ ] Shipping address display
-- [ ] Seller information in order
-- [ ] Items list in order
-- [ ] Contact seller link (future feature)
-
-**Subtask Progress**: 0/7
-
-### 3.6 Buyer Authentication
+### 3.4 Buyer Authentication
 - [ ] Buyer registration page
 - [ ] Buyer login
 - [ ] Buyer profile management
-- [ ] Order history view
 - [ ] Address book (optional for MVP)
 
-**Subtask Progress**: 0/5
+**Subtask Progress**: 0/4
 
-**Phase 3 Total Progress**: 0/48 tasks
+**Phase 3 Total Progress**: 0/28 tasks
 
 ---
 
@@ -241,7 +213,7 @@
 - [ ] Payment verification workflow
 - [ ] User management (sellers, buyers, staff)
 - [ ] Product moderation (flag inappropriate)
-- [ ] Order management view
+- [ ] Sale management view
 - [ ] Statistics/analytics dashboard (optional)
 
 **Subtask Progress**: 0/8
@@ -289,18 +261,17 @@
 ### 5.1 Unit & Integration Tests
 - [ ] Seller registration flow tests
 - [ ] Product CRUD tests
-- [ ] Shopping cart tests
-- [ ] Order creation tests
+- [ ] Sale recording tests
 - [ ] Invoice generation tests
 - [ ] Billing status update tests
 - [ ] Permission/authorization tests
 - [ ] Email delivery tests
 
-**Subtask Progress**: 0/8
+**Subtask Progress**: 0/7
 
 ### 5.2 End-to-End Tests
 - [ ] Full seller onboarding → product listing → invoice generation flow
-- [ ] Full buyer browsing → add to cart → checkout → order flow
+- [ ] Full buyer browsing → chat → sale → rating flow
 - [ ] Payment verification workflow test
 
 **Subtask Progress**: 0/3
@@ -347,7 +318,7 @@
 
 **Subtask Progress**: 0/7
 
-**Phase 5 Total Progress**: 0/37 tasks
+**Phase 5 Total Progress**: 0/36 tasks
 
 ---
 
@@ -359,7 +330,7 @@
 2. ⬜ **Phase 1.1**: Environment setup
 3. ⬜ **Phase 1.2 & 1.3**: Models & authentication
 4. ⬜ **Phase 2.1 & 2.3**: Seller onboarding & product management
-5. ⬜ **Phase 3.1 & 3.4**: Product browsing & checkout
+5. ⬜ **Phase 3.1 & 3.3**: Product browsing & purchases
 6. ⬜ **Phase 4.1 & 4.2**: Invoicing & admin dashboard
 7. ⬜ **Phase 5**: Testing & deployment
 
@@ -369,12 +340,12 @@
 
 | Category | Total Tasks | Completed | In Progress | To Do | % Complete |
 |----------|------------|-----------|-------------|-------|------------|
-| Phase 1 | 32 | 32 | 0 | 0 | 100% |
-| Phase 2 | 36 | 36 | 0 | 0 | 100% |
-| Phase 3 | 48 | 0 | 0 | 48 | 0% |
+| Phase 1 | 31 | 31 | 0 | 0 | 100% |
+| Phase 2 | 37 | 35 | 0 | 2 | 95% |
+| Phase 3 | 28 | 0 | 0 | 28 | 0% |
 | Phase 4 | 34 | 0 | 0 | 34 | 0% |
-| Phase 5 | 37 | 0 | 0 | 37 | 0% |
-| **TOTAL** | **187** | **68** | **0** | **119** | **38%** |
+| Phase 5 | 36 | 0 | 0 | 36 | 0% |
+| **TOTAL** | **166** | **66** | **0** | **100** | **40%** |
 
 ---
 

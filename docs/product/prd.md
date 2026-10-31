@@ -71,10 +71,10 @@ Key differences from Mercari:
   - Draft/publish status
   
 - **Seller Dashboard**
-  - Sales analytics (orders, revenue overview)
+  - Sales analytics (sales, revenue overview)
   - Upcoming payment due date
   - Inventory at a glance
-  - Recent orders list
+  - Recent sales list
   
 - **Subscription & Billing**
   - Monthly subscription plan display
@@ -94,15 +94,14 @@ Key differences from Mercari:
   - Image gallery
   - Similar items (same seller, same category)
   
-- **Shopping Cart & Checkout**
-  - Add to cart
-  - Checkout flow (shipping address, payment method selection)
-  - Order summary
+- **Buying (through chat, no cart or checkout)**
+  - Contact the seller about a product in chat
+  - Seller marks the product sold to that buyer
+  - Buyer and seller rate each other after the sale
   
-- **Order Management**
-  - View order status
+- **Purchases**
+  - List of the buyer's purchases
   - Contact seller
-  - Order history
 
 #### Admin Features
 - **Django Admin Dashboard** (for platform staff)
@@ -133,8 +132,7 @@ Key differences from Mercari:
 - **SellerSubscription**: seller_fk, plan_type, start_date, end_date, status, amount
 - **Product**: seller_fk, title, description, price, category, condition, stock, created_at
 - **ProductImage**: product_fk, image_url, order
-- **Order**: buyer_fk, created_at, total_price, status
-- **OrderItem**: order_fk, product_fk, quantity, price_at_purchase
+- **Sale**: product_fk, product_title, seller_fk, buyer_fk, created_at
 - **Invoice**: seller_fk, amount, due_date, status, payment_method
 - **Payment**: invoice_fk, verified_at, verified_by_admin, amount
 
@@ -200,9 +198,8 @@ The platform is designed to support switching between billing models:
 
 ### Phase 3 (Weeks 9-11): Buyer Experience
 - Product browsing & search
-- Shopping cart
-- Basic checkout (no payment processing)
-- Order tracking
+- Buying through chat (seller marks the product sold)
+- Purchase history
 
 ### Phase 4 (Week 12): Admin & Launch Prep
 - Admin panel for payment verification
