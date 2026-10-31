@@ -52,6 +52,22 @@ def conversation(buyer, seller, product):
 
 
 class TestConversation:
+    def test_buyer_label_uses_first_name(self, conversation, buyer):
+        buyer.first_name = "Ana"
+        assert conversation.buyer_label == "Ana"
+
+    def test_buyer_label_never_falls_back_to_email(self, conversation, buyer):
+        assert buyer.first_name == ""
+        assert conversation.buyer_label == "Kupac"
+
+    def test_team_buyer_label(self, conversation, settings):
+        conversation.is_team = True
+        assert conversation.buyer_label == f"Tim {settings.SITE_NAME}"
+
+    def test_label_for_each_side(self, conversation, buyer, seller_user, seller):
+        assert conversation.label_for(buyer) == "Kupac"
+        assert conversation.label_for(seller_user) == seller.shop_name
+
     def test_str(self, conversation, buyer, seller, product):
         assert str(buyer.email) in str(conversation)
         assert str(seller) in str(conversation)

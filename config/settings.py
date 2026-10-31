@@ -318,6 +318,8 @@ COMING_SOON_SECRET = config("COMING_SOON_SECRET", default="")
 WAITLIST_CHECK_DNS = config("WAITLIST_CHECK_DNS", default=True, cast=bool)
 # Send confirmation emails in a background thread so SMTP never blocks a worker
 WAITLIST_EMAIL_ASYNC = config("WAITLIST_EMAIL_ASYNC", default=True, cast=bool)
+# Send new-chat-message emails in a background thread after commit
+CHAT_EMAIL_ASYNC = config("CHAT_EMAIL_ASYNC", default=True, cast=bool)
 
 # Site Configuration
 SITE_DOMAIN = config("SITE_DOMAIN", default="http://localhost:8000")

@@ -36,12 +36,25 @@ class Conversation(TimeStampedModel):
     def __str__(self):
         return f"{self.buyer} ↔ {self.seller} ({self.product})"
 
+    # Participants are shown by name, never by email, so contact details
+    # aren't handed out and deals stay on the platform
+
     @property
     def buyer_label(self):
-        """Name shown for the buyer side; team threads hide the admin's email."""
+        """Name shown for the buyer side: first name, or the team name."""
         if self.is_team:
             return f"Tim {settings.SITE_NAME}"
-        return self.buyer.email
+        return self.buyer.first_name or "Kupac"
+
+    @property
+    def seller_label(self):
+        return self.seller.shop_name
+
+    def label_for(self, user):
+        """Public name of a participant in this conversation."""
+        if user.pk == self.buyer_id:
+            return self.buyer_label
+        return self.seller_label
 
     def other_participant(self, user):
         """Return the other user in the conversation."""

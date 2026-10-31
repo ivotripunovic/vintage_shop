@@ -11,6 +11,7 @@ import os
 import django
 import pytest
 from django.conf import settings
+from django.core.cache import cache
 
 
 def pytest_configure():
@@ -19,6 +20,14 @@ def pytest_configure():
 
     if not settings.configured:
         django.setup()
+
+
+@pytest.fixture(autouse=True)
+def _clear_cache():
+    """Start every test with an empty cache, so rate-limit counters and
+    cached fragments never leak between tests sharing a worker."""
+    cache.clear()
+    yield
 
 
 def pytest_collection_modifyitems(config, items):
