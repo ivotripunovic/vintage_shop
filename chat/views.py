@@ -31,6 +31,9 @@ logger = logging.getLogger(__name__)
 # so an active back-and-forth conversation doesn't spam their inbox.
 EMAIL_NOTIFY_COOLDOWN = timedelta(minutes=10)
 
+# How many of the latest messages the chat page shows
+CHAT_PAGE_SIZE = 100
+
 # Per-user caps against spam: (max actions, window in seconds)
 SEND_RATE_LIMIT = (20, 60)
 START_RATE_LIMIT = (20, 60 * 60)
@@ -198,12 +201,15 @@ def chat_detail(request, pk):
         is_read=True
     )
 
-    # Latest 100, shown oldest first; older ones aren't paged in
-    messages_qs = list(
+    # Latest CHAT_PAGE_SIZE, shown oldest first; older ones aren't paged in.
+    # Fetch one extra to know whether the thread was cut off.
+    latest = list(
         conversation.messages.select_related("sender").order_by("-created_at", "-id")[
-            :100
+            : CHAT_PAGE_SIZE + 1
         ]
-    )[::-1]
+    )
+    has_older = len(latest) > CHAT_PAGE_SIZE
+    messages_qs = latest[:CHAT_PAGE_SIZE][::-1]
     form = MessageForm()
 
     # Sellers see the buyer's rating and can record the sale; either side gets
@@ -241,6 +247,8 @@ def chat_detail(request, pk):
             "chat_messages": messages_qs,
             "form": form,
             "last_id": messages_qs[-1].id if messages_qs else 0,
+            "has_older": has_older,
+            "page_size": CHAT_PAGE_SIZE,
             "buyer_rating": buyer_rating,
             "sale_to_rate": sale_to_rate,
             "can_mark_sold": can_mark_sold,

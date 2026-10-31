@@ -12,7 +12,7 @@ Keep entries short. Move an item to `DAILY.md` or close its issue when it is don
 
 ## Later
 
-- [ ] Chat: load older messages in long threads; the page only shows the latest 100 (follow-up from #31)
+- [ ] Chat: load older messages in long threads; the page only shows the latest 100, with a notice since #36 (follow-up from #31)
 
 ## Bugs
 

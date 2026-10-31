@@ -46,6 +46,11 @@
 {% endif %}
 
 <div id="messages" class="border border-neutral-200 divide-y divide-neutral-100 mb-4 max-h-[60vh] overflow-y-auto">
+    {% if has_older %}
+    <div class="px-5 py-3 text-center">
+        <p class="text-xs uppercase tracking-widest text-stone-400">Prikazano je poslednjih {{ page_size }} poruka.</p>
+    </div>
+    {% endif %}
     {% for msg in chat_messages %}
     <div class="px-5 py-4 {% if msg.sender == request.user %}bg-stone-50{% endif %}" data-id="{{ msg.id }}">
         <div class="flex justify-between items-baseline mb-1">
