@@ -5,7 +5,7 @@ truth, read by both Claude Code and opencode; `CLAUDE.md` points here.
 
 ## Project Overview
 
-Multi-vendor second-hand marketplace built with Django 5.2 and Python 3.9+. Sellers list vintage/used products, buyers browse and purchase. Uses Django templates with Tailwind CSS (CDN), SQLite for development, PostgreSQL for production.
+Multi-vendor second-hand marketplace built with Django 5.2 and Python 3.11+. Sellers list vintage/used products, buyers browse and purchase. Uses Django templates with Tailwind CSS (CDN), SQLite for development, PostgreSQL for production.
 
 ## Commands
 

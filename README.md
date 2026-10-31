@@ -7,7 +7,7 @@ A modern, budget-friendly multi-vendor marketplace for buying and selling second
 ## Quick Start
 
 ### Prerequisites
-- Python 3.9+
+- Python 3.11+
 - PostgreSQL 14+
 - Git
 
