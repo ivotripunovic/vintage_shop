@@ -22,7 +22,10 @@ class Conversation(TimeStampedModel):
         blank=True,
         related_name="chat_conversations",
     )
-    last_emailed_at = models.DateTimeField(null=True, blank=True)
+    # When each side was last emailed about new messages; tracked per
+    # recipient so one side's notification doesn't silence the other's
+    buyer_emailed_at = models.DateTimeField(null=True, blank=True)
+    seller_emailed_at = models.DateTimeField(null=True, blank=True)
     # Started by an admin from the review queue; the admin sits on the buyer side
     is_team = models.BooleanField(default=False)
 

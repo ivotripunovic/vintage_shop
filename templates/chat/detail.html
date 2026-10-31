@@ -45,7 +45,7 @@
 
 <div id="messages" class="border border-neutral-200 divide-y divide-neutral-100 mb-4 max-h-[60vh] overflow-y-auto">
     {% for msg in chat_messages %}
-    <div class="px-5 py-4 {% if msg.sender == request.user %}bg-stone-50{% endif %}">
+    <div class="px-5 py-4 {% if msg.sender == request.user %}bg-stone-50{% endif %}" data-id="{{ msg.id }}">
         <div class="flex justify-between items-baseline mb-1">
             <span class="text-xs uppercase tracking-widest {% if msg.sender == request.user %}text-stone-700{% else %}text-stone-400{% endif %}">
                 {% if msg.sender == request.user %}Vi{% elif msg.sender == conversation.buyer %}{{ conversation.buyer_label }}{% else %}{{ msg.sender.email }}{% endif %}
@@ -73,8 +73,21 @@
     const form = document.getElementById("sendForm");
     const textarea = form.querySelector("textarea");
     const csrf = form.querySelector("[name=csrfmiddlewaretoken]").value;
+    // Highest id fetched by poll(); only poll() advances it, so a message the
+    // other side saved just before ours is never skipped. Rendered ids are
+    // tracked separately so nothing is shown twice.
     let lastId = {{ last_id }};
-    let polling = true;
+    const shownIds = new Set(
+        Array.from(messagesEl.querySelectorAll("[data-id]"), el => Number(el.dataset.id))
+    );
+
+    // Poll fast while the conversation is active, back off when it is quiet,
+    // and stop entirely while the tab is hidden.
+    const POLL_MIN = 3000;
+    const POLL_MAX = 30000;
+    let pollDelay = POLL_MIN;
+    let pollTimer = null;
+    let inFlight = false;
 
     function isNearBottom() {
         return messagesEl.scrollHeight - messagesEl.scrollTop - messagesEl.clientHeight < 120;
@@ -84,10 +97,13 @@
         messagesEl.scrollTop = messagesEl.scrollHeight;
     }
 
-    function appendMessage(body, isMine, senderLabel, timestamp) {
+    function appendMessage(id, body, isMine, senderLabel, timestamp) {
+        if (shownIds.has(id)) return;
+        shownIds.add(id);
         const wasNear = isNearBottom();
         const div = document.createElement("div");
         div.className = "px-5 py-4" + (isMine ? " bg-stone-50" : "");
+        div.dataset.id = id;
         div.innerHTML =
             '<div class="flex justify-between items-baseline mb-1">' +
                 '<span class="text-xs uppercase tracking-widest ' + (isMine ? "text-stone-700" : "text-stone-400") + '">' + senderLabel + "</span>" +
@@ -112,26 +128,46 @@
         return d.toLocaleDateString("sr-RS") + " " + d.toLocaleTimeString("sr-RS", {hour: "2-digit", minute: "2-digit"});
     }
 
+    function schedulePoll(delay) {
+        clearTimeout(pollTimer);
+        pollTimer = null;
+        if (document.hidden) return;
+        pollTimer = setTimeout(poll, delay);
+    }
+
     async function poll() {
-        if (!polling) return;
+        if (inFlight) return;
+        inFlight = true;
+        let gotNew = false;
         try {
             const res = await fetch("{% url 'chat_poll' conversation.pk %}?after=" + lastId);
             if (res.ok) {
                 const data = await res.json();
                 data.messages.forEach(m => {
-                    appendMessage(m.body, m.is_mine, m.is_mine ? "Vi" : m.sender, formatTime(m.created_at));
-                    lastId = m.id;
+                    if (!m.is_mine && !shownIds.has(m.id)) gotNew = true;
+                    appendMessage(m.id, m.body, m.is_mine, m.is_mine ? "Vi" : m.sender, formatTime(m.created_at));
+                    lastId = Math.max(lastId, m.id);
                 });
-                // Update global unread badge if present
-                const badge = document.getElementById("chat-badge");
-                if (badge) {
-                    badge.textContent = data.unread_total || "";
-                    badge.style.display = data.unread_total ? "" : "none";
-                }
+                // This page owns the nav badge while open; see base.html
+                if (window.updateChatBadge) window.updateChatBadge(data.unread_total);
             }
-        } catch (_) {}
-        setTimeout(poll, 3000);
+        } catch (_) {
+        } finally {
+            inFlight = false;
+        }
+        pollDelay = gotNew ? POLL_MIN : Math.min(pollDelay * 1.5, POLL_MAX);
+        schedulePoll(pollDelay);
     }
+
+    document.addEventListener("visibilitychange", () => {
+        if (document.hidden) {
+            clearTimeout(pollTimer);
+            pollTimer = null;
+        } else {
+            pollDelay = POLL_MIN;
+            poll();
+        }
+    });
 
     form.addEventListener("submit", async e => {
         e.preventDefault();
@@ -147,10 +183,12 @@
             });
             const data = await res.json();
             if (data.ok) {
-                appendMessage(data.message.body, true, "Vi", formatTime(data.message.created_at));
-                lastId = data.message.id;
+                appendMessage(data.message.id, data.message.body, true, "Vi", formatTime(data.message.created_at));
                 textarea.value = "";
                 scrollToBottom();
+                // A reply is likely soon; pick up anything sent meanwhile
+                pollDelay = POLL_MIN;
+                schedulePoll(POLL_MIN);
             }
         } finally {
             btn.disabled = false;
@@ -164,6 +202,9 @@
             form.dispatchEvent(new Event("submit"));
         }
     });
+
+    // Tell base.html not to run its own badge poll alongside this one
+    window.chatPageOwnsBadge = true;
 
     scrollToBottom();
     poll();

@@ -107,6 +107,41 @@ class TestChatInbox:
         assert res.status_code == 200
         assert res.context["conv_list"] == []
 
+    def test_shows_unread_count_and_last_message(
+        self, client, buyer, seller_user, conversation
+    ):
+        Message.objects.create(conversation=conversation, sender=buyer, body="Mine")
+        Message.objects.create(
+            conversation=conversation, sender=seller_user, body="First"
+        )
+        Message.objects.create(
+            conversation=conversation, sender=seller_user, body="Latest"
+        )
+        client.force_login(buyer)
+        res = client.get(reverse("chat_inbox"))
+        [(conv, unread, last_msg)] = res.context["conv_list"]
+        assert unread == 2
+        assert last_msg["body"] == "Latest"
+        assert b"Latest" in res.content
+
+    def test_query_count_does_not_grow_with_conversations(
+        self, client, buyer, seller, category, django_assert_max_num_queries
+    ):
+        for i in range(5):
+            product = Product.objects.create(
+                seller=seller, title=f"P{i}", price="1", category=category
+            )
+            conv = Conversation.objects.create(
+                buyer=buyer, seller=seller, product=product
+            )
+            Message.objects.create(conversation=conv, sender=buyer, body="Hi")
+        client.force_login(buyer)
+        # Session, user, the annotated conversation list, plus the shared
+        # page chrome; previously this was 2 extra queries per conversation
+        with django_assert_max_num_queries(10):
+            res = client.get(reverse("chat_inbox"))
+        assert len(res.context["conv_list"]) == 5
+
 
 # ---------------------------------------------------------------------------
 # chat_detail
@@ -139,6 +174,19 @@ class TestChatDetail:
         client.get(reverse("chat_detail", args=[conversation.pk]))
         msg.refresh_from_db()
         assert msg.is_read is True
+
+    def test_shows_the_latest_100_messages_oldest_first(
+        self, client, buyer, conversation
+    ):
+        Message.objects.bulk_create(
+            Message(conversation=conversation, sender=buyer, body=f"m{i}")
+            for i in range(105)
+        )
+        client.force_login(buyer)
+        res = client.get(reverse("chat_detail", args=[conversation.pk]))
+        bodies = [m.body for m in res.context["chat_messages"]]
+        assert bodies == [f"m{i}" for i in range(5, 105)]
+        assert res.context["last_id"] == Message.objects.latest("id").id
 
     def test_does_not_mark_own_messages_read(self, client, buyer, conversation):
         msg = Message.objects.create(
@@ -218,10 +266,10 @@ class TestChatSend:
     def test_emails_again_after_cooldown_elapses(
         self, client, buyer, seller_user, conversation
     ):
-        conversation.last_emailed_at = (
+        conversation.seller_emailed_at = (
             timezone.now() - EMAIL_NOTIFY_COOLDOWN - timedelta(seconds=1)
         )
-        conversation.save(update_fields=["last_emailed_at"])
+        conversation.save(update_fields=["seller_emailed_at"])
 
         client.force_login(buyer)
         client.post(
@@ -231,14 +279,26 @@ class TestChatSend:
         assert len(mail.outbox) == 1
         assert mail.outbox[0].to == [seller_user.email]
 
-    def test_updates_last_emailed_at(self, client, buyer, conversation):
-        assert conversation.last_emailed_at is None
+    def test_records_when_the_recipient_was_emailed(self, client, buyer, conversation):
         client.force_login(buyer)
         client.post(
             reverse("chat_send", args=[conversation.pk]), {"body": "Hey seller!"}
         )
         conversation.refresh_from_db()
-        assert conversation.last_emailed_at is not None
+        assert conversation.seller_emailed_at is not None
+        assert conversation.buyer_emailed_at is None
+
+    def test_reply_within_cooldown_still_emails_the_first_sender(
+        self, client, buyer, seller_user, conversation
+    ):
+        # The cooldown is per recipient: emailing the seller must not stop
+        # the buyer from hearing about the seller's quick reply
+        client.force_login(buyer)
+        client.post(reverse("chat_send", args=[conversation.pk]), {"body": "Hi"})
+        client.force_login(seller_user)
+        client.post(reverse("chat_send", args=[conversation.pk]), {"body": "Hello"})
+
+        assert [m.to for m in mail.outbox] == [[seller_user.email], [buyer.email]]
 
 
 # ---------------------------------------------------------------------------
