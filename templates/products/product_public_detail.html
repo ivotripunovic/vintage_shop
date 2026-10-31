@@ -102,14 +102,11 @@
             </div>
         </div>
 
+        {% if not is_owner %}
         <div class="border-t border-neutral-200 pt-5 flex gap-3">
-            {% if product.stock > 0 %}
-                <button type="button" onclick="addToCart({{ product.id }})" class="flex-1 bg-stone-900 text-white text-xs uppercase tracking-widest py-4 hover:bg-stone-700 transition-colors">Dodaj u korpu</button>
-            {% else %}
-                <button disabled class="flex-1 border border-neutral-200 text-stone-400 text-xs uppercase tracking-widest py-4 cursor-not-allowed">Nedostupno</button>
-            {% endif %}
-            {% if not is_owner %}{% include "favourites/wishlist_button.html" %}{% endif %}
+            {% include "favourites/wishlist_button.html" %}
         </div>
+        {% endif %}
 
         {% if user.is_authenticated and not is_owner %}
         <div class="border-t border-neutral-200 pt-5">
@@ -161,7 +158,6 @@ function changeMainImage(src, alt, thumb) {
     thumb.classList.remove('border-transparent');
     thumb.classList.add('border-stone-900');
 }
-function addToCart(id) { alert('Korpa uskoro. Proizvod #' + id); }
 </script>
 
 {% endblock %}

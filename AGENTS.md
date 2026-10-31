@@ -48,7 +48,7 @@ on `PATH`), so bare `pytest`, `flake8`, `runserver`, etc. work without paths.
 - **users/** - Custom `User` model (`AUTH_USER_MODEL = "users.User"`) with email-based auth. `is_buyer`/`is_seller` role flags. `VerificationToken` for email verification and password reset with expiration.
 - **sellers/** - `Seller` (OneToOne with User) for shop profiles. `SellerSubscription` for billing. Post-save signal (`sellers/signals.py`) auto-creates Seller profile + subscription when User with `is_seller=True` is created.
 - **products/** - `Product` (soft-deletable), `ProductImage` (multiple per product, ordered), `ProductCategory`, `ProductCondition`. Products have status workflow: draft → published → sold/archived.
-- **orders/** - `Order` + `OrderItem`. OrderItem captures price at purchase time.
+- **orders/** - `Sale`: there is no cart or checkout. Buyer and seller agree in chat, then the seller marks the product sold to that buyer (stock drops by one; the last unit marks the product sold).
 - **billing/** - `Invoice`, `Payment` (OneToOne with Invoice), `BillingPlan` (uses JSONField for flexible config supporting subscription/commission/hybrid/per-listing/freemium models).
 - **core/** - Abstract base models: `TimeStampedModel` (created_at/updated_at) and `SoftDeleteModel` (extends TimeStamped with is_deleted/deleted_at + soft_delete()/restore() methods).
 
