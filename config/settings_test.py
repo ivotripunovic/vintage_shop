@@ -32,6 +32,7 @@ COMING_SOON = False
 # No real DNS lookups or background threads in tests
 WAITLIST_CHECK_DNS = False
 WAITLIST_EMAIL_ASYNC = False
+CHAT_EMAIL_ASYNC = False
 
 # Use simple in-memory cache for tests
 CACHES = {

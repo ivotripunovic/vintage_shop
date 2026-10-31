@@ -1,14 +1,20 @@
 import logging
+import threading
+import time
 from datetime import timedelta
 
 from django.conf import settings
+from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.core.cache import cache
 from django.core.mail import BadHeaderError, send_mail
+from django.db import transaction
 from django.db.models import Count, OuterRef, Q, Subquery
 from django.http import HttpResponseBadRequest, HttpResponseForbidden, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_POST
 
 from orders.models import Sale, can_be_sold
@@ -24,6 +30,28 @@ logger = logging.getLogger(__name__)
 # Don't email a recipient about new messages more than once per this window,
 # so an active back-and-forth conversation doesn't spam their inbox.
 EMAIL_NOTIFY_COOLDOWN = timedelta(minutes=10)
+
+# Per-user caps against spam: (max actions, window in seconds)
+SEND_RATE_LIMIT = (20, 60)
+START_RATE_LIMIT = (20, 60 * 60)
+
+
+def _rate_limited(user, action, limit):
+    """Count one action by the user; True once they are over the limit.
+
+    Fixed time windows keyed by bucket, so it works on caches whose incr()
+    resets the expiry (the file cache used in production).
+    """
+    max_count, window = limit
+    bucket = int(time.time() // window)
+    key = f"chat-rl:{action}:{user.pk}:{bucket}"
+    cache.add(key, 0, window * 2)
+    try:
+        count = cache.incr(key)
+    except ValueError:  # expired between add() and incr()
+        cache.set(key, 1, window * 2)
+        count = 1
+    return count > max_count
 
 
 def _user_conversations(user):
@@ -56,18 +84,24 @@ def _notify_recipient_by_email(conversation, sender, message):
     cooldown_field = (
         "seller_emailed_at" if sender == conversation.buyer else "buyer_emailed_at"
     )
-    last_emailed = getattr(conversation, cooldown_field)
-    if last_emailed and now - last_emailed < EMAIL_NOTIFY_COOLDOWN:
+    # Claim the cooldown slot in one UPDATE, so two quick messages can't both
+    # trigger an email
+    claimed = (
+        Conversation.objects.filter(pk=conversation.pk)
+        .filter(
+            Q(**{f"{cooldown_field}__isnull": True})
+            | Q(**{f"{cooldown_field}__lte": now - EMAIL_NOTIFY_COOLDOWN})
+        )
+        .update(**{cooldown_field: now})
+    )
+    if not claimed:
         return
 
     recipient = conversation.other_participant(sender)
     chat_url = f"{settings.SITE_DOMAIN}{reverse('chat_detail', args=[conversation.pk])}"
     site_name = settings.SITE_NAME
     name = recipient.first_name or recipient.email
-    if conversation.is_team and sender == conversation.buyer:
-        sender_name = conversation.buyer_label
-    else:
-        sender_name = sender.first_name or sender.email
+    sender_name = conversation.label_for(sender)
     subject = f"Nova poruka na {site_name}"
     body = f"""Zdravo {name},
 
@@ -82,28 +116,37 @@ Srdačan pozdrav,
 Tim {site_name}
 """
 
+    args = (subject, body, recipient.email, conversation.pk)
+    if getattr(settings, "CHAT_EMAIL_ASYNC", True):
+        # After commit, in a thread: the sender never waits on the mail server
+        transaction.on_commit(
+            lambda: threading.Thread(
+                target=_send_notification, args=args, daemon=True
+            ).start()
+        )
+    else:
+        _send_notification(*args)
+
+
+def _send_notification(subject, body, to_email, conversation_pk):
     logger.info(
-        "Sending new-message email to %s via %s",
-        recipient.email,
-        settings.EMAIL_BACKEND,
+        "Sending new-message email to %s via %s", to_email, settings.EMAIL_BACKEND
     )
     try:
         send_mail(
             subject,
             body,
             settings.DEFAULT_FROM_EMAIL,
-            [recipient.email],
+            [to_email],
             fail_silently=False,
         )
-        setattr(conversation, cooldown_field, now)
-        conversation.save(update_fields=[cooldown_field])
     except BadHeaderError:
         logger.error(
-            "Invalid header in new-message email for conversation %s", conversation.pk
+            "Invalid header in new-message email for conversation %s", conversation_pk
         )
     except Exception:
         logger.exception(
-            "Failed to send new-message email for conversation %s", conversation.pk
+            "Failed to send new-message email for conversation %s", conversation_pk
         )
 
 
@@ -210,12 +253,24 @@ def chat_detail(request, pk):
 def chat_send(request, pk):
     conversation = get_object_or_404(Conversation, pk=pk)
     if not _assert_participant(conversation, request.user):
-        return JsonResponse({"ok": False, "error": "Forbidden"}, status=403)
+        return JsonResponse(
+            {"ok": False, "error": "Nemate pristup ovom razgovoru."}, status=403
+        )
 
     form = MessageForm(request.POST)
     if not form.is_valid():
         errors = {f: e.get_json_data() for f, e in form.errors.items()}
-        return JsonResponse({"ok": False, "errors": errors}, status=400)
+        error = next(
+            (e["message"] for field in errors.values() for e in field),
+            "Poruka nije ispravna.",
+        )
+        return JsonResponse({"ok": False, "error": error, "errors": errors}, status=400)
+
+    if _rate_limited(request.user, "send", SEND_RATE_LIMIT):
+        return JsonResponse(
+            {"ok": False, "error": "Šaljete poruke prebrzo. Sačekajte malo."},
+            status=429,
+        )
 
     msg = form.save(commit=False)
     msg.conversation = conversation
@@ -242,7 +297,9 @@ def chat_send(request, pk):
 
 @login_required
 def chat_poll(request, pk):
-    conversation = get_object_or_404(Conversation, pk=pk)
+    conversation = get_object_or_404(
+        Conversation.objects.select_related("seller"), pk=pk
+    )
     if not _assert_participant(conversation, request.user):
         return JsonResponse({"error": "Forbidden"}, status=403)
 
@@ -266,11 +323,7 @@ def chat_poll(request, pk):
             "body": m.body,
             "created_at": m.created_at.isoformat(),
             "is_mine": m.sender_id == request.user.id,
-            "sender": (
-                conversation.buyer_label
-                if m.sender_id == conversation.buyer_id
-                else m.sender.email
-            ),
+            "sender": conversation.label_for(m.sender),
         }
         for m in new_messages
     ]
@@ -301,11 +354,22 @@ def chat_start(request):
         except (Product.DoesNotExist, ValueError):
             pass
 
-    conversation, _ = Conversation.objects.get_or_create(
-        buyer=request.user,
-        seller=seller,
-        product=product,
-    )
+    lookup = {"buyer": request.user, "seller": seller, "product": product}
+    conversation = Conversation.objects.filter(**lookup).first()
+    if conversation is None:
+        # Only new conversations count; reopening an existing one is free
+        if _rate_limited(request.user, "start", START_RATE_LIMIT):
+            messages.error(
+                request,
+                "Pokrenuli ste previše novih razgovora. Pokušajte ponovo kasnije.",
+            )
+            back = request.META.get("HTTP_REFERER", "")
+            if not url_has_allowed_host_and_scheme(
+                back, allowed_hosts={request.get_host()}
+            ):
+                back = reverse("chat_inbox")
+            return redirect(back)
+        conversation, _ = Conversation.objects.get_or_create(**lookup)
     return redirect("chat_detail", pk=conversation.pk)
 
 

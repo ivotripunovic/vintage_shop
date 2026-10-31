@@ -9,7 +9,7 @@
     <a href="{% url 'chat_inbox' %}" class="hover:text-stone-900 transition-colors">Poruke</a>
     <span>/</span>
     <span class="text-stone-700">
-        {% if request.user == conversation.buyer %}{{ conversation.seller.shop_name }}{% else %}{{ conversation.buyer_label }}{% endif %}
+        {% if request.user == conversation.buyer %}{{ conversation.seller_label }}{% else %}{{ conversation.buyer_label }}{% endif %}
     </span>
 </nav>
 
@@ -29,11 +29,13 @@
 
 {% if conversation.product %}
 <div class="mb-6 p-3 bg-neutral-50 border border-neutral-200 flex items-center gap-3">
-    {% if conversation.product.images.exists %}
-    <img src="{{ conversation.product.images.first.image.url }}" alt="{{ conversation.product.title }}" class="w-10 h-10 object-cover flex-shrink-0">
+    {% with thumb=conversation.product.images.first %}
+    {% if thumb %}
+    <img src="{{ thumb.image.url }}" alt="{{ conversation.product.title }}" class="w-10 h-10 object-cover flex-shrink-0">
     {% else %}
     <div class="w-10 h-10 bg-neutral-200 flex-shrink-0"></div>
     {% endif %}
+    {% endwith %}
     <div>
         <a href="{% url 'product_detail' conversation.product.pk %}" class="text-sm text-stone-900 hover:underline">{{ conversation.product.title }}</a>
     </div>
@@ -48,7 +50,7 @@
     <div class="px-5 py-4 {% if msg.sender == request.user %}bg-stone-50{% endif %}" data-id="{{ msg.id }}">
         <div class="flex justify-between items-baseline mb-1">
             <span class="text-xs uppercase tracking-widest {% if msg.sender == request.user %}text-stone-700{% else %}text-stone-400{% endif %}">
-                {% if msg.sender == request.user %}Vi{% elif msg.sender == conversation.buyer %}{{ conversation.buyer_label }}{% else %}{{ msg.sender.email }}{% endif %}
+                {% if msg.sender == request.user %}Vi{% elif msg.sender == conversation.buyer %}{{ conversation.buyer_label }}{% else %}{{ conversation.seller_label }}{% endif %}
             </span>
             <span class="text-xs text-stone-400">{{ msg.created_at|date:"d.m.Y H:i" }}</span>
         </div>
@@ -66,6 +68,7 @@
     <div class="flex-1">{{ form }}</div>
     <button type="submit" class="flex-shrink-0 bg-stone-900 text-white text-xs uppercase tracking-widest px-5 py-2 hover:bg-stone-700 transition-colors h-[38px]">Pošalji</button>
 </form>
+<p id="sendError" class="text-xs text-red-700 mt-2" role="alert" hidden></p>
 
 <script>
 (function () {
@@ -73,6 +76,12 @@
     const form = document.getElementById("sendForm");
     const textarea = form.querySelector("textarea");
     const csrf = form.querySelector("[name=csrfmiddlewaretoken]").value;
+    const sendError = document.getElementById("sendError");
+
+    function showSendError(text) {
+        sendError.textContent = text || "";
+        sendError.hidden = !text;
+    }
     // Highest id fetched by poll(); only poll() advances it, so a message the
     // other side saved just before ours is never skipped. Rendered ids are
     // tracked separately so nothing is shown twice.
@@ -175,14 +184,19 @@
         if (!body) return;
         const btn = form.querySelector("button");
         btn.disabled = true;
+        showSendError("");
         try {
             const res = await fetch("{% url 'chat_send' conversation.pk %}", {
                 method: "POST",
                 headers: {"X-CSRFToken": csrf, "Content-Type": "application/x-www-form-urlencoded"},
                 body: "body=" + encodeURIComponent(body),
             });
-            const data = await res.json();
-            if (data.ok) {
+            let data = null;
+            try { data = await res.json(); } catch (_) {}
+            if (!data || !data.ok) {
+                // Keep the typed text so nothing is lost
+                showSendError((data && data.error) || "Poruka nije poslata. Pokušajte ponovo.");
+            } else {
                 appendMessage(data.message.id, data.message.body, true, "Vi", formatTime(data.message.created_at));
                 textarea.value = "";
                 scrollToBottom();
@@ -190,6 +204,8 @@
                 pollDelay = POLL_MIN;
                 schedulePoll(POLL_MIN);
             }
+        } catch (_) {
+            showSendError("Nema veze sa serverom. Poruka nije poslata.");
         } finally {
             btn.disabled = false;
             textarea.focus();

@@ -5,6 +5,7 @@ from django.core import mail
 from django.urls import reverse
 from django.utils import timezone
 
+from chat import views as chat_views
 from chat.models import Conversation, Message
 from chat.views import EMAIL_NOTIFY_COOLDOWN
 from products.models import Product, ProductCategory
@@ -413,3 +414,144 @@ class TestChatUnread:
         client.force_login(buyer)
         res = client.get(reverse("chat_unread"))
         assert res.json()["count"] == 0
+
+
+# ---------------------------------------------------------------------------
+# Privacy: participants are shown by name, never by email
+# ---------------------------------------------------------------------------
+
+
+class TestNoEmailsShown:
+    def test_buyer_does_not_see_seller_email(
+        self, client, buyer, seller_user, conversation
+    ):
+        Message.objects.create(conversation=conversation, sender=seller_user, body="x")
+        client.force_login(buyer)
+        res = client.get(reverse("chat_detail", args=[conversation.pk]))
+        assert seller_user.email not in res.content.decode()
+        assert conversation.seller.shop_name in res.content.decode()
+
+    def test_seller_does_not_see_buyer_email(
+        self, client, buyer, seller_user, conversation
+    ):
+        Message.objects.create(conversation=conversation, sender=buyer, body="x")
+        client.force_login(seller_user)
+        for url in (
+            reverse("chat_detail", args=[conversation.pk]),
+            reverse("chat_inbox"),
+        ):
+            assert buyer.email not in client.get(url).content.decode()
+
+    def test_poll_labels_sender_by_name(self, client, buyer, seller_user, conversation):
+        buyer.first_name = "Ana"
+        buyer.save(update_fields=["first_name"])
+        Message.objects.create(conversation=conversation, sender=buyer, body="x")
+        client.force_login(seller_user)
+        data = client.get(reverse("chat_poll", args=[conversation.pk])).json()
+        assert data["messages"][0]["sender"] == "Ana"
+
+    def test_notification_email_names_sender_without_email(
+        self, client, buyer, seller_user, conversation
+    ):
+        client.force_login(seller_user)
+        client.post(reverse("chat_send", args=[conversation.pk]), {"body": "Hi"})
+        assert mail.outbox[0].to == [buyer.email]
+        assert seller_user.email not in mail.outbox[0].body
+        assert conversation.seller.shop_name in mail.outbox[0].body
+
+
+# ---------------------------------------------------------------------------
+# Rate limits, send errors and background email
+# ---------------------------------------------------------------------------
+
+
+class TestRateLimits:
+    def test_send_is_capped(self, client, buyer, conversation, monkeypatch):
+        monkeypatch.setattr(chat_views, "SEND_RATE_LIMIT", (2, 60))
+        client.force_login(buyer)
+        url = reverse("chat_send", args=[conversation.pk])
+        assert client.post(url, {"body": "1"}).status_code == 200
+        assert client.post(url, {"body": "2"}).status_code == 200
+        res = client.post(url, {"body": "3"})
+        assert res.status_code == 429
+        assert res.json()["error"]
+        assert conversation.messages.count() == 2
+
+    def test_send_limit_is_per_user(
+        self, client, buyer, seller_user, conversation, monkeypatch
+    ):
+        monkeypatch.setattr(chat_views, "SEND_RATE_LIMIT", (1, 60))
+        url = reverse("chat_send", args=[conversation.pk])
+        client.force_login(buyer)
+        client.post(url, {"body": "1"})
+        client.force_login(seller_user)
+        assert client.post(url, {"body": "2"}).status_code == 200
+
+    def test_new_conversations_are_capped(
+        self, client, buyer, seller, category, monkeypatch
+    ):
+        monkeypatch.setattr(chat_views, "START_RATE_LIMIT", (1, 3600))
+        p1, p2 = (
+            Product.objects.create(seller=seller, title=t, price="1", category=category)
+            for t in ("A", "B")
+        )
+        client.force_login(buyer)
+        url = reverse("chat_start")
+        client.post(url, {"seller_id": seller.pk, "product_id": p1.pk})
+        res = client.post(url, {"seller_id": seller.pk, "product_id": p2.pk})
+        assert res.status_code == 302
+        assert res["Location"] == reverse("chat_inbox")
+        assert Conversation.objects.count() == 1
+
+        # Reopening an existing conversation is never blocked
+        res = client.post(url, {"seller_id": seller.pk, "product_id": p1.pk})
+        assert res["Location"] == reverse(
+            "chat_detail", args=[Conversation.objects.get().pk]
+        )
+
+
+class TestSendErrors:
+    def test_invalid_message_returns_readable_error(self, client, buyer, conversation):
+        client.force_login(buyer)
+        res = client.post(reverse("chat_send", args=[conversation.pk]), {"body": ""})
+        assert res.status_code == 400
+        assert res.json()["error"]
+
+    def test_detail_page_has_error_slot(self, client, buyer, conversation):
+        client.force_login(buyer)
+        res = client.get(reverse("chat_detail", args=[conversation.pk]))
+        assert b'id="sendError"' in res.content
+
+
+class TestBackgroundEmail:
+    def test_async_email_waits_for_commit_and_runs_in_thread(
+        self,
+        client,
+        buyer,
+        seller_user,
+        conversation,
+        settings,
+        monkeypatch,
+        django_capture_on_commit_callbacks,
+    ):
+        settings.CHAT_EMAIL_ASYNC = True
+        started = []
+
+        class InlineThread:
+            def __init__(self, target, args, daemon):
+                self.target, self.args = target, args
+
+            def start(self):
+                started.append(True)
+                self.target(*self.args)
+
+        monkeypatch.setattr(chat_views.threading, "Thread", InlineThread)
+        client.force_login(buyer)
+        with django_capture_on_commit_callbacks() as callbacks:
+            client.post(reverse("chat_send", args=[conversation.pk]), {"body": "Hi"})
+        assert mail.outbox == []  # nothing sent before commit
+
+        for callback in callbacks:
+            callback()
+        assert started == [True]
+        assert mail.outbox[0].to == [seller_user.email]

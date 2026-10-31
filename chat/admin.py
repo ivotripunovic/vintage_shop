@@ -1,4 +1,5 @@
 from django.contrib import admin
+from django.db.models import Count
 
 from .models import Conversation, Message
 
@@ -26,10 +27,17 @@ class ConversationAdmin(admin.ModelAdmin):
     readonly_fields = ("created_at", "updated_at")
     inlines = [MessageInline]
 
-    def message_count(self, obj):
-        return obj.messages.count()
+    def get_queryset(self, request):
+        return (
+            super()
+            .get_queryset(request)
+            .select_related("buyer", "seller", "product")
+            .annotate(num_messages=Count("messages"))
+        )
 
-    message_count.short_description = "Poruka"
+    @admin.display(description="Poruka", ordering="num_messages")
+    def message_count(self, obj):
+        return obj.num_messages
 
 
 @admin.register(Message)
