@@ -1,6 +1,7 @@
 # 2026-10-31
 - Chat fixes (#31, PR #32): live view no longer drops or duplicates messages when both sides send at once; email cooldown is per recipient, so a quick reply still notifies the first sender; threads show the latest 100 messages; inbox no longer runs 2 queries per conversation; polling backs off 3s → 30s when quiet and pauses in hidden tabs
 - Chat privacy and safety (#33, PR #34): chat shows shop names and buyer first names ("Kupac" if unset), never emails; per-user limits of 20 messages/min and 20 new conversations/hour; send errors shown under the form; notification emails sent in a background thread after commit (`CHAT_EMAIL_ASYNC`). Deployed and checked in production
+- Chat truncation notice (#36, PR #37): threads over 100 messages show "Prikazano je poslednjih 100 poruka." at the top, so older messages don't look lost. Paging in older messages stays in TODO until production shows threads that long. Deployed and checked in production
 
 # 2026-10-27
 - Item popularity (#8, PR #20): unique view count per user/session, wishlist save count and "viewed in last 15 min" on the product page; views and saves in the seller's product list. Owner, bots, HEAD and prefetch requests are not counted
