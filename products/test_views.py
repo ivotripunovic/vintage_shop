@@ -331,3 +331,76 @@ class SellerPhotoPageTests(TestCase):
         left = self.seller.listings_left_this_month()
         if left is not None:
             self.assertContains(response, f"preostalih {left} novih oglasa")
+
+    def _three_photos(self):
+        return [
+            ProductImage.objects.create(
+                product=self.product, image=f"products/{n}.jpg", order=n + 1
+            )
+            for n in range(3)
+        ]
+
+    def _move(self, image, to):
+        url = reverse("product_image_move", args=[image.id])
+        return self.client.post(url, {"to": to})
+
+    def _order(self):
+        return list(self.product.images.values_list("id", flat=True))
+
+    def test_make_cover_moves_photo_first(self):
+        a, b, c = self._three_photos()
+        response = self._move(c, "first")
+        self.assertRedirects(response, f"{self.url}#image-{c.id}")
+        self.assertEqual(self._order(), [c.id, a.id, b.id])
+        self.assertEqual(
+            list(self.product.images.values_list("order", flat=True)), [0, 1, 2]
+        )
+
+    def test_move_up_and_down(self):
+        a, b, c = self._three_photos()
+        self._move(b, "up")
+        self.assertEqual(self._order(), [b.id, a.id, c.id])
+        self._move(b, "down")
+        self._move(b, "down")
+        self.assertEqual(self._order(), [a.id, c.id, b.id])
+
+    def test_move_past_the_ends_is_a_no_op(self):
+        a, b, c = self._three_photos()
+        self._move(a, "up")
+        self._move(c, "down")
+        self.assertEqual(self._order(), [a.id, b.id, c.id])
+
+    def test_cover_is_used_everywhere(self):
+        a, b, c = self._three_photos()
+        self._move(c, "first")
+        self.product.status = "published"
+        self.product.save()
+        public = self.client.get(reverse("product_detail", args=[self.product.id]))
+        self.assertEqual(public.context["images"][0].id, c.id)
+        self.assertEqual(self.product.images.first().id, c.id)
+
+    def test_unknown_direction_is_rejected(self):
+        a, *_ = self._three_photos()
+        self.assertEqual(self._move(a, "sideways").status_code, 400)
+
+    def test_cannot_move_another_sellers_photo(self):
+        a, *_ = self._three_photos()
+        other = User.objects.create_user(
+            email="other@test.com",
+            username="other@test.com",
+            password="testpass123",
+            is_seller=True,
+        )
+        Seller.objects.get_or_create(
+            user=other, defaults={"shop_name": "Other", "shop_slug": "other"}
+        )
+        self.client.force_login(other)
+        self.assertEqual(self._move(a, "down").status_code, 404)
+
+    def test_photo_page_shows_cover_and_controls(self):
+        a, b, c = self._three_photos()
+        response = self.client.get(self.url)
+        self.assertContains(response, "Naslovna", count=2)  # badge + footer hint
+        self.assertContains(response, 'value="first"', count=2)
+        self.assertContains(response, 'value="up"', count=2)
+        self.assertContains(response, 'value="down"', count=2)

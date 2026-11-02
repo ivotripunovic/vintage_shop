@@ -34,6 +34,11 @@ urlpatterns = [
         name="product_image_delete",
     ),
     path(
+        "image/<int:image_id>/move/",
+        views.product_image_move_view,
+        name="product_image_move",
+    ),
+    path(
         "<int:product_id>/images/reorder/",
         views.product_image_reorder_view,
         name="product_image_reorder",
