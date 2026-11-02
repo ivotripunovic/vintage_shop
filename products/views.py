@@ -347,9 +347,7 @@ def product_publish_view(request, product_id):
         return redirect("seller_products_list")
 
     product.publish()
-    messages.success(
-        request, f'"{product.title}" je objavljen i vidljiv kupcima.'
-    )
+    messages.success(request, f'"{product.title}" je objavljen i vidljiv kupcima.')
 
     if request.headers.get("X-Requested-With") == "XMLHttpRequest":
         return JsonResponse({"status": "success", "message": "Product published."})
@@ -370,9 +368,7 @@ def product_unpublish_view(request, product_id):
     product = get_object_or_404(Product, id=product_id, seller=seller)
     product.unpublish()
 
-    messages.success(
-        request, f'"{product.title}" je sada nacrt i skriven od kupaca.'
-    )
+    messages.success(request, f'"{product.title}" je sada nacrt i skriven od kupaca.')
 
     if request.headers.get("X-Requested-With") == "XMLHttpRequest":
         return JsonResponse({"status": "success", "message": "Product unpublished."})

@@ -12,7 +12,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from products.forms import ProductForm
-from products.models import Product, ProductImage
+from products.models import Product, ProductCategory, ProductCondition, ProductImage
 from users.models import User
 
 from .models import INVOICE_DUE_DAYS, SellerTier
@@ -44,11 +44,15 @@ def _make_product(seller, status="draft", title="Lamp"):
 
 
 def _form_data():
+    category = ProductCategory.objects.get_or_create(name="Lampe", slug="lampe")[0]
+    condition = ProductCondition.objects.get_or_create(name="Dobro")[0]
     return {
         "title": "Lamp",
         "description": "Vintage lamp",
-        "price": "1500",
+        "price": "1.500",
         "stock": "1",
+        "category": category.id,
+        "condition": condition.id,
     }
 
 

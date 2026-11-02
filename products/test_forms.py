@@ -2,12 +2,15 @@
 Tests for product forms.
 """
 
+from decimal import Decimal
+
 import pytest
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
 from django.utils.datastructures import MultiValueDict
 
-from .forms import BulkProductImageForm, ProductImageForm
+from .forms import BulkProductImageForm, ProductForm, ProductImageForm
+from .models import Product, ProductCategory, ProductCondition
 
 
 class BulkProductImageFormTests(TestCase):
@@ -105,3 +108,55 @@ class ProductImageFormTests(TestCase):
         self.assertFalse(form.is_valid())
         # The form should have errors for the image field
         self.assertIn("image", form.errors)
+
+
+class ProductFormDefaultsTests(TestCase):
+    """Whole-dinar prices, required category/condition, stock default (#45)."""
+
+    def setUp(self):
+        self.category = ProductCategory.objects.create(name="Lampe", slug="lampe")
+        self.condition = ProductCondition.objects.create(
+            name="Kao novo", description="Bez vidljivih oštećenja"
+        )
+
+    def _form(self, **overrides):
+        data = {
+            "title": "Lampa",
+            "description": "Stona lampa",
+            "price": "4500",
+            "category": self.category.id,
+            "condition": self.condition.id,
+            "stock": "1",
+        }
+        data.update(overrides)
+        return ProductForm(data={k: v for k, v in data.items() if v is not None})
+
+    def test_price_accepts_thousands_separators_and_zero_decimals(self):
+        for raw in ["4500", "4.500", "4 500", "4500,00", "4.500,00"]:
+            form = self._form(price=raw)
+            self.assertTrue(form.is_valid(), (raw, form.errors))
+            self.assertEqual(form.cleaned_data["price"], Decimal("4500"))
+
+    def test_price_rejects_fractions_and_bad_grouping(self):
+        for raw in ["4500,50", "4.5", "12.34", "abc", "0", "100000000"]:
+            form = self._form(price=raw)
+            self.assertFalse(form.is_valid(), raw)
+            self.assertIn("price", form.errors)
+
+    def test_category_and_condition_are_required(self):
+        form = self._form(category=None, condition=None)
+        self.assertFalse(form.is_valid())
+        self.assertEqual(form.errors["category"], ["Izaberite kategoriju."])
+        self.assertEqual(form.errors["condition"], ["Izaberite stanje."])
+
+    def test_missing_stock_means_one_item(self):
+        form = self._form(stock=None)
+        self.assertTrue(form.is_valid(), form.errors)
+        self.assertEqual(form.cleaned_data["stock"], 1)
+
+    def test_edit_shows_price_grouped_by_thousands(self):
+        form = ProductForm(instance=Product(price=Decimal("1234567.00")))
+        self.assertIn('value="1.234.567"', str(form["price"]))
+
+    def test_new_form_defaults_stock_to_one(self):
+        self.assertEqual(ProductForm()["stock"].value(), 1)
