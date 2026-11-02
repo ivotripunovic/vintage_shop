@@ -20,7 +20,6 @@ class ProductForm(forms.ModelForm):
             "category",
             "condition",
             "stock",
-            "status",
         ]
         widgets = {
             "title": forms.TextInput(
@@ -62,32 +61,10 @@ class ProductForm(forms.ModelForm):
                     "min": "0",
                 }
             ),
-            "status": forms.Select(
-                attrs={
-                    "class": "w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                }
-            ),
         }
 
-    def __init__(self, *args, seller=None, **kwargs):
-        """Initialize form with the seller whose listing limit applies."""
-        self.seller = seller
-        super().__init__(*args, **kwargs)
-        # Only the expire_listings command sets a product to expired
-        self.fields["status"].choices = [
-            choice for choice in self.fields["status"].choices if choice[0] != "expired"
-        ]
-
-    def clean_status(self):
-        """Block publishing a new listing once the monthly limit is reached."""
-        status = self.cleaned_data.get("status")
-        if (
-            status == "published"
-            and self.seller
-            and not self.seller.can_publish(self.instance)
-        ):
-            raise ValidationError(self.seller.listing_limit_message())
-        return status
+    # Status is not edited here: the views save drafts and publish through
+    # publish_error(), so the photo and listing limit rules always apply.
 
     def clean_title(self):
         """Validate title is not empty."""

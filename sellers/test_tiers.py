@@ -43,13 +43,12 @@ def _make_product(seller, status="draft", title="Lamp"):
     )
 
 
-def _form_data(status):
+def _form_data():
     return {
         "title": "Lamp",
         "description": "Vintage lamp",
         "price": "1500",
         "stock": "1",
-        "status": status,
     }
 
 
@@ -148,23 +147,31 @@ class TestListingLimit(TestCase):
         self.assertIsNone(seller.listings_left_this_month())
         self.assertTrue(seller.can_publish(_make_product(seller)))
 
-    def test_form_rejects_publish_over_limit(self):
-        _make_product(self.seller, status="published")
-        _make_product(self.seller, status="published")
-        form = ProductForm(data=_form_data("published"), seller=self.seller)
-        self.assertFalse(form.is_valid())
-        self.assertIn("status", form.errors)
+    def _post_edit(self, product, action):
+        self.client.force_login(self.seller.user)
+        ProductImage.objects.create(product=product, image="products/test.jpg")
+        url = reverse("product_edit", args=[product.id])
+        return self.client.post(url, {**_form_data(), "action": action})
 
-    def test_form_allows_draft_over_limit(self):
+    def test_edit_publish_over_limit_keeps_draft(self):
         _make_product(self.seller, status="published")
         _make_product(self.seller, status="published")
-        form = ProductForm(data=_form_data("draft"), seller=self.seller)
-        self.assertTrue(form.is_valid(), form.errors)
+        product = _make_product(self.seller)
+        self._post_edit(product, "publish")
+        product.refresh_from_db()
+        self.assertEqual(product.status, "draft")
 
-    def test_form_hides_expired_status(self):
-        form = ProductForm(seller=self.seller)
-        choices = [value for value, _ in form.fields["status"].choices]
-        self.assertNotIn("expired", choices)
+    def test_edit_save_draft_over_limit_allowed(self):
+        _make_product(self.seller, status="published")
+        _make_product(self.seller, status="published")
+        product = _make_product(self.seller, title="Old")
+        self._post_edit(product, "save")
+        product.refresh_from_db()
+        self.assertEqual(product.title, "Lamp")
+        self.assertEqual(product.status, "draft")
+
+    def test_form_has_no_status_field(self):
+        self.assertNotIn("status", ProductForm().fields)
 
 
 class TestListingExpiry(TestCase):

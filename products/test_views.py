@@ -9,7 +9,7 @@ from django.test import Client, TestCase
 from django.urls import reverse
 
 from favourites.models import WishlistItem
-from products.models import Product, ProductView
+from products.models import Product, ProductImage, ProductView
 from products.popularity import (
     RECENT_VIEWER_WINDOW,
     recent_viewer_count,
@@ -178,7 +178,6 @@ class SellerListingFlowTests(TestCase):
             "description": "A chair",
             "price": "100",
             "stock": "1",
-            "status": "draft",
         }
         data.update(overrides)
         return data
@@ -191,3 +190,59 @@ class SellerListingFlowTests(TestCase):
         )
         self.draft.refresh_from_db()
         self.assertEqual(self.draft.title, "Wooden Chair")
+
+    def _edit(self, **data):
+        url = reverse("product_edit", args=[self.draft.id])
+        response = self.client.post(url, self._form_data(**data))
+        self.draft.refresh_from_db()
+        return response
+
+    def test_create_always_saves_draft_and_goes_to_photos(self):
+        response = self.client.post(
+            reverse("product_create"), self._form_data(title="Lamp", status="sold")
+        )
+        product = Product.objects.get(title="Lamp")
+        self.assertEqual(product.status, "draft")
+        self.assertRedirects(response, reverse("product_images", args=[product.id]))
+
+    def test_publish_without_photo_keeps_draft_and_asks_for_photos(self):
+        response = self._edit(title="Wooden Chair", action="publish")
+        self.assertEqual(self.draft.status, "draft")
+        self.assertEqual(self.draft.title, "Wooden Chair")
+        self.assertRedirects(
+            response, reverse("product_images", args=[self.draft.id])
+        )
+
+    def test_publish_with_photo(self):
+        ProductImage.objects.create(product=self.draft, image="products/test.jpg")
+        self._edit(action="publish")
+        self.assertEqual(self.draft.status, "published")
+        self.assertIsNotNone(self.draft.listed_at)
+
+    def test_archive(self):
+        self._edit(action="archive")
+        self.assertEqual(self.draft.status, "archived")
+
+    def test_posted_status_is_ignored(self):
+        self._edit(status="sold")
+        self.assertEqual(self.draft.status, "draft")
+
+    def test_sold_product_cannot_be_published_from_form(self):
+        ProductImage.objects.create(product=self.draft, image="products/test.jpg")
+        self.draft.status = "sold"
+        self.draft.save()
+        self._edit(action="publish")
+        self.assertEqual(self.draft.status, "sold")
+
+    def test_form_pages_show_matching_actions(self):
+        create = self.client.get(reverse("product_create"))
+        self.assertContains(create, "Dalje: fotografije")
+        self.assertNotContains(create, 'name="status"')
+        edit = self.client.get(reverse("product_edit", args=[self.draft.id]))
+        self.assertContains(edit, 'value="publish"')
+        self.assertContains(edit, 'value="archive"')
+        self.draft.status = "sold"
+        self.draft.save()
+        edit = self.client.get(reverse("product_edit", args=[self.draft.id]))
+        self.assertNotContains(edit, 'value="publish"')
+        self.assertNotContains(edit, 'value="archive"')
