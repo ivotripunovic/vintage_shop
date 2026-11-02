@@ -54,7 +54,7 @@
             <a href="{% url 'product_detail' product.id %}" class="group">
                 <div class="aspect-square bg-neutral-100 overflow-hidden mb-3">
                     {% if product.images.exists %}
-                        <img src="{{ product.images.first.image.url }}" alt="{{ product.images.first.alt_text }}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
+                        <img src="{{ product.images.first.thumb_url }}" alt="{{ product.images.first.alt_text }}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
                     {% else %}
                         <div class="w-full h-full flex items-center justify-center"><span class="text-xs uppercase tracking-widest text-neutral-400">Nema slike</span></div>
                     {% endif %}

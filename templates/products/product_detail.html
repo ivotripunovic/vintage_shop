@@ -17,11 +17,11 @@
                 </div>
             {% endif %}
         </div>
-        {% if images.count > 1 %}
+        {% if images|length > 1 %}
         <div class="grid grid-cols-4 gap-2">
             {% for image in images %}
             <div class="aspect-square bg-neutral-100 overflow-hidden">
-                <img src="{{ image.image.url }}" alt="{{ image.alt_text }}" class="w-full h-full object-cover">
+                <img src="{{ image.thumb_url }}" alt="{{ image.alt_text }}" class="w-full h-full object-cover" loading="lazy">
             </div>
             {% endfor %}
         </div>
@@ -42,7 +42,7 @@
             <div class="flex justify-between"><span class="text-xs uppercase tracking-widest text-stone-400">Kategorija</span><span class="text-xs text-stone-800">{% if product.category %}{{ product.category.name }}{% else %}—{% endif %}</span></div>
             <div class="flex justify-between"><span class="text-xs uppercase tracking-widest text-stone-400">Stanje</span><span class="text-xs text-stone-800">{% if product.condition %}{{ product.condition.name }}{% else %}—{% endif %}</span></div>
             <div class="flex justify-between"><span class="text-xs uppercase tracking-widest text-stone-400">Zalihe</span><span class="text-xs text-stone-800">{{ product.stock }}</span></div>
-            <div class="flex justify-between"><span class="text-xs uppercase tracking-widest text-stone-400">Slike</span><span class="text-xs text-stone-800">{{ images.count }}</span></div>
+            <div class="flex justify-between"><span class="text-xs uppercase tracking-widest text-stone-400">Slike</span><span class="text-xs text-stone-800">{{ images|length }}</span></div>
             <div class="flex justify-between"><span class="text-xs uppercase tracking-widest text-stone-400">Kreirano</span><span class="text-xs text-stone-800">{{ product.created_at|date:"M d, Y" }}</span></div>
         </div>
 
@@ -52,6 +52,8 @@
         </div>
 
         {% if is_owner %}
+        {% include "products/_listing_tips.html" with report=report %}
+
         <div class="space-y-2">
             <a href="{% url 'product_edit' product.id %}" class="block w-full text-center text-xs uppercase tracking-widest bg-stone-900 text-white py-3 hover:bg-stone-700 transition-colors">Uredi proizvod</a>
             <a href="{% url 'product_images' product.id %}" class="block w-full text-center text-xs uppercase tracking-widest border border-stone-900 text-stone-900 py-3 hover:bg-neutral-50 transition-colors">Upravljaj slikama</a>

@@ -30,25 +30,37 @@
             {% endif %}
             <ul id="photo-selection" class="text-xs text-stone-500 space-y-1" aria-live="polite"></ul>
             <p id="photo-size-error" class="hidden text-xs text-red-600" role="alert"></p>
+            <div class="border-t border-neutral-100 pt-4">
+                <p class="text-xs uppercase tracking-widest text-stone-500 mb-2">Za dobre fotografije</p>
+                <ul class="text-xs text-stone-500 space-y-1 list-disc pl-4">
+                    <li>Dnevno svetlo pored prozora, bez blica.</li>
+                    <li>Mirna, jednobojna pozadina.</li>
+                    <li>Ceo predmet spreda i pozadi, pa izbliza etiketa, pečat i svako oštećenje.</li>
+                    <li>Naslovna: predmet u sredini, jer se u pretrazi seče na kvadrat.</li>
+                </ul>
+            </div>
             <p class="text-xs text-stone-400">JPG, PNG, GIF, WebP — do {{ max_image_mb }} MB po slici, ukupno do {{ max_upload_mb }} MB po otpremanju.</p>
             <button type="submit" id="photo-upload-submit" class="w-full text-xs uppercase tracking-widest bg-stone-900 text-white py-2.5 hover:bg-stone-700 transition-colors">Otpremi</button>
         </form>
     </div>
 
     <div class="lg:col-span-2">
-        <p class="text-xs uppercase tracking-widest text-stone-700 mb-5">Slike ({{ images.count }})</p>
+        <p class="text-xs uppercase tracking-widest text-stone-700 mb-5">Slike ({{ images|length }})</p>
 
         {% if images %}
             <div class="border border-neutral-200 divide-y divide-neutral-100">
                 {% for image in images %}
                 <div id="image-{{ image.id }}" class="scroll-mt-40 flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 hover:bg-neutral-50">
                     <div class="flex items-center gap-4">
-                        <img src="{{ image.image.url }}" alt="{{ image.alt_text }}" class="h-16 w-16 object-cover{% if forloop.first %} ring-2 ring-stone-900 ring-offset-2{% endif %}">
+                        <img src="{{ image.thumb_url }}" alt="{{ image.alt_text }}" class="h-16 w-16 object-cover{% if forloop.first %} ring-2 ring-stone-900 ring-offset-2{% endif %}">
                         <div>
                             <p class="text-xs uppercase tracking-widest text-stone-700">
                                 {% if forloop.first %}Naslovna{% else %}Fotografija {{ forloop.counter }}{% endif %}
                             </p>
                             <p class="text-xs text-stone-300 mt-0.5">{{ image.created_at|date:"d.m.Y." }}</p>
+                            {% for tip in image.tips %}
+                            <p class="text-xs text-amber-700 mt-1 max-w-md">{{ tip.message }}</p>
+                            {% endfor %}
                         </div>
                     </div>
                     <div class="flex items-center gap-1">
@@ -71,6 +83,9 @@
                 {% endfor %}
             </div>
             <p class="text-xs text-stone-400 mt-4">Naslovna fotografija se prikazuje u pretrazi i na početku oglasa.</p>
+            {% for tip in report.photo_tips %}{% if not tip.image_id %}
+            <p class="text-xs text-amber-700 mt-2">{{ tip.message }}</p>
+            {% endif %}{% endfor %}
         {% else %}
             <div class="border border-neutral-200 p-16 text-center">
                 <p class="text-xs uppercase tracking-widest text-stone-400">Još nema slika. Otpremite slike koristeći formular.</p>

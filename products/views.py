@@ -23,6 +23,7 @@ from .forms import (
 )
 from .models import Product, ProductImage
 from .popularity import recent_viewer_count, record_view
+from .quality import listing_report
 
 # Statuses a seller can move to published / archived from the edit form
 PUBLISHABLE_STATUSES = ("draft", "expired", "archived")
@@ -181,11 +182,12 @@ def product_detail_view(request, product_id):
         return redirect("seller_register")
 
     product = get_object_or_404(Product, id=product_id, seller=seller)
-    images = product.images.all()
+    images = list(product.images.all())
 
     context = {
         "product": product,
         "images": images,
+        "report": listing_report(product, images),
         "is_owner": product.seller == seller,
         "publish_error": publish_error(seller, product),
         "uses_listing_slot": product.needs_new_listing_period,
@@ -231,13 +233,16 @@ def product_images_view(request, product_id):
     else:
         form = BulkProductImageForm()
 
-    # Get existing images
-    images = product.images.all()
+    images = list(product.images.all())
+    report = listing_report(product, images)
+    for image in images:
+        image.tips = report.for_image(image.id)
 
     context = {
         "form": form,
         "product": product,
         "images": images,
+        "report": report,
         "max_image_mb": MAX_IMAGE_MB,
         "max_upload_mb": MAX_UPLOAD_MB,
     }
