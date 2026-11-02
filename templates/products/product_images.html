@@ -41,23 +41,36 @@
         {% if images %}
             <div class="border border-neutral-200 divide-y divide-neutral-100">
                 {% for image in images %}
-                <div class="flex items-center justify-between p-4 hover:bg-neutral-50">
+                <div id="image-{{ image.id }}" class="scroll-mt-40 flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 hover:bg-neutral-50">
                     <div class="flex items-center gap-4">
-                        <img src="{{ image.image.url }}" alt="{{ image.alt_text }}" class="h-16 w-16 object-cover">
+                        <img src="{{ image.image.url }}" alt="{{ image.alt_text }}" class="h-16 w-16 object-cover{% if forloop.first %} ring-2 ring-stone-900 ring-offset-2{% endif %}">
                         <div>
-                            <p class="text-xs uppercase tracking-widest text-stone-700">Slika #{{ image.order }}</p>
-                            {% if image.alt_text %}<p class="text-xs text-stone-400 mt-0.5">{{ image.alt_text }}</p>{% endif %}
-                            <p class="text-xs text-stone-300 mt-0.5">{{ image.created_at|date:"M d, Y" }}</p>
+                            <p class="text-xs uppercase tracking-widest text-stone-700">
+                                {% if forloop.first %}Naslovna{% else %}Fotografija {{ forloop.counter }}{% endif %}
+                            </p>
+                            <p class="text-xs text-stone-300 mt-0.5">{{ image.created_at|date:"d.m.Y." }}</p>
                         </div>
                     </div>
-                    <form method="post" action="{% url 'product_image_delete' image.id %}" onsubmit="return confirm('Obrisati ovu fotografiju?');">
-                        {% csrf_token %}
-                        <button type="submit" class="text-xs uppercase tracking-widest text-red-500 hover:text-red-700 transition-colors">Obriši</button>
-                    </form>
+                    <div class="flex items-center gap-1">
+                        <form method="post" action="{% url 'product_image_move' image.id %}" class="flex items-center gap-1">
+                            {% csrf_token %}
+                            {% if not forloop.first %}
+                            <button type="submit" name="to" value="first" class="text-left text-xs uppercase tracking-widest text-stone-500 hover:text-stone-900 px-2 py-2 transition-colors">Postavi kao naslovnu</button>
+                            <button type="submit" name="to" value="up" aria-label="Pomeri gore: fotografija {{ forloop.counter }}" title="Pomeri gore" class="h-9 w-9 border border-neutral-200 text-stone-500 hover:border-stone-400 hover:text-stone-900 transition-colors">↑</button>
+                            {% endif %}
+                            {% if not forloop.last %}
+                            <button type="submit" name="to" value="down" aria-label="Pomeri dole: fotografija {{ forloop.counter }}" title="Pomeri dole" class="h-9 w-9 border border-neutral-200 text-stone-500 hover:border-stone-400 hover:text-stone-900 transition-colors">↓</button>
+                            {% endif %}
+                        </form>
+                        <form method="post" action="{% url 'product_image_delete' image.id %}" onsubmit="return confirm('Obrisati ovu fotografiju?');">
+                            {% csrf_token %}
+                            <button type="submit" class="text-xs uppercase tracking-widest text-red-500 hover:text-red-700 px-2 py-2 transition-colors">Obriši</button>
+                        </form>
+                    </div>
                 </div>
                 {% endfor %}
             </div>
-            <p class="text-xs text-stone-400 mt-4">Prva slika se prikazuje kao minijatura proizvoda.</p>
+            <p class="text-xs text-stone-400 mt-4">Naslovna fotografija se prikazuje u pretrazi i na početku oglasa.</p>
         {% else %}
             <div class="border border-neutral-200 p-16 text-center">
                 <p class="text-xs uppercase tracking-widest text-stone-400">Još nema slika. Otpremite slike koristeći formular.</p>

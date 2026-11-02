@@ -7,8 +7,9 @@ from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
 from django.db import models, transaction
 from django.db.models import Count, Q
-from django.http import HttpResponseForbidden, JsonResponse
+from django.http import HttpResponseBadRequest, HttpResponseForbidden, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.views.decorators.http import require_http_methods
 
 from sellers.models import Seller
@@ -252,6 +253,46 @@ def product_image_delete_view(request, image_id):
 
     messages.success(request, "Fotografija je obrisana.")
     return redirect("product_images", product_id=product.id)
+
+
+@login_required
+@require_http_methods(["POST"])
+def product_image_move_view(request, image_id):
+    """
+    Move a photo to the front (cover), or one place up or down.
+
+    Plain POST so it works without JavaScript; orders are renumbered 0..n-1.
+    """
+    seller = _get_seller_or_403(request)
+    if not seller:
+        return HttpResponseForbidden("You are not authorized to access this resource.")
+
+    image = get_object_or_404(ProductImage, id=image_id, product__seller=seller)
+    product = image.product
+    direction = request.POST.get("to")
+
+    with transaction.atomic():
+        images = list(product.images.select_for_update())
+        index = images.index(image)
+        if direction == "first":
+            new_index = 0
+        elif direction == "up":
+            new_index = max(index - 1, 0)
+        elif direction == "down":
+            new_index = min(index + 1, len(images) - 1)
+        else:
+            return HttpResponseBadRequest("Unknown direction.")
+
+        images.insert(new_index, images.pop(index))
+        for order, item in enumerate(images):
+            if item.order != order:
+                item.order = order
+                item.save(update_fields=["order"])
+
+    if direction == "first" and index != 0:
+        messages.success(request, "Naslovna fotografija je promenjena.")
+    url = reverse("product_images", args=[product.id])
+    return redirect(f"{url}#image-{image.id}")
 
 
 @login_required
