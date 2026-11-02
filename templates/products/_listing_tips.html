@@ -15,7 +15,7 @@
     <ul class="text-xs text-stone-700 space-y-1.5 mb-3 list-disc pl-4">
         {% for tip in report.photo_tips %}<li>{{ tip.message }}</li>{% endfor %}
     </ul>
-    <a href="{% url 'product_images' product.id %}" class="inline-block text-xs uppercase tracking-widest text-stone-500 hover:text-stone-900 transition-colors mb-4">Uredi fotografije →</a>
+    <a href="{% url 'product_edit' product.id %}#fotografije" class="inline-block text-xs uppercase tracking-widest text-stone-500 hover:text-stone-900 transition-colors mb-4">Uredi fotografije →</a>
     {% endif %}
     {% if report.text_tips %}
     <p class="text-xs uppercase tracking-widest text-stone-500 mb-1">Naslov i opis</p>

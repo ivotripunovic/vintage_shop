@@ -301,6 +301,11 @@ echo "==> Installing hourly listing expiry..."
 # Runs as the app user, so it can stay pointed at the repo checkout
 install -m 644 "${APP_DIR}/deploy/expire-listings.cron" /etc/cron.d/expire-listings
 
+# --- 18. Daily purge of unsaved photo uploads ----------------------------
+
+echo "==> Installing daily purge of unsaved photo uploads..."
+install -m 644 "${APP_DIR}/deploy/purge-photo-uploads.cron" /etc/cron.d/purge-photo-uploads
+
 # --- Done -----------------------------------------------------------------
 
 echo ""

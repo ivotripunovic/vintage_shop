@@ -3,111 +3,58 @@ Tests for product forms.
 """
 
 from decimal import Decimal
+from io import BytesIO
 
-import pytest
+from django.core.exceptions import ValidationError
 from django.core.files.uploadedfile import SimpleUploadedFile
-from django.test import TestCase
-from django.utils.datastructures import MultiValueDict
+from django.test import SimpleTestCase, TestCase
+from PIL import Image
 
-from .forms import BulkProductImageForm, ProductForm, ProductImageForm
+from .forms import MAX_IMAGE_MB, MB, ProductForm, validate_photo
 from .models import Product, ProductCategory, ProductCondition
 
 
-class BulkProductImageFormTests(TestCase):
-    """Tests for BulkProductImageForm."""
+class ValidatePhotoTests(SimpleTestCase):
+    """validate_photo opens the file; the extension proves nothing."""
 
-    def test_clean_returns_files_in_cleaned_data(self):
-        """Test that clean() properly stores files in cleaned_data."""
-        # Create mock image files
-        image1 = SimpleUploadedFile(
-            "test1.jpg", b"fake image content 1", content_type="image/jpeg"
-        )
-        image2 = SimpleUploadedFile(
-            "test2.png", b"fake image content 2", content_type="image/png"
-        )
+    def _file(self, name, content):
+        return SimpleUploadedFile(name, content, content_type="image/jpeg")
 
-        files = MultiValueDict({"images": [image1, image2]})
-        form = BulkProductImageForm(data={}, files=files)
+    def _image(self, format, name):
+        buffer = BytesIO()
+        Image.new("RGB", (20, 20)).save(buffer, format=format)
+        return self._file(name, buffer.getvalue())
 
-        # Form should be valid
-        self.assertTrue(form.is_valid())
+    def test_accepts_supported_formats(self):
+        for format, name in [
+            ("JPEG", "a.jpg"),
+            ("PNG", "a.png"),
+            ("WEBP", "a.webp"),
+            ("GIF", "a.gif"),
+        ]:
+            validate_photo(self._image(format, name))
 
-        # cleaned_data should contain 'images' key
-        self.assertIn("images", form.cleaned_data)
+    def test_rejects_fake_image(self):
+        with self.assertRaisesMessage(ValidationError, "nije fotografija"):
+            validate_photo(self._file("a.jpg", b"not an image"))
 
-        # cleaned_data['images'] should be the list of files
-        returned_files = form.cleaned_data["images"]
-        self.assertEqual(len(returned_files), 2)
+    def test_rejects_other_image_formats(self):
+        with self.assertRaisesMessage(ValidationError, "dozvoljeni formati"):
+            validate_photo(self._image("BMP", "a.bmp"))
 
-        # Files should have 'name' attribute (not raw bytes)
-        for file in returned_files:
-            self.assertTrue(hasattr(file, "name"))
-            self.assertTrue(hasattr(file, "size"))
-            self.assertTrue(hasattr(file, "read"))
+    def test_heic_gets_iphone_advice(self):
+        with self.assertRaisesMessage(ValidationError, "Najkompatibilnije"):
+            validate_photo(self._file("IMG_0001.HEIC", b"\x00\x00\x00 ftypheic"))
 
-    def test_clean_requires_at_least_one_image(self):
-        """Test that at least one image is required."""
-        files = MultiValueDict({"images": []})
-        form = BulkProductImageForm(data={}, files=files)
+    def test_rejects_too_large(self):
+        big = self._file("a.jpg", b"x" * (MAX_IMAGE_MB * MB + 1))
+        with self.assertRaisesMessage(ValidationError, f"veća od {MAX_IMAGE_MB} MB"):
+            validate_photo(big)
 
-        self.assertFalse(form.is_valid())
-        self.assertIn("Potrebna je barem jedna slika.", str(form.errors))
-
-    def test_clean_validates_file_size(self):
-        """Test that file size validation rejects files over 20MB."""
-        large_file = SimpleUploadedFile(
-            "large.jpg",
-            b"x" * (21 * 1024 * 1024),  # 21MB — over the 20MB limit
-            content_type="image/jpeg",
-        )
-
-        files = MultiValueDict({"images": [large_file]})
-        form = BulkProductImageForm(data={}, files=files)
-
-        self.assertFalse(form.is_valid())
-
-    def test_clean_validates_file_extensions(self):
-        """Test that only valid image extensions are allowed."""
-        invalid_file = SimpleUploadedFile(
-            "test.txt", b"not an image", content_type="text/plain"
-        )
-
-        files = MultiValueDict({"images": [invalid_file]})
-        form = BulkProductImageForm(data={}, files=files)
-
-        self.assertFalse(form.is_valid())
-        self.assertIn("Dozvoljeni formati", str(form.errors))
-
-    def test_clean_accepts_valid_image_formats(self):
-        """Test that all valid image formats are accepted."""
-        valid_formats = ["jpg", "jpeg", "png", "gif", "webp"]
-
-        for fmt in valid_formats:
-            image = SimpleUploadedFile(
-                f"test.{fmt}", b"fake image content", content_type=f"image/{fmt}"
-            )
-
-            files = MultiValueDict({"images": [image]})
-            form = BulkProductImageForm(data={}, files=files)
-
-            self.assertTrue(form.is_valid(), f"Form should accept .{fmt} files")
-
-
-class ProductImageFormTests(TestCase):
-    """Tests for ProductImageForm."""
-
-    def test_image_field_rejects_invalid_extensions(self):
-        """Test that form rejects invalid image extensions."""
-        invalid_file = SimpleUploadedFile(
-            "test.txt", b"not an image", content_type="text/plain"
-        )
-
-        files = MultiValueDict({"image": [invalid_file]})
-        form = ProductImageForm(data={"alt_text": "Test image"}, files=files)
-
-        self.assertFalse(form.is_valid())
-        # The form should have errors for the image field
-        self.assertIn("image", form.errors)
+    def test_leaves_file_ready_to_read(self):
+        photo = self._image("JPEG", "a.jpg")
+        validate_photo(photo)
+        self.assertEqual(photo.tell(), 0)
 
 
 class ProductFormDefaultsTests(TestCase):

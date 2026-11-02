@@ -7,14 +7,20 @@ from decimal import Decimal
 
 from django import forms
 from django.core.exceptions import ValidationError
+from PIL import Image
 
-from .models import Product, ProductCategory, ProductCondition, ProductImage
+from .models import Product
 
 MB = 1024 * 1024
-# Per photo, and per upload request: nginx rejects bodies over 20 MB
-# (client_max_body_size in deploy/nginx.conf) before Django sees them.
+# Per photo, and per request: nginx rejects bodies over 20 MB
+# (client_max_body_size in deploy/nginx.conf) before Django sees them. The
+# listing form uploads one photo per request; only the no-JavaScript
+# fallback sends several at once.
 MAX_IMAGE_MB = 10
 MAX_UPLOAD_MB = 19
+MAX_PHOTOS = 12  # per listing
+# Photos uploaded on listing forms that were never saved, per seller
+MAX_PENDING_UPLOADS = 40
 
 # Whole dinars, optionally grouped by thousands (4500, 4.500, 4 500), with
 # zero decimals allowed out of habit (4500,00); 4500,50 is rejected.
@@ -148,118 +154,35 @@ class ProductForm(forms.ModelForm):
         return stock
 
 
-class ProductImageForm(forms.ModelForm):
-    """Form for uploading product images."""
+PHOTO_FORMATS = {"JPEG": "JPG", "PNG": "PNG", "WEBP": "WebP", "GIF": "GIF"}
+FORMATS_HINT = ", ".join(PHOTO_FORMATS.values())
 
-    class Meta:
-        model = ProductImage
-        fields = ["image", "alt_text"]
-        widgets = {
-            "image": forms.FileInput(
-                attrs={
-                    "class": "w-full px-4 py-2 border border-gray-300 rounded-lg",
-                    "accept": "image/*",
-                }
-            ),
-            "alt_text": forms.TextInput(
-                attrs={
-                    "class": "w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500",
-                    "placeholder": "Opis slike (za pristupačnost)",
-                    "maxlength": "255",
-                }
-            ),
-        }
 
-    def clean_image(self):
-        """Validate image file."""
-        image = self.cleaned_data.get("image")
-        if not image:
-            raise ValidationError("Slika je obavezna.")
-
-        if image.size > MAX_IMAGE_MB * MB:
+def validate_photo(file):
+    """
+    Check one uploaded photo: size, and that Pillow can read it as one of
+    PHOTO_FORMATS (the extension alone proves nothing).
+    """
+    name = file.name or "Fotografija"
+    if file.size > MAX_IMAGE_MB * MB:
+        raise ValidationError(f"{name}: fotografija je veća od {MAX_IMAGE_MB} MB.")
+    try:
+        file.seek(0)
+        with Image.open(file) as img:
+            image_format = img.format
+            img.verify()
+    except Exception:
+        if name.lower().endswith((".heic", ".heif")):
             raise ValidationError(
-                f"Veličina slike ne sme biti veća od {MAX_IMAGE_MB} MB."
+                f"{name}: HEIC fotografije još ne podržavamo. Na iPhone-u "
+                "izaberite Podešavanja → Kamera → Formati → Najkompatibilnije, "
+                "ili pošaljite fotografiju kao JPG."
             )
-
-        valid_extensions = ["jpg", "jpeg", "png", "gif", "webp"]
-        file_ext = image.name.split(".")[-1].lower()
-        if file_ext not in valid_extensions:
-            raise ValidationError(f'Dozvoljeni formati: {", ".join(valid_extensions)}.')
-
-        return image
-
-
-class ProductImageFormSet(forms.BaseInlineFormSet):
-    """FormSet for managing multiple product images."""
-
-    def clean(self):
-        """Ensure at least one image is uploaded for published products."""
-        super().clean()
-
-        # Check if parent form has any valid forms
-        valid_forms = [
-            f
-            for f in self.forms
-            if f.cleaned_data and not f.cleaned_data.get("DELETE", False)
-        ]
-
-        # This will be handled in the view, just basic validation here
-        if len(valid_forms) == 0 and not self.instance.pk:
-            # For new products, at least one image will be required in the view
-            pass
-
-
-class BulkProductImageForm(forms.Form):
-    """Form for bulk uploading multiple product images at once."""
-
-    images = forms.FileField(
-        required=True,
-        label="Odaberite slike",
-        help_text="Možete odabrati više slika odjednom.",
-        widget=forms.FileInput(
-            attrs={
-                "accept": "image/*",
-                "class": "w-full px-4 py-2 border border-gray-300 rounded-lg",
-            }
-        ),
-    )
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        # Allow multiple files by modifying the widget's input tag
-        self.fields["images"].widget.attrs["multiple"] = True
-
-    def clean(self):
-        """Validate all image files."""
-        cleaned_data = super().clean()
-
-        # Get files list
-        files = self.files.getlist("images")
-
-        if not files:
-            raise ValidationError("Potrebna je barem jedna slika.")
-
-        valid_extensions = ["jpg", "jpeg", "png", "gif", "webp"]
-
-        if sum(file.size for file in files) > MAX_UPLOAD_MB * MB:
-            raise ValidationError(
-                f"Izabrane slike zajedno prelaze {MAX_UPLOAD_MB} MB. "
-                "Otpremite ih u više navrata."
-            )
-
-        for file in files:
-            if file.size > MAX_IMAGE_MB * MB:
-                raise ValidationError(
-                    f"{file.name}: Veličina slike ne sme biti veća od "
-                    f"{MAX_IMAGE_MB} MB."
-                )
-
-            file_ext = file.name.split(".")[-1].lower()
-            if file_ext not in valid_extensions:
-                raise ValidationError(
-                    f'{file.name}: Dozvoljeni formati: {", ".join(valid_extensions)}.'
-                )
-
-        # Store the validated files in cleaned_data
-        cleaned_data["images"] = files
-        return cleaned_data
+        raise ValidationError(
+            f"{name}: ovo nije fotografija koju možemo da pročitamo. "
+            f"Dozvoljeni formati: {FORMATS_HINT}."
+        )
+    finally:
+        file.seek(0)
+    if image_format not in PHOTO_FORMATS:
+        raise ValidationError(f"{name}: dozvoljeni formati su {FORMATS_HINT}.")

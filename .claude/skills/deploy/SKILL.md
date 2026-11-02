@@ -34,6 +34,7 @@ bash deploy/deploy.sh                              # manual deploy (git fetch + 
 - `backup-db` 03:30: runs `deploy/backup-db.sh`. Writes a pg_dump (last 14 kept), a media mirror and a copy of `.env` to `/var/backups/vintage_shop`, and emails ADMINS on failure. The restore steps are in the script header.
 - `goaccess-report` 04:15: runs `deploy/goaccess-report.sh`. Builds a traffic report from the nginx logs, served at `/stats/` (password protected).
 - `expire-listings` hourly at :05, as user `django`: runs `manage.py expire_listings`, which marks published products past `expires_at` as expired. Logs to `logs/expire-listings.log`.
+- `purge-photo-uploads` daily at 03:40, as user `django`: runs `manage.py purge_photo_uploads`, which deletes photos uploaded on listing forms that were never saved (older than 24h), files included. Logs to `logs/purge-photo-uploads.log`. On an existing server, install it by hand: `sudo install -m 644 deploy/purge-photo-uploads.cron /etc/cron.d/purge-photo-uploads`.
 
 ## Service management
 
