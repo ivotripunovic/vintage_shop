@@ -31,7 +31,16 @@ from .photos import (
     posted_ids,
 )
 from .popularity import recent_viewer_count, record_view
-from .quality import listing_report
+from .quality import (
+    MIN_CAPITALS,
+    MIN_DESCRIPTION_CHARS,
+    MIN_PHOTOS,
+    MIN_TITLE_CHARS,
+    MIN_TITLE_WORDS,
+    TEXT_TIPS,
+    count_tip,
+    listing_report,
+)
 
 # Statuses a seller can move to published / archived from the edit form
 PUBLISHABLE_STATUSES = ("draft", "expired", "archived")
@@ -82,11 +91,23 @@ def _form_context(seller, form, photos, photo_errors, product=None):
         "photo_errors": photo_errors,
         "max_photos": MAX_PHOTOS,
         "max_image_mb": MAX_IMAGE_MB,
+        "shop_name": seller.shop_name,
+        # For the live tips in the preview (static/js/listing-preview.js)
+        "text_tips": TEXT_TIPS,
+        "tip_rules": {
+            "min_photos": MIN_PHOTOS,
+            "min_title_chars": MIN_TITLE_CHARS,
+            "min_title_words": MIN_TITLE_WORDS,
+            "min_capitals": MIN_CAPITALS,
+            "min_description_chars": MIN_DESCRIPTION_CHARS,
+        },
+        "count_tips": {"none": count_tip(0), "few": count_tip(1)},
     }
     if product is None:
         context.update(
             page_title="Dodaj proizvod",
             autosave_key=f"product-form:{seller.id}:new",
+            listings_left=seller.listings_left_this_month(),
         )
     else:
         context.update(
@@ -146,7 +167,17 @@ def product_create_view(request):
                 messages.warning(
                     request, f"Sačuvano je prvih {MAX_PHOTOS} fotografija."
                 )
-            if kept:
+            if request.POST.get("action") == "publish":
+                # Same rules as everywhere: a photo, and a free listing slot
+                error = publish_error(seller, product)
+                if error:
+                    messages.error(request, f"Nacrt je sačuvan, ali: {error}")
+                else:
+                    product.publish()
+                    messages.success(
+                        request, f'"{product.title}" je objavljen i vidljiv kupcima.'
+                    )
+            elif kept:
                 messages.success(request, "Nacrt je sačuvan.")
             else:
                 messages.success(

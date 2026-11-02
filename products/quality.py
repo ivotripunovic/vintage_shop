@@ -140,60 +140,50 @@ def check_photos(images):
     """Tips for the ordered photos of one listing."""
     tips = []
     if len(images) < MIN_PHOTOS:
-        more = "još fotografija" if images else "fotografije"
-        tips.append(
-            Tip(
-                "count",
-                f"Dodajte {more}: bar {MIN_PHOTOS} — ceo predmet spreda "
-                "i pozadi, pa detalj (etiketa, pečat, oštećenje).",
-            )
-        )
+        tips.append(Tip("count", count_tip(len(images))))
     for number, image in enumerate(images, start=1):
         label = "Naslovna fotografija" if number == 1 else f"Fotografija {number}"
         tips += check_photo(image, label, cover=number == 1)
     return tips
 
 
+# The listing form checks the same rules live (static/js/listing-preview.js)
+# and shows these messages, so both always say the same thing
+TEXT_TIPS = {
+    "title": "Naslov: dodajte šta je, brend ili poreklo i veličinu, "
+    "npr. „Kožna jakna Levi's, veličina M“.",
+    "capitals": "Naslov: pišite običnim slovima; VELIKA SLOVA deluju kao vika.",
+    "description": "Opis: napišite bar nekoliko rečenica — materijal, godište "
+    "ili period, kako je korišćeno i eventualna oštećenja.",
+    "measurements": "Mere: navedite dimenzije ili veličinu (npr. dužina 70 cm, "
+    "širina 50 cm). To je najčešće pitanje kupaca.",
+}
+MIN_CAPITALS = 8  # letters, before an all-caps title gets a tip
+
+
+def count_tip(photo_count):
+    more = "još fotografija" if photo_count else "fotografije"
+    return (
+        f"Dodajte {more}: bar {MIN_PHOTOS} — ceo predmet spreda i pozadi, "
+        "pa detalj (etiketa, pečat, oštećenje)."
+    )
+
+
 def check_text(title, description):
     """Tips for the listing title and description."""
-    tips = []
     title = (title or "").strip()
     description = (description or "").strip()
-
+    failed = []
     if len(title) < MIN_TITLE_CHARS or len(title.split()) < MIN_TITLE_WORDS:
-        tips.append(
-            Tip(
-                "title",
-                "Naslov: dodajte šta je, brend ili poreklo i veličinu, "
-                "npr. „Kožna jakna Levi's, veličina M“.",
-            )
-        )
+        failed.append("title")
     letters = [c for c in title if c.isalpha()]
-    if len(letters) >= 8 and all(c.isupper() for c in letters):
-        tips.append(
-            Tip(
-                "capitals",
-                "Naslov: pišite običnim slovima; VELIKA SLOVA deluju kao vika.",
-            )
-        )
-
+    if len(letters) >= MIN_CAPITALS and all(c.isupper() for c in letters):
+        failed.append("capitals")
     if len(description) < MIN_DESCRIPTION_CHARS:
-        tips.append(
-            Tip(
-                "description",
-                "Opis: napišite bar nekoliko rečenica — materijal, godište ili "
-                "period, kako je korišćeno i eventualna oštećenja.",
-            )
-        )
+        failed.append("description")
     if not re.search(r"\d", description):
-        tips.append(
-            Tip(
-                "measurements",
-                "Mere: navedite dimenzije ili veličinu (npr. dužina 70 cm, "
-                "širina 50 cm). To je najčešće pitanje kupaca.",
-            )
-        )
-    return tips
+        failed.append("measurements")
+    return [Tip(check, TEXT_TIPS[check]) for check in failed]
 
 
 def listing_report(product, images=None):
