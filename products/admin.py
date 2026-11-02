@@ -91,7 +91,9 @@ class ProductAdmin(admin.ModelAdmin):
 
     def get_queryset(self, request):
         """Include soft-deleted products in admin."""
-        return super().get_queryset(request).all()
+        qs = Product.all_objects.all()
+        ordering = self.get_ordering(request)
+        return qs.order_by(*ordering) if ordering else qs
 
 
 class ReviewedFilter(admin.SimpleListFilter):

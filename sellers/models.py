@@ -148,7 +148,9 @@ class Seller(TimeStampedModel):
             day=1, hour=0, minute=0, second=0, microsecond=0
         )
         # Soft-deleted products still count, so deleting doesn't free a slot
-        return self.products.filter(listed_at__gte=month_start).count()
+        return self.products.model.all_objects.filter(
+            seller=self, listed_at__gte=month_start
+        ).count()
 
     def listings_left_this_month(self):
         """Remaining new listings this month; None means unlimited."""

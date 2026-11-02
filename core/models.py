@@ -18,14 +18,30 @@ class TimeStampedModel(models.Model):
         abstract = True
 
 
+class NotDeletedManager(models.Manager):
+    """Default manager: leaves soft-deleted rows out."""
+
+    def get_queryset(self):
+        return super().get_queryset().filter(is_deleted=False)
+
+
 class SoftDeleteModel(TimeStampedModel):
     """
     Abstract base model that provides soft delete functionality.
     Records are marked as deleted but not removed from database.
+
+    `objects` (and reverse relations such as seller.products) hide deleted
+    rows; `all_objects` includes them. Foreign keys still load a deleted row
+    (Django uses a plain base manager for that), so history keeps its links.
+    Joins across a relation (products__status=...) are not filtered by the
+    manager and need products__is_deleted=False.
     """
 
     is_deleted = models.BooleanField(default=False, db_index=True)
     deleted_at = models.DateTimeField(null=True, blank=True)
+
+    objects = NotDeletedManager()
+    all_objects = models.Manager()
 
     class Meta:
         abstract = True
