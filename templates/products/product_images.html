@@ -13,7 +13,7 @@
 
     <div class="border border-neutral-200 p-6">
         <p class="text-xs uppercase tracking-widest text-stone-700 mb-5">Otpremi slike</p>
-        <form method="post" enctype="multipart/form-data" class="space-y-4">
+        <form method="post" enctype="multipart/form-data" class="space-y-4" id="photo-upload-form">
             {% csrf_token %}
             <div class="border border-dashed border-neutral-300 p-8 text-center hover:border-stone-400 transition-colors">
                 <svg class="mx-auto h-8 w-8 text-neutral-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -22,13 +22,16 @@
                 <label for="{{ form.images.id_for_label }}" class="text-xs uppercase tracking-widest text-stone-500 hover:text-stone-900 cursor-pointer transition-colors">Izaberi slike</label>
                 {{ form.images }}
             </div>
-            {% if form.images.errors %}
-            <div class="border border-red-200 p-3">
+            {% if form.errors %}
+            <div class="border border-red-200 p-3" role="alert">
+                {% for error in form.non_field_errors %}<p class="text-xs text-red-600">{{ error }}</p>{% endfor %}
                 {% for error in form.images.errors %}<p class="text-xs text-red-600">{{ error }}</p>{% endfor %}
             </div>
             {% endif %}
-            <p class="text-xs text-stone-400">JPG, PNG, GIF, WebP — maks 5MB po slici</p>
-            <button type="submit" class="w-full text-xs uppercase tracking-widest bg-stone-900 text-white py-2.5 hover:bg-stone-700 transition-colors">Otpremi</button>
+            <ul id="photo-selection" class="text-xs text-stone-500 space-y-1" aria-live="polite"></ul>
+            <p id="photo-size-error" class="hidden text-xs text-red-600" role="alert"></p>
+            <p class="text-xs text-stone-400">JPG, PNG, GIF, WebP — do {{ max_image_mb }} MB po slici, ukupno do {{ max_upload_mb }} MB po otpremanju.</p>
+            <button type="submit" id="photo-upload-submit" class="w-full text-xs uppercase tracking-widest bg-stone-900 text-white py-2.5 hover:bg-stone-700 transition-colors">Otpremi</button>
         </form>
     </div>
 
@@ -47,7 +50,7 @@
                             <p class="text-xs text-stone-300 mt-0.5">{{ image.created_at|date:"M d, Y" }}</p>
                         </div>
                     </div>
-                    <form method="post" action="{% url 'product_image_delete' image.id %}" onsubmit="return confirm('Delete this image?');">
+                    <form method="post" action="{% url 'product_image_delete' image.id %}" onsubmit="return confirm('Obrisati ovu fotografiju?');">
                         {% csrf_token %}
                         <button type="submit" class="text-xs uppercase tracking-widest text-red-500 hover:text-red-700 transition-colors">Obriši</button>
                     </form>
@@ -61,10 +64,57 @@
             </div>
         {% endif %}
 
-        <div class="mt-6">
-            <a href="{% url 'product_edit' product.id %}" class="text-xs uppercase tracking-widest text-stone-400 hover:text-stone-900 transition-colors">← Nazad na proizvod</a>
+        <div class="mt-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <a href="{% url 'product_edit' product.id %}" class="text-xs uppercase tracking-widest text-stone-400 hover:text-stone-900 transition-colors">← Uredi podatke</a>
+            {% if images %}
+            <a href="{% url 'product_seller_detail' product.id %}" class="text-center text-xs uppercase tracking-widest bg-stone-900 text-white px-6 py-3 hover:bg-stone-700 transition-colors">{% if product.status == 'published' %}Gotovo{% else %}Dalje: pregled i objava →{% endif %}</a>
+            {% endif %}
         </div>
     </div>
 </div>
+
+<script>
+(function () {
+    // Check the selection before upload: nginx rejects oversized requests
+    // with a bare error page, so tell the seller here instead.
+    var MB = 1024 * 1024;
+    var maxImage = {{ max_image_mb }} * MB;
+    var maxUpload = {{ max_upload_mb }} * MB;
+    var input = document.getElementById("{{ form.images.id_for_label }}");
+    var list = document.getElementById("photo-selection");
+    var error = document.getElementById("photo-size-error");
+    var submit = document.getElementById("photo-upload-submit");
+    if (!input) return;
+
+    function mb(bytes) {
+        if (bytes < MB) return Math.max(1, Math.round(bytes / 1024)) + " KB";
+        return (bytes / MB).toFixed(1).replace(".", ",") + " MB";
+    }
+
+    input.addEventListener("change", function () {
+        var files = Array.prototype.slice.call(input.files);
+        var total = 0, problem = "";
+        list.innerHTML = "";
+        files.forEach(function (file) {
+            total += file.size;
+            var li = document.createElement("li");
+            li.textContent = file.name + " · " + mb(file.size);
+            if (file.size > maxImage) {
+                li.className = "text-red-600";
+                problem = file.name + " je veća od {{ max_image_mb }} MB.";
+            }
+            list.appendChild(li);
+        });
+        if (!problem && total > maxUpload) {
+            problem = "Izabrane slike zajedno imaju " + mb(total) +
+                ". Otpremite najviše {{ max_upload_mb }} MB odjednom, ostale u sledećem koraku.";
+        }
+        error.textContent = problem;
+        error.classList.toggle("hidden", !problem);
+        submit.disabled = !!problem;
+        submit.classList.toggle("opacity-50", !!problem);
+    });
+})();
+</script>
 
 {% endblock %}

@@ -5,10 +5,12 @@ View tests for product view counting, wishlist counts and recent viewers.
 from unittest import mock
 
 from django.core.cache import cache
-from django.test import Client, TestCase
+from django.core.files.uploadedfile import SimpleUploadedFile
+from django.test import Client, TestCase, override_settings
 from django.urls import reverse
 
 from favourites.models import WishlistItem
+from products.forms import MAX_UPLOAD_MB, MB
 from products.models import Product, ProductImage, ProductView
 from products.popularity import (
     RECENT_VIEWER_WINDOW,
@@ -246,3 +248,86 @@ class SellerListingFlowTests(TestCase):
         edit = self.client.get(reverse("product_edit", args=[self.draft.id]))
         self.assertNotContains(edit, 'value="publish"')
         self.assertNotContains(edit, 'value="archive"')
+
+
+@override_settings(
+    STORAGES={
+        "default": {"BACKEND": "django.core.files.storage.InMemoryStorage"},
+        "staticfiles": {
+            "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"
+        },
+    }
+)
+class SellerPhotoPageTests(TestCase):
+    """Photo upload page and the publish step after it."""
+
+    def setUp(self):
+        self.user = User.objects.create_user(
+            email="photos@test.com",
+            username="photos@test.com",
+            password="testpass123",
+            is_seller=True,
+        )
+        self.seller, _ = Seller.objects.get_or_create(
+            user=self.user,
+            defaults={"shop_name": "Photo Shop", "shop_slug": "photo-shop"},
+        )
+        self.client.force_login(self.user)
+        self.product = Product.objects.create(
+            seller=self.seller,
+            title="Old Radio",
+            description="A radio",
+            price=100,
+        )
+        self.url = reverse("product_images", args=[self.product.id])
+
+    def _photo(self, name="a.jpg", size=10):
+        return SimpleUploadedFile(name, b"x" * size, content_type="image/jpeg")
+
+    def test_upload_goes_to_product_page(self):
+        response = self.client.post(
+            self.url, {"images": [self._photo("a.jpg"), self._photo("b.jpg")]}
+        )
+        self.assertRedirects(
+            response, reverse("product_seller_detail", args=[self.product.id])
+        )
+        alt_texts = list(self.product.images.values_list("alt_text", flat=True))
+        self.assertEqual(
+            alt_texts, ["Old Radio – fotografija 1", "Old Radio – fotografija 2"]
+        )
+        self.assertEqual(
+            list(self.product.images.values_list("order", flat=True)), [1, 2]
+        )
+
+    def test_upload_over_total_limit_is_rejected(self):
+        half = (MAX_UPLOAD_MB * MB) // 2 + 1
+        response = self.client.post(
+            self.url,
+            {"images": [self._photo("a.jpg", half), self._photo("b.jpg", half)]},
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Otpremite ih u više navrata")
+        self.assertFalse(self.product.images.exists())
+
+    def test_page_shows_real_limits(self):
+        response = self.client.get(self.url)
+        self.assertContains(response, f"ukupno do {MAX_UPLOAD_MB} MB")
+        self.assertNotContains(response, "5MB")
+        self.assertRegex(
+            response.content.decode(), r"<title>Slike proizvoda — [^<]*</title>"
+        )
+
+    def test_product_page_explains_missing_photo(self):
+        detail = reverse("product_seller_detail", args=[self.product.id])
+        response = self.client.get(detail)
+        self.assertContains(response, "Dodajte bar jednu fotografiju")
+        self.assertNotContains(response, "Objavi proizvod")
+
+    def test_product_page_shows_publish_and_quota(self):
+        ProductImage.objects.create(product=self.product, image="products/t.jpg")
+        detail = reverse("product_seller_detail", args=[self.product.id])
+        response = self.client.get(detail)
+        self.assertContains(response, "Objavi proizvod")
+        left = self.seller.listings_left_this_month()
+        if left is not None:
+            self.assertContains(response, f"preostalih {left} novih oglasa")

@@ -13,7 +13,13 @@ from django.views.decorators.http import require_http_methods
 
 from sellers.models import Seller
 
-from .forms import BulkProductImageForm, ProductForm, ProductImageForm
+from .forms import (
+    MAX_IMAGE_MB,
+    MAX_UPLOAD_MB,
+    BulkProductImageForm,
+    ProductForm,
+    ProductImageForm,
+)
 from .models import Product, ProductImage
 from .popularity import recent_viewer_count, record_view
 
@@ -50,7 +56,7 @@ def product_create_view(request):
     """
     seller = _get_seller_or_403(request)
     if not seller:
-        messages.error(request, "You must be a seller to create products.")
+        messages.error(request, "Morate biti prodavac da biste dodavali proizvode.")
         return redirect("seller_register")
 
     if request.method == "POST":
@@ -138,7 +144,7 @@ def product_delete_view(request, product_id):
 
     if request.method == "POST":
         product.delete()  # Uses soft delete from SoftDeleteModel
-        messages.success(request, f'Product "{product.title}" deleted successfully.')
+        messages.success(request, f'Proizvod "{product.title}" je obrisan.')
         return redirect("seller_products_list")
 
     context = {
@@ -156,7 +162,7 @@ def product_detail_view(request, product_id):
     """
     seller = _get_seller_or_403(request)
     if not seller:
-        messages.error(request, "You must be a seller to view product details.")
+        messages.error(request, "Morate biti prodavac da biste videli ovu stranicu.")
         return redirect("seller_register")
 
     product = get_object_or_404(Product, id=product_id, seller=seller)
@@ -166,6 +172,9 @@ def product_detail_view(request, product_id):
         "product": product,
         "images": images,
         "is_owner": product.seller == seller,
+        "publish_error": publish_error(seller, product),
+        "uses_listing_slot": product.needs_new_listing_period,
+        "listings_left": seller.listings_left_this_month(),
     }
 
     return render(request, "products/product_detail.html", context)
@@ -199,11 +208,11 @@ def product_images_view(request, product_id):
                         product=product,
                         image=image_file,
                         order=max_order + idx + 1,
-                        alt_text=f"{product.title} - Image {max_order + idx + 2}",
+                        alt_text=f"{product.title} – fotografija {max_order + idx + 1}",
                     )
 
-            messages.success(request, f"{len(images)} image(s) uploaded successfully.")
-            return redirect("seller_products_list")
+            messages.success(request, f"Otpremljeno fotografija: {len(images)}.")
+            return redirect("product_seller_detail", product_id=product.id)
     else:
         form = BulkProductImageForm()
 
@@ -214,6 +223,8 @@ def product_images_view(request, product_id):
         "form": form,
         "product": product,
         "images": images,
+        "max_image_mb": MAX_IMAGE_MB,
+        "max_upload_mb": MAX_UPLOAD_MB,
     }
 
     return render(request, "products/product_images.html", context)
@@ -239,7 +250,7 @@ def product_image_delete_view(request, image_id):
             {"status": "success", "message": "Image deleted successfully."}
         )
 
-    messages.success(request, "Image deleted successfully.")
+    messages.success(request, "Fotografija je obrisana.")
     return redirect("product_images", product_id=product.id)
 
 
@@ -296,7 +307,7 @@ def product_publish_view(request, product_id):
 
     product.publish()
     messages.success(
-        request, f'"{product.title}" is now published and visible to buyers.'
+        request, f'"{product.title}" je objavljen i vidljiv kupcima.'
     )
 
     if request.headers.get("X-Requested-With") == "XMLHttpRequest":
@@ -319,7 +330,7 @@ def product_unpublish_view(request, product_id):
     product.unpublish()
 
     messages.success(
-        request, f'"{product.title}" is now a draft and hidden from buyers.'
+        request, f'"{product.title}" je sada nacrt i skriven od kupaca.'
     )
 
     if request.headers.get("X-Requested-With") == "XMLHttpRequest":

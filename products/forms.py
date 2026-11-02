@@ -7,6 +7,12 @@ from django.core.exceptions import ValidationError
 
 from .models import Product, ProductCategory, ProductCondition, ProductImage
 
+MB = 1024 * 1024
+# Per photo, and per upload request: nginx rejects bodies over 20 MB
+# (client_max_body_size in deploy/nginx.conf) before Django sees them.
+MAX_IMAGE_MB = 10
+MAX_UPLOAD_MB = 19
+
 
 class ProductForm(forms.ModelForm):
     """Form for creating and editing products."""
@@ -120,8 +126,10 @@ class ProductImageForm(forms.ModelForm):
         if not image:
             raise ValidationError("Slika je obavezna.")
 
-        if image.size > 20 * 1024 * 1024:
-            raise ValidationError("Veličina slike ne sme biti veća od 20MB.")
+        if image.size > MAX_IMAGE_MB * MB:
+            raise ValidationError(
+                f"Veličina slike ne sme biti veća od {MAX_IMAGE_MB} MB."
+            )
 
         valid_extensions = ["jpg", "jpeg", "png", "gif", "webp"]
         file_ext = image.name.split(".")[-1].lower()
@@ -157,7 +165,7 @@ class BulkProductImageForm(forms.Form):
     images = forms.FileField(
         required=True,
         label="Odaberite slike",
-        help_text="Možete odabrati više slika odjednom. Svaka slika će biti dodana proizvodu.",
+        help_text="Možete odabrati više slika odjednom.",
         widget=forms.FileInput(
             attrs={
                 "accept": "image/*",
@@ -183,10 +191,17 @@ class BulkProductImageForm(forms.Form):
 
         valid_extensions = ["jpg", "jpeg", "png", "gif", "webp"]
 
+        if sum(file.size for file in files) > MAX_UPLOAD_MB * MB:
+            raise ValidationError(
+                f"Izabrane slike zajedno prelaze {MAX_UPLOAD_MB} MB. "
+                "Otpremite ih u više navrata."
+            )
+
         for file in files:
-            if file.size > 20 * 1024 * 1024:
+            if file.size > MAX_IMAGE_MB * MB:
                 raise ValidationError(
-                    f"{file.name}: Veličina slike ne sme biti veća od 20MB."
+                    f"{file.name}: Veličina slike ne sme biti veća od "
+                    f"{MAX_IMAGE_MB} MB."
                 )
 
             file_ext = file.name.split(".")[-1].lower()
