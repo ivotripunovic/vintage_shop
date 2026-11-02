@@ -86,7 +86,10 @@
     var submit = document.getElementById("photo-upload-submit");
     if (!input) return;
 
-    function mb(bytes) { return (bytes / MB).toFixed(1).replace(".", ",") + " MB"; }
+    function mb(bytes) {
+        if (bytes < MB) return Math.max(1, Math.round(bytes / 1024)) + " KB";
+        return (bytes / MB).toFixed(1).replace(".", ",") + " MB";
+    }
 
     input.addEventListener("change", function () {
         var files = Array.prototype.slice.call(input.files);
