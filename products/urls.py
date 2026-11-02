@@ -28,6 +28,12 @@ urlpatterns = [
     ),
     # Images
     path("<int:product_id>/images/", views.product_images_view, name="product_images"),
+    path("photos/upload/", views.photo_upload_view, name="photo_upload"),
+    path(
+        "photos/<int:upload_id>/discard/",
+        views.photo_upload_discard_view,
+        name="photo_upload_discard",
+    ),
     path(
         "image/<int:image_id>/delete/",
         views.product_image_delete_view,

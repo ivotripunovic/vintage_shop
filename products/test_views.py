@@ -6,12 +6,10 @@ from decimal import Decimal
 from unittest import mock
 
 from django.core.cache import cache
-from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import Client, TestCase, override_settings
 from django.urls import reverse
 
 from favourites.models import WishlistItem
-from products.forms import MAX_UPLOAD_MB, MB
 from products.models import (
     Product,
     ProductCategory,
@@ -213,19 +211,22 @@ class SellerListingFlowTests(TestCase):
         self.draft.refresh_from_db()
         return response
 
-    def test_create_always_saves_draft_and_goes_to_photos(self):
+    def test_create_always_saves_draft_and_shows_it(self):
         response = self.client.post(
             reverse("product_create"), self._form_data(title="Lamp", status="sold")
         )
         product = Product.objects.get(title="Lamp")
         self.assertEqual(product.status, "draft")
-        self.assertRedirects(response, reverse("product_images", args=[product.id]))
+        self.assertRedirects(
+            response, reverse("product_seller_detail", args=[product.id])
+        )
 
     def test_publish_without_photo_keeps_draft_and_asks_for_photos(self):
         response = self._edit(title="Wooden Chair", action="publish")
         self.assertEqual(self.draft.status, "draft")
         self.assertEqual(self.draft.title, "Wooden Chair")
-        self.assertRedirects(response, reverse("product_images", args=[self.draft.id]))
+        photos = reverse("product_edit", args=[self.draft.id]) + "#fotografije"
+        self.assertRedirects(response, photos, fetch_redirect_response=False)
 
     def test_publish_with_photo(self):
         ProductImage.objects.create(product=self.draft, image="products/test.jpg")
@@ -250,7 +251,8 @@ class SellerListingFlowTests(TestCase):
 
     def test_form_pages_show_matching_actions(self):
         create = self.client.get(reverse("product_create"))
-        self.assertContains(create, "Dalje: fotografije")
+        self.assertContains(create, "Sačuvaj nacrt")
+        self.assertContains(create, 'id="fotografije"')
         self.assertNotContains(create, 'name="status"')
         edit = self.client.get(reverse("product_edit", args=[self.draft.id]))
         self.assertContains(edit, 'value="publish"')
@@ -271,7 +273,7 @@ class SellerListingFlowTests(TestCase):
     }
 )
 class SellerPhotoPageTests(TestCase):
-    """Photo upload page and the publish step after it."""
+    """Photos on the listing form without JavaScript, and the publish step."""
 
     def setUp(self):
         self.user = User.objects.create_user(
@@ -291,43 +293,11 @@ class SellerPhotoPageTests(TestCase):
             description="A radio",
             price=100,
         )
-        self.url = reverse("product_images", args=[self.product.id])
+        self.url = reverse("product_edit", args=[self.product.id]) + "#fotografije"
 
-    def _photo(self, name="a.jpg", size=10):
-        return SimpleUploadedFile(name, b"x" * size, content_type="image/jpeg")
-
-    def test_upload_goes_to_product_page(self):
-        response = self.client.post(
-            self.url, {"images": [self._photo("a.jpg"), self._photo("b.jpg")]}
-        )
-        self.assertRedirects(
-            response, reverse("product_seller_detail", args=[self.product.id])
-        )
-        alt_texts = list(self.product.images.values_list("alt_text", flat=True))
-        self.assertEqual(
-            alt_texts, ["Old Radio – fotografija 1", "Old Radio – fotografija 2"]
-        )
-        self.assertEqual(
-            list(self.product.images.values_list("order", flat=True)), [1, 2]
-        )
-
-    def test_upload_over_total_limit_is_rejected(self):
-        half = (MAX_UPLOAD_MB * MB) // 2 + 1
-        response = self.client.post(
-            self.url,
-            {"images": [self._photo("a.jpg", half), self._photo("b.jpg", half)]},
-        )
-        self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Otpremite ih u više navrata")
-        self.assertFalse(self.product.images.exists())
-
-    def test_page_shows_real_limits(self):
-        response = self.client.get(self.url)
-        self.assertContains(response, f"ukupno do {MAX_UPLOAD_MB} MB")
-        self.assertNotContains(response, "5MB")
-        self.assertRegex(
-            response.content.decode(), r"<title>Slike proizvoda — [^<]*</title>"
-        )
+    def test_old_photo_page_redirects_to_form(self):
+        response = self.client.get(reverse("product_images", args=[self.product.id]))
+        self.assertRedirects(response, self.url, fetch_redirect_response=False)
 
     def test_product_page_explains_missing_photo(self):
         detail = reverse("product_seller_detail", args=[self.product.id])
@@ -362,7 +332,10 @@ class SellerPhotoPageTests(TestCase):
     def test_make_cover_moves_photo_first(self):
         a, b, c = self._three_photos()
         response = self._move(c, "first")
-        self.assertRedirects(response, f"{self.url}#image-{c.id}")
+        edit = reverse("product_edit", args=[self.product.id])
+        self.assertRedirects(
+            response, f"{edit}#image-{c.id}", fetch_redirect_response=False
+        )
         self.assertEqual(self._order(), [c.id, a.id, b.id])
         self.assertEqual(
             list(self.product.images.values_list("order", flat=True)), [0, 1, 2]
@@ -409,11 +382,11 @@ class SellerPhotoPageTests(TestCase):
         self.client.force_login(other)
         self.assertEqual(self._move(a, "down").status_code, 404)
 
-    def test_photo_page_shows_cover_and_controls(self):
+    def test_form_shows_photos_with_no_js_controls(self):
         a, b, c = self._three_photos()
-        response = self.client.get(self.url)
-        # badge, footer hint and the "Za dobre fotografije" tip
-        self.assertContains(response, "Naslovna", count=3)
+        response = self.client.get(reverse("product_edit", args=[self.product.id]))
+        self.assertContains(response, f'id="image-{a.id}"')
+        self.assertContains(response, 'aria-label="Naslovna fotografija"', count=1)
         self.assertContains(response, 'value="first"', count=2)
         self.assertContains(response, 'value="up"', count=2)
         self.assertContains(response, 'value="down"', count=2)

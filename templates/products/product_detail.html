@@ -56,14 +56,14 @@
 
         <div class="space-y-2">
             <a href="{% url 'product_edit' product.id %}" class="block w-full text-center text-xs uppercase tracking-widest bg-stone-900 text-white py-3 hover:bg-stone-700 transition-colors">Uredi proizvod</a>
-            <a href="{% url 'product_images' product.id %}" class="block w-full text-center text-xs uppercase tracking-widest border border-stone-900 text-stone-900 py-3 hover:bg-neutral-50 transition-colors">Upravljaj slikama</a>
+            <a href="{% url 'product_edit' product.id %}#fotografije" class="block w-full text-center text-xs uppercase tracking-widest border border-stone-900 text-stone-900 py-3 hover:bg-neutral-50 transition-colors">Upravljaj slikama</a>
 
             {% if product.status == 'draft' or product.status == 'expired' or product.status == 'archived' %}
             {% if publish_error %}
             <div class="border border-amber-200 bg-amber-50 p-4">
                 <p class="text-xs text-amber-800">Još nije moguće objaviti: {{ publish_error }}</p>
                 {% if not images %}
-                <a href="{% url 'product_images' product.id %}" class="block w-full text-center text-xs uppercase tracking-widest bg-stone-900 text-white py-3 mt-3 hover:bg-stone-700 transition-colors">Dodaj fotografije</a>
+                <a href="{% url 'product_edit' product.id %}#fotografije" class="block w-full text-center text-xs uppercase tracking-widest bg-stone-900 text-white py-3 mt-3 hover:bg-stone-700 transition-colors">Dodaj fotografije</a>
                 {% endif %}
             </div>
             {% else %}

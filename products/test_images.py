@@ -339,7 +339,7 @@ class ListingTipsPageTests(SellerMixin, TestCase):
         self.assertContains(response, "Naslov: dodajte")
         self.assertContains(response, "mala rezolucija (640×480)")
 
-        response = self.client.get(reverse("product_images", args=[product.id]))
-        self.assertContains(response, "Naslovna fotografija: mala rezolucija")
+        response = self.client.get(reverse("product_edit", args=[product.id]))
+        self.assertContains(response, "Mala rezolucija (640×480)")
         self.assertContains(response, "Za dobre fotografije")
-        self.assertContains(response, "Slike (1)")
+        self.assertContains(response, '<span id="photo-count">1</span>')

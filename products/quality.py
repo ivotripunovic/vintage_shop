@@ -67,6 +67,75 @@ class Report:
         return [tip for tip in self.tips if tip.image_id == image_id]
 
 
+def _say(label, text):
+    """'Label: text', or 'Text' when the photo itself is on screen."""
+    return f"{label}: {text}" if label else text[0].upper() + text[1:]
+
+
+def check_photo(image, label=None, cover=False):
+    """Tips for one photo; without a label the messages stand alone."""
+    tips = []
+    if image.width and max(image.width, image.height) < MIN_LONG_EDGE:
+        tips.append(
+            Tip(
+                "resolution",
+                _say(
+                    label,
+                    f"mala rezolucija ({image.width}×{image.height}). Kupci "
+                    "uvećavaju slike; slikajte izbliza, punom kamerom telefona, "
+                    "bez zumiranja.",
+                ),
+                image.id,
+            )
+        )
+    if image.brightness is not None and image.brightness < DARK_BELOW:
+        tips.append(
+            Tip(
+                "light",
+                _say(label, "pretamna. Slikajte pored prozora po danu, bez blica."),
+                image.id,
+            )
+        )
+    elif image.brightness is not None and image.brightness > BRIGHT_ABOVE:
+        tips.append(
+            Tip(
+                "light",
+                _say(
+                    label,
+                    "presvetla, detalji se gube. Izbegnite direktno sunce i blic.",
+                ),
+                image.id,
+            )
+        )
+    if image.sharpness is not None and image.sharpness < BLURRY_BELOW:
+        tips.append(
+            Tip(
+                "sharpness",
+                _say(
+                    label,
+                    "deluje mutno. Dodirnite predmet na ekranu da izoštrite i "
+                    "držite telefon mirno.",
+                ),
+                image.id,
+            )
+        )
+    if cover and image.width and image.height:
+        ratio = max(image.width, image.height) / min(image.width, image.height)
+        if ratio > MAX_COVER_RATIO:
+            tips.append(
+                Tip(
+                    "cover",
+                    _say(
+                        label,
+                        "u pretrazi se seče na kvadrat, pa se deo predmeta ne "
+                        "vidi. Izaberite fotografiju na kojoj je predmet u sredini.",
+                    ),
+                    image.id,
+                )
+            )
+    return tips
+
+
 def check_photos(images):
     """Tips for the ordered photos of one listing."""
     tips = []
@@ -81,54 +150,7 @@ def check_photos(images):
         )
     for number, image in enumerate(images, start=1):
         label = "Naslovna fotografija" if number == 1 else f"Fotografija {number}"
-        if image.width and max(image.width, image.height) < MIN_LONG_EDGE:
-            tips.append(
-                Tip(
-                    "resolution",
-                    f"{label}: mala rezolucija ({image.width}×{image.height}). "
-                    "Kupci uvećavaju slike; slikajte izbliza, punom kamerom "
-                    "telefona, bez zumiranja.",
-                    image.id,
-                )
-            )
-        if image.brightness is not None and image.brightness < DARK_BELOW:
-            tips.append(
-                Tip(
-                    "light",
-                    f"{label}: pretamna. Slikajte pored prozora po danu, bez blica.",
-                    image.id,
-                )
-            )
-        elif image.brightness is not None and image.brightness > BRIGHT_ABOVE:
-            tips.append(
-                Tip(
-                    "light",
-                    f"{label}: presvetla, detalji se gube. Izbegnite direktno "
-                    "sunce i blic.",
-                    image.id,
-                )
-            )
-        if image.sharpness is not None and image.sharpness < BLURRY_BELOW:
-            tips.append(
-                Tip(
-                    "sharpness",
-                    f"{label}: deluje mutno. Dodirnite predmet na ekranu da "
-                    "izoštrite i držite telefon mirno.",
-                    image.id,
-                )
-            )
-        if number == 1 and image.width and image.height:
-            ratio = max(image.width, image.height) / min(image.width, image.height)
-            if ratio > MAX_COVER_RATIO:
-                tips.append(
-                    Tip(
-                        "cover",
-                        f"{label}: u pretrazi se seče na kvadrat, pa se deo "
-                        "predmeta ne vidi. Izaberite fotografiju na kojoj je "
-                        "predmet u sredini.",
-                        image.id,
-                    )
-                )
+        tips += check_photo(image, label, cover=number == 1)
     return tips
 
 

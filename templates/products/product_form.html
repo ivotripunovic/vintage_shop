@@ -1,10 +1,53 @@
 {% extends "base.html" %}
+{% load static %}
 {% block title %}{{ page_title }} — {{ SITE_NAME }}{% endblock %}
 
 {% block content %}
 
 <div class="max-w-2xl mx-auto">
     <h1 class="font-serif text-4xl font-light mb-10">{{ page_title }}</h1>
+
+    {# Photos first: for second-hand goods the photo is the listing. Outside the form so the no-JS move/delete forms can live here; inputs join the form via form="product-form". #}
+    <section id="fotografije" class="scroll-mt-40 mb-10"
+             data-upload-url="{% url 'photo_upload' %}"
+             {% if product %}data-product-id="{{ product.id }}" data-reorder-url="{% url 'product_image_reorder' product.id %}"{% endif %}
+             data-max-photos="{{ max_photos }}" data-max-mb="{{ max_image_mb }}" data-max-edge="2000">
+        <div class="flex items-baseline justify-between mb-3">
+            <h2 class="text-xs uppercase tracking-widest text-stone-700">Fotografije</h2>
+            <p class="text-xs text-stone-400"><span id="photo-count">{{ photos|length }}</span> / {{ max_photos }}</p>
+        </div>
+
+        {% if photo_errors %}
+        <div class="border border-red-200 p-3 mb-3" role="alert">
+            {% for error in photo_errors %}<p class="text-xs text-red-600">{{ error }}</p>{% endfor %}
+        </div>
+        {% endif %}
+        <p id="photo-error" class="hidden text-xs text-red-600 mb-3" role="alert"></p>
+
+        <ul id="photo-grid" class="grid grid-cols-2 sm:grid-cols-4 gap-3 empty:hidden">{% for photo in photos %}{% include "products/_photo_item.html" %}{% endfor %}</ul>
+
+        <label id="photo-drop" for="photo-input" class="block border border-dashed border-neutral-300 p-8 mt-3 text-center cursor-pointer hover:border-stone-400 transition-colors{% if photos|length >= max_photos %} hidden{% endif %}">
+            <svg class="mx-auto h-8 w-8 text-neutral-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M3 9a2 2 0 012-2h1.5l1.5-2h8l1.5 2H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z M12 17a4 4 0 100-8 4 4 0 000 8z"/>
+            </svg>
+            <span class="block text-xs uppercase tracking-widest text-stone-700">Dodaj fotografije</span>
+            <span class="block text-xs text-stone-400 mt-1">Izaberite ili prevucite ovde. Na telefonu možete odmah da slikate.</span>
+            <input type="file" id="photo-input" name="photo_files" accept="image/*" multiple form="product-form" class="mt-3 mx-auto block text-xs">
+        </label>
+        <p class="text-xs text-stone-400 mt-2">JPG, PNG, WebP ili GIF, do {{ max_image_mb }} MB po fotografiji. Prva fotografija je naslovna (★); redosled menjate strelicama ili prevlačenjem.</p>
+
+        <details class="mt-3">
+            <summary class="cursor-pointer text-xs uppercase tracking-widest text-stone-500 hover:text-stone-900 select-none">Za dobre fotografije</summary>
+            <ul class="text-xs text-stone-500 space-y-1 list-disc pl-4 mt-2">
+                <li>Dnevno svetlo pored prozora, bez blica.</li>
+                <li>Mirna, jednobojna pozadina.</li>
+                <li>Ceo predmet spreda i pozadi, pa izbliza etiketa, pečat i svako oštećenje.</li>
+                <li>Naslovna: predmet u sredini, jer se u pretrazi seče na kvadrat.</li>
+            </ul>
+        </details>
+
+        <template id="photo-item-template">{% include "products/_photo_item.html" with photo=None %}</template>
+    </section>
 
     <form method="post" enctype="multipart/form-data" class="space-y-6" id="product-form" data-autosave-key="{{ autosave_key }}">
         {% csrf_token %}
@@ -101,10 +144,10 @@
         </div>
         {% endif %}
         {% else %}
-        <p class="text-xs text-stone-400">Oglas se čuva kao nacrt. Objavićete ga posle dodavanja fotografija.</p>
+        <p class="text-xs text-stone-400">Oglas se čuva kao nacrt. Pre objave videćete kako ga vide kupci.</p>
 
         <div class="flex flex-col sm:flex-row gap-4 pt-2">
-            <button type="submit" class="flex-1 text-xs uppercase tracking-widest bg-stone-900 text-white py-3 hover:bg-stone-700 transition-colors">Dalje: fotografije →</button>
+            <button type="submit" class="flex-1 text-xs uppercase tracking-widest bg-stone-900 text-white py-3 hover:bg-stone-700 transition-colors">Sačuvaj nacrt →</button>
             <a href="{% url 'seller_products_list' %}" class="flex-1 text-center text-xs uppercase tracking-widest border border-neutral-200 text-stone-500 py-3 hover:border-stone-400 hover:text-stone-900 transition-colors">Otkaži</a>
         </div>
         {% endif %}
@@ -202,5 +245,6 @@
     });
 })();
 </script>
+<script src="{% static 'js/listing-photos.js' %}" defer></script>
 
 {% endblock %}

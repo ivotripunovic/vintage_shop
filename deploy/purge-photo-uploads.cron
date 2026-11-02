@@ -1,0 +1,3 @@
+# Daily: delete photos uploaded on listing forms that were never saved.
+# Installed by setup.sh to /etc/cron.d/purge-photo-uploads.
+40 3 * * * django cd /srv/django/apps/vintage_shop && venv/bin/python manage.py purge_photo_uploads >> logs/purge-photo-uploads.log 2>&1

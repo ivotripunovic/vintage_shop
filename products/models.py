@@ -246,49 +246,46 @@ class ProductView(TimeStampedModel):
         return f"{self.user or self.session_key} → {self.product}"
 
 
-class ProductImage(TimeStampedModel):
-    """Images for products (multiple per product)."""
+class ProcessedPhoto(models.Model):
+    """
+    A photo processed on save (products.images): upright, stripped of
+    metadata, capped in size, with a thumbnail and quality measurements.
+    """
 
-    product = models.ForeignKey(
-        Product,
-        on_delete=models.CASCADE,
-        related_name="images",
-    )
     image = models.ImageField(upload_to="products/%Y/%m/%d/")
     # Grid-sized copy made on save (products.images); empty if processing failed
     thumbnail = models.ImageField(
         upload_to="products/thumbs/%Y/%m/%d/", blank=True, editable=False
     )
-    alt_text = models.CharField(max_length=255, blank=True)
-    order = models.IntegerField(default=0)
     # Measured on save, for the photo tips in products.quality
     width = models.PositiveIntegerField(null=True, blank=True, editable=False)
     height = models.PositiveIntegerField(null=True, blank=True, editable=False)
     brightness = models.FloatField(null=True, blank=True, editable=False)
     sharpness = models.FloatField(null=True, blank=True, editable=False)
 
-    class Meta:
-        ordering = ["order", "created_at"]
-        verbose_name = "Product Image"
-        verbose_name_plural = "Product Images"
+    PHOTO_FIELDS = ("image", "thumbnail", "width", "height", "brightness", "sharpness")
 
-    def __str__(self):
-        return f"{self.product.title} - Image {self.order}"
+    class Meta:
+        abstract = True
 
     def save(self, *args, **kwargs):
         # Only a newly assigned file is processed; reorders and alt text
         # changes save without touching the photo
-        if self.image and not self.image._committed:
+        processed = self.__dict__.pop("_processed", False)
+        if self.image and not self.image._committed and not processed:
             if self.pk:
                 # Replacing the photo of an existing row: its old files go
-                old = ProductImage.objects.filter(pk=self.pk).values_list(
-                    "image", "thumbnail"
+                old = (
+                    type(self)
+                    .objects.filter(pk=self.pk)
+                    .values_list("image", "thumbnail")
                 )
                 for name in old.first() or ():
                     self._mark_stale(name)
                 self.thumbnail = ""
                 self.width = self.height = self.brightness = self.sharpness = None
             self.process(keep_original=False)
+            self.__dict__.pop("_processed", None)
         super().save(*args, **kwargs)
         self._delete_stale_files()
 
@@ -312,6 +309,7 @@ class ProductImage(TimeStampedModel):
         self.thumbnail.save(result.thumbnail.name, result.thumbnail, save=False)
         self.width, self.height = result.width, result.height
         self.brightness, self.sharpness = result.brightness, result.sharpness
+        self.__dict__["_processed"] = True  # save() won't process it again
         return True
 
     def _mark_stale(self, name):
@@ -321,16 +319,102 @@ class ProductImage(TimeStampedModel):
     def _delete_stale_files(self):
         stale = self.__dict__.pop("_stale_files", set())
         stale -= {self.image.name, self.thumbnail.name}
-        if stale:
-            storage = self.image.storage
+        delete_unreferenced_files(self.image.storage, stale)
 
-            def delete():
-                for name in stale:
-                    storage.delete(name)
-
-            transaction.on_commit(delete)
+    def discard_unsaved(self):
+        """
+        Remove the files processing stored for a photo whose row was never
+        saved. An upload kept as it is was never written, so only files
+        actually in storage are considered.
+        """
+        names = [f.name for f in (self.image, self.thumbnail) if f and f._committed]
+        delete_unreferenced_files(self.image.storage, names)
 
     @property
     def thumb_url(self):
         """Thumbnail for grids and lists, or the full photo if there is none."""
         return (self.thumbnail or self.image).url
+
+
+class ProductImage(ProcessedPhoto, TimeStampedModel):
+    """Images for products (multiple per product)."""
+
+    product = models.ForeignKey(
+        Product,
+        on_delete=models.CASCADE,
+        related_name="images",
+    )
+    alt_text = models.CharField(max_length=255, blank=True)
+    order = models.IntegerField(default=0)
+
+    class Meta:
+        ordering = ["order", "created_at"]
+        verbose_name = "Product Image"
+        verbose_name_plural = "Product Images"
+
+    def __str__(self):
+        return f"{self.product.title} - Image {self.order}"
+
+
+class PhotoUpload(ProcessedPhoto, TimeStampedModel):
+    """
+    A photo uploaded on the listing form before its product exists.
+
+    The file is processed and stored where product photos live, so saving
+    the listing only turns the row into a ProductImage (attach_to). Rows
+    left behind by abandoned forms are removed by purge_photo_uploads.
+    """
+
+    seller = models.ForeignKey(
+        "sellers.Seller",
+        on_delete=models.CASCADE,
+        related_name="photo_uploads",
+    )
+
+    class Meta:
+        ordering = ["created_at"]
+
+    def __str__(self):
+        return f"Upload {self.pk} by {self.seller_id}"
+
+    def attach_to(self, product, order):
+        """Move this photo onto product as a ProductImage, keeping its files."""
+        fields = {name: getattr(self, name) for name in self.PHOTO_FIELDS}
+        image = ProductImage.objects.create(
+            product=product,
+            order=order,
+            alt_text=f"{product.title} – fotografija {order + 1}",
+            **{name: getattr(value, "name", value) for name, value in fields.items()},
+        )
+        # A plain row delete: the files now belong to the ProductImage
+        PhotoUpload.objects.filter(pk=self.pk).delete()
+        return image
+
+
+def photo_file_in_use(name):
+    """Whether any photo row (attached or pending) still points at name."""
+    uses = models.Q(image=name) | models.Q(thumbnail=name)
+    return (
+        ProductImage.objects.filter(uses).exists()
+        or PhotoUpload.objects.filter(uses).exists()
+    )
+
+
+def delete_unreferenced_files(storage, names):
+    """
+    Once the transaction commits, delete each file no photo row uses.
+
+    The single rule for removing photo files: attaching a pending upload
+    hands its files to a ProductImage, so a racing purge or a double submit
+    must never delete files another row has taken over.
+    """
+    names = {name for name in names if name}
+    if not names:
+        return
+
+    def delete():
+        for name in names:
+            if not photo_file_in_use(name):
+                storage.delete(name)
+
+    transaction.on_commit(delete)

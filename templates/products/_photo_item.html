@@ -1,0 +1,36 @@
+{# One photo on the listing form. Also cloned by static/js/listing-photos.js from the empty copy in <template> (photo is None there). #}
+<li {% if photo %}id="{% if photo.kind == 'image' %}image-{% else %}upload-{% endif %}{{ photo.id }}" data-id="{{ photo.id }}" data-kind="{{ photo.kind }}" data-remove-url="{{ photo.remove_url }}"{% endif %}
+    class="photo-item scroll-mt-40" aria-label="{% if forloop.first %}Naslovna fotografija{% else %}Fotografija {{ forloop.counter }}{% endif %}">
+    {% if photo.kind == "upload" %}<input type="hidden" name="photos" value="{{ photo.id }}" form="product-form">{% endif %}
+    <div class="photo-frame relative aspect-square bg-neutral-100 overflow-hidden">
+        <img src="{% if photo %}{{ photo.thumb_url }}{% endif %}" alt="" class="w-full h-full object-cover" draggable="false">
+        <span class="photo-cover-badge absolute top-1 left-1 bg-stone-900 text-white text-[10px] uppercase tracking-widest px-1.5 py-0.5{% if not forloop.first %} hidden{% endif %}">Naslovna</span>
+        <div class="photo-progress hidden absolute inset-x-0 bottom-0 h-1 bg-white/70"><div class="h-1 bg-stone-900 transition-all" style="width: 0"></div></div>
+    </div>
+    <div class="js-only hidden mt-1 flex items-center gap-1">
+        <button type="button" data-action="cover" aria-label="Postavi kao naslovnu" title="Postavi kao naslovnu" class="h-7 w-7 border border-neutral-200 text-stone-500 hover:border-stone-400 hover:text-stone-900">★</button>
+        <button type="button" data-action="left" aria-label="Pomeri ranije" title="Pomeri ranije" class="h-7 w-7 border border-neutral-200 text-stone-500 hover:border-stone-400 hover:text-stone-900 disabled:opacity-30">←</button>
+        <button type="button" data-action="right" aria-label="Pomeri kasnije" title="Pomeri kasnije" class="h-7 w-7 border border-neutral-200 text-stone-500 hover:border-stone-400 hover:text-stone-900 disabled:opacity-30">→</button>
+        <button type="button" data-action="remove" aria-label="Ukloni fotografiju" title="Ukloni" class="ml-auto h-7 w-7 border border-neutral-200 text-red-500 hover:border-red-300 hover:text-red-700">×</button>
+    </div>
+    {% if photo.kind == "image" %}
+    <noscript>
+        <div class="mt-1 flex flex-wrap items-center gap-1">
+            <form method="post" action="{% url 'product_image_move' photo.id %}" class="flex gap-1">
+                {% csrf_token %}
+                {% if not forloop.first %}<button type="submit" name="to" value="first" class="text-[10px] uppercase tracking-widest text-stone-500 px-1 py-1">Naslovna</button>
+                <button type="submit" name="to" value="up" aria-label="Pomeri ranije" class="h-7 w-7 border border-neutral-200">←</button>{% endif %}
+                {% if not forloop.last %}<button type="submit" name="to" value="down" aria-label="Pomeri kasnije" class="h-7 w-7 border border-neutral-200">→</button>{% endif %}
+            </form>
+            <form method="post" action="{% url 'product_image_delete' photo.id %}">
+                {% csrf_token %}
+                <button type="submit" class="text-[10px] uppercase tracking-widest text-red-500 px-1 py-1">Obriši</button>
+            </form>
+        </div>
+    </noscript>
+    {% endif %}
+    <p class="photo-error hidden text-[11px] text-red-600 mt-1" role="alert"></p>
+    <button type="button" data-action="retry" class="hidden text-[10px] uppercase tracking-widest text-stone-700 underline mt-1">Pokušaj ponovo</button>
+    <p class="photo-cover-tip text-[11px] leading-snug text-amber-700 mt-1{% if not forloop.first or not photo.cover_tip %} hidden{% endif %}">{{ photo.cover_tip }}</p>
+    <ul class="photo-tips text-[11px] leading-snug text-amber-700 mt-1 space-y-0.5">{% for tip in photo.tips %}<li>{{ tip }}</li>{% endfor %}</ul>
+</li>

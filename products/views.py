@@ -4,24 +4,32 @@ Views for product management (CRUD operations).
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.core.exceptions import ValidationError
 from django.core.paginator import Paginator
-from django.db import models, transaction
+from django.db import transaction
 from django.db.models import Count, Q
-from django.http import HttpResponseBadRequest, HttpResponseForbidden, JsonResponse
+from django.http import (
+    Http404,
+    HttpResponseBadRequest,
+    HttpResponseForbidden,
+    JsonResponse,
+)
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.views.decorators.http import require_http_methods
 
 from sellers.models import Seller
 
-from .forms import (
-    MAX_IMAGE_MB,
-    MAX_UPLOAD_MB,
-    BulkProductImageForm,
-    ProductForm,
-    ProductImageForm,
+from .forms import MAX_IMAGE_MB, MAX_PHOTOS, ProductForm
+from .models import PhotoUpload, Product, ProductImage
+from .photos import (
+    add_photo,
+    add_posted_files,
+    missing_message,
+    pending_uploads,
+    photo_item,
+    posted_ids,
 )
-from .models import Product, ProductImage
 from .popularity import recent_viewer_count, record_view
 from .quality import listing_report
 
@@ -61,46 +69,109 @@ def _last_used_defaults(seller):
     return {k: v for k, v in (last or {}).items() if v is not None}
 
 
+def _photos_url(product):
+    return reverse("product_edit", args=[product.id]) + "#fotografije"
+
+
+def _form_context(seller, form, photos, photo_errors, product=None):
+    """What product_form.html needs, for a new or an existing listing."""
+    context = {
+        "form": form,
+        "product": product,
+        "photos": [photo_item(photo) for photo in photos],
+        "photo_errors": photo_errors,
+        "max_photos": MAX_PHOTOS,
+        "max_image_mb": MAX_IMAGE_MB,
+    }
+    if product is None:
+        context.update(
+            page_title="Dodaj proizvod",
+            autosave_key=f"product-form:{seller.id}:new",
+        )
+    else:
+        context.update(
+            page_title=f"Izmeni: {product.title}",
+            autosave_key=f"product-form:{seller.id}:{product.id}",
+            can_publish_action=product.status in PUBLISHABLE_STATUSES,
+            can_archive_action=product.status in ARCHIVABLE_STATUSES,
+        )
+    return context
+
+
 @login_required
 @require_http_methods(["GET", "POST"])
 def product_create_view(request):
     """
-    Create a new product.
+    Create a new product: photos first, then the details, on one page.
+
+    Photos arrive as PhotoUploads (one request each, see products.photos)
+    and are attached in the posted order when the listing is saved.
     """
     seller = _get_seller_or_403(request)
     if not seller:
         messages.error(request, "Morate biti prodavac da biste dodavali proizvode.")
         return redirect("seller_register")
 
+    uploads, photo_errors = [], []
     if request.method == "POST":
         form = ProductForm(request.POST)
+        ids = posted_ids(request.POST.getlist("photos"))
+        uploads = pending_uploads(seller, ids)
+        # Purged after 24h, or discarded in another tab
+        missing = len(ids) - len(uploads)
+        added, photo_errors = add_posted_files(request, seller)
+        uploads += added
         if form.is_valid():
-            product = form.save(commit=False)
-            product.seller = seller
-            product.status = "draft"
-            product.save()
+            with transaction.atomic():
+                product = form.save(commit=False)
+                product.seller = seller
+                product.status = "draft"
+                product.save()
+                # Lock and read again: a second submit of the same form or
+                # the nightly purge may have taken some of them meanwhile
+                wanted = [upload.id for upload in uploads]
+                locked = pending_uploads(seller, wanted, lock=True)
+                missing += len(wanted) - len(locked)
+                kept, extra = locked[:MAX_PHOTOS], locked[MAX_PHOTOS:]
+                for order, upload in enumerate(kept):
+                    upload.attach_to(product, order)
+                for upload in extra:
+                    upload.delete()  # its files go with it (products.signals)
 
-            messages.success(
-                request, "Nacrt je sačuvan. Dodajte fotografije da biste ga objavili."
-            )
-            return redirect("product_images", product_id=product.id)
+            if missing:
+                messages.warning(request, missing_message(missing))
+            for error in photo_errors:
+                messages.warning(request, error)
+            if extra:
+                messages.warning(
+                    request, f"Sačuvano je prvih {MAX_PHOTOS} fotografija."
+                )
+            if kept:
+                messages.success(request, "Nacrt je sačuvan.")
+            else:
+                messages.success(
+                    request,
+                    "Nacrt je sačuvan. Dodajte fotografije da biste ga objavili.",
+                )
+            return redirect("product_seller_detail", product_id=product.id)
+        if missing:
+            photo_errors.insert(0, missing_message(missing))
     else:
         form = ProductForm(initial=_last_used_defaults(seller))
 
-    context = {
-        "form": form,
-        "page_title": "Dodaj proizvod",
-        "autosave_key": f"product-form:{seller.id}:new",
-    }
-
-    return render(request, "products/product_form.html", context)
+    return render(
+        request,
+        "products/product_form.html",
+        _form_context(seller, form, uploads, photo_errors),
+    )
 
 
 @login_required
 @require_http_methods(["GET", "POST"])
 def product_edit_view(request, product_id):
     """
-    Edit an existing product.
+    Edit an existing product. Photos are added, removed and reordered on
+    the spot (AJAX), so only the details are saved with the form.
     """
     seller = _get_seller_or_403(request)
     if not seller:
@@ -108,10 +179,14 @@ def product_edit_view(request, product_id):
 
     product = get_object_or_404(Product, id=product_id, seller=seller)
 
+    photo_errors = []
     if request.method == "POST":
         form = ProductForm(request.POST, instance=product)
+        _, photo_errors = add_posted_files(request, seller, product)
         if form.is_valid():
             product = form.save()
+            for error in photo_errors:
+                messages.warning(request, error)
             action = request.POST.get("action")
 
             if action == "publish" and product.status in PUBLISHABLE_STATUSES:
@@ -119,7 +194,7 @@ def product_edit_view(request, product_id):
                 if error:
                     messages.error(request, f"Izmene su sačuvane, ali: {error}")
                     if not product.images.exists():
-                        return redirect("product_images", product_id=product.id)
+                        return redirect(_photos_url(product))
                     return redirect("product_seller_detail", product_id=product.id)
                 product.publish()
                 messages.success(request, f'"{product.title}" je objavljen.')
@@ -133,16 +208,11 @@ def product_edit_view(request, product_id):
     else:
         form = ProductForm(instance=product)
 
-    context = {
-        "form": form,
-        "product": product,
-        "page_title": f"Izmeni: {product.title}",
-        "autosave_key": f"product-form:{seller.id}:{product.id}",
-        "can_publish_action": product.status in PUBLISHABLE_STATUSES,
-        "can_archive_action": product.status in ARCHIVABLE_STATUSES,
-    }
-
-    return render(request, "products/product_form.html", context)
+    return render(
+        request,
+        "products/product_form.html",
+        _form_context(seller, form, product.images.all(), photo_errors, product),
+    )
 
 
 @login_required
@@ -198,56 +268,56 @@ def product_detail_view(request, product_id):
 
 
 @login_required
-@require_http_methods(["GET", "POST"])
+@require_http_methods(["GET"])
 def product_images_view(request, product_id):
-    """
-    Manage product images.
-    """
+    """Old photo page: photos are now managed on the listing form."""
     seller = _get_seller_or_403(request)
     if not seller:
         return HttpResponseForbidden("You are not authorized to access this resource.")
-
     product = get_object_or_404(Product, id=product_id, seller=seller)
+    return redirect(_photos_url(product))
 
-    if request.method == "POST":
-        form = BulkProductImageForm(request.POST, request.FILES)
-        if form.is_valid():
-            images = form.cleaned_data["images"]
 
-            with transaction.atomic():
-                # Get current max order
-                max_order = (
-                    product.images.aggregate(max=models.Max("order")).get("max") or 0
-                )
+@login_required
+@require_http_methods(["POST"])
+def photo_upload_view(request):
+    """
+    Upload one photo from the listing form (AJAX).
 
-                for idx, image_file in enumerate(images):
-                    ProductImage.objects.create(
-                        product=product,
-                        image=image_file,
-                        order=max_order + idx + 1,
-                        alt_text=f"{product.title} – fotografija {max_order + idx + 1}",
-                    )
+    With a product id the photo is added to that listing; without one it
+    is kept as a pending upload until the new listing is saved.
+    """
+    seller = _get_seller_or_403(request)
+    if not seller:
+        return JsonResponse({"error": "Morate biti prodavac."}, status=403)
 
-            messages.success(request, f"Otpremljeno fotografija: {len(images)}.")
-            return redirect("product_seller_detail", product_id=product.id)
-    else:
-        form = BulkProductImageForm()
+    product = None
+    if "product" in request.POST:
+        product_id = request.POST["product"]
+        if not product_id.isdigit():
+            raise Http404("No such product.")
+        product = get_object_or_404(Product, id=int(product_id), seller=seller)
+    file = request.FILES.get("photo")
+    if file is None:
+        return JsonResponse({"error": "Izaberite fotografiju."}, status=400)
 
-    images = list(product.images.all())
-    report = listing_report(product, images)
-    for image in images:
-        image.tips = report.for_image(image.id)
+    try:
+        photo = add_photo(seller, file, product)
+    except ValidationError as error:
+        return JsonResponse({"error": " ".join(error.messages)}, status=400)
+    return JsonResponse(photo_item(photo).as_json(), status=201)
 
-    context = {
-        "form": form,
-        "product": product,
-        "images": images,
-        "report": report,
-        "max_image_mb": MAX_IMAGE_MB,
-        "max_upload_mb": MAX_UPLOAD_MB,
-    }
 
-    return render(request, "products/product_images.html", context)
+@login_required
+@require_http_methods(["POST"])
+def photo_upload_discard_view(request, upload_id):
+    """Remove a pending upload from a listing form that isn't saved yet."""
+    seller = _get_seller_or_403(request)
+    if not seller:
+        return JsonResponse({"error": "Morate biti prodavac."}, status=403)
+    upload = get_object_or_404(PhotoUpload, id=upload_id, seller=seller)
+    upload.delete()  # its files go with it (products.signals)
+    return JsonResponse({"status": "success"})
 
 
 @login_required
@@ -273,7 +343,7 @@ def product_image_delete_view(request, image_id):
         )
 
     messages.success(request, "Fotografija je obrisana.")
-    return redirect("product_images", product_id=product.id)
+    return redirect(_photos_url(product))
 
 
 @login_required
@@ -314,7 +384,7 @@ def product_image_move_view(request, image_id):
 
     if direction == "first" and index != 0:
         messages.success(request, "Naslovna fotografija je promenjena.")
-    url = reverse("product_images", args=[product.id])
+    url = reverse("product_edit", args=[product.id])
     return redirect(f"{url}#image-{image.id}")
 
 
@@ -338,6 +408,9 @@ def product_image_reorder_view(request, product_id):
         image_ids = data.get("image_ids", [])
 
         with transaction.atomic():
+            # Reorders of one listing take turns; the browser sends them one
+            # at a time too, so the last order the seller made wins
+            Product.objects.select_for_update().filter(pk=product.pk).first()
             for order, image_id in enumerate(image_ids):
                 ProductImage.objects.filter(id=image_id, product=product).update(
                     order=order
@@ -366,7 +439,7 @@ def product_publish_view(request, product_id):
     if error:
         messages.error(request, error)
         if not product.images.exists():
-            return redirect("product_images", product_id=product.id)
+            return redirect(_photos_url(product))
         return redirect("seller_products_list")
 
     product.publish()
