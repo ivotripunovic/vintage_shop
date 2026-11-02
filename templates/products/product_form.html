@@ -6,8 +6,16 @@
 <div class="max-w-2xl mx-auto">
     <h1 class="font-serif text-4xl font-light mb-10">{{ page_title }}</h1>
 
-    <form method="post" enctype="multipart/form-data" class="space-y-6">
+    <form method="post" enctype="multipart/form-data" class="space-y-6" id="product-form" data-autosave-key="{{ autosave_key }}">
         {% csrf_token %}
+
+        <div id="autosave-notice" class="hidden border border-amber-200 bg-amber-50 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3" role="status">
+            <p class="text-xs text-amber-800">Imate nesačuvane izmene od <span id="autosave-time"></span>.</p>
+            <div class="flex gap-2">
+                <button type="button" id="autosave-restore" class="text-xs uppercase tracking-widest bg-stone-900 text-white px-4 py-2 hover:bg-stone-700 transition-colors">Vrati</button>
+                <button type="button" id="autosave-discard" class="text-xs uppercase tracking-widest border border-neutral-300 text-stone-600 px-4 py-2 hover:border-stone-500 transition-colors">Odbaci</button>
+            </div>
+        </div>
 
         {% if form.non_field_errors %}
         <div class="border border-red-200 p-4">
@@ -113,6 +121,84 @@
         if (/^\d+$/.test(digits)) {
             price.value = Number(digits).toLocaleString("de-DE");
         }
+    });
+})();
+
+(function () {
+    // Keep unsaved typing in this browser, so a dropped connection or a
+    // closed tab doesn't lose a long description. Offered back, never
+    // restored silently.
+    var form = document.getElementById("product-form");
+    var key = form && form.dataset.autosaveKey;
+    if (!key) return;
+    var FIELDS = ["title", "description", "price", "category", "condition", "stock"];
+    var MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
+    var notice = document.getElementById("autosave-notice");
+
+    function read() {
+        var values = {};
+        FIELDS.forEach(function (name) {
+            var field = form.elements[name];
+            if (field) values[name] = field.value;  // RadioNodeList gives the checked value
+        });
+        return values;
+    }
+    function write(values) {
+        FIELDS.forEach(function (name) {
+            var field = form.elements[name];
+            if (field && name in values) field.value = values[name];
+        });
+        form.elements.price.dispatchEvent(new Event("blur"));  // regroup thousands
+    }
+    function same(a, b) {
+        return FIELDS.every(function (name) { return (a[name] || "") === (b[name] || ""); });
+    }
+    function load() {
+        try {
+            var saved = JSON.parse(localStorage.getItem(key));
+            if (saved && Date.now() - saved.savedAt < MAX_AGE_MS) return saved;
+        } catch (e) {}
+        return null;
+    }
+    function clear() {
+        try { localStorage.removeItem(key); } catch (e) {}
+    }
+
+    var initial = read();
+    var saved = load();
+    if (saved && !same(saved.values, initial)) {
+        document.getElementById("autosave-time").textContent =
+            new Date(saved.savedAt).toLocaleString("sr-Latn-RS", { dateStyle: "short", timeStyle: "short" });
+        notice.classList.remove("hidden");
+        document.getElementById("autosave-restore").addEventListener("click", function () {
+            write(saved.values);
+            notice.classList.add("hidden");
+        });
+        document.getElementById("autosave-discard").addEventListener("click", function () {
+            clear();
+            notice.classList.add("hidden");
+        });
+    } else if (saved) {
+        clear();
+    }
+
+    var timer;
+    function save() {
+        var values = read();
+        // Nothing to keep while the form still matches the page
+        if (same(values, initial)) return clear();
+        try {
+            localStorage.setItem(key, JSON.stringify({ values: values, savedAt: Date.now() }));
+        } catch (e) {}
+    }
+    form.addEventListener("input", function () {
+        clearTimeout(timer);
+        timer = setTimeout(save, 500);
+    });
+    form.addEventListener("change", save);
+    form.addEventListener("submit", function () {
+        clearTimeout(timer);
+        clear();
     });
 })();
 </script>

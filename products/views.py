@@ -49,6 +49,17 @@ def _get_seller_or_403(request):
         return None
 
 
+def _last_used_defaults(seller):
+    """Category and condition of the seller's latest listing, as form initial."""
+    last = (
+        seller.products.filter(is_deleted=False)
+        .order_by("-created_at")
+        .values("category", "condition")
+        .first()
+    )
+    return {k: v for k, v in (last or {}).items() if v is not None}
+
+
 @login_required
 @require_http_methods(["GET", "POST"])
 def product_create_view(request):
@@ -73,11 +84,12 @@ def product_create_view(request):
             )
             return redirect("product_images", product_id=product.id)
     else:
-        form = ProductForm()
+        form = ProductForm(initial=_last_used_defaults(seller))
 
     context = {
         "form": form,
         "page_title": "Dodaj proizvod",
+        "autosave_key": f"product-form:{seller.id}:new",
     }
 
     return render(request, "products/product_form.html", context)
@@ -124,6 +136,7 @@ def product_edit_view(request, product_id):
         "form": form,
         "product": product,
         "page_title": f"Izmeni: {product.title}",
+        "autosave_key": f"product-form:{seller.id}:{product.id}",
         "can_publish_action": product.status in PUBLISHABLE_STATUSES,
         "can_archive_action": product.status in ARCHIVABLE_STATUSES,
     }

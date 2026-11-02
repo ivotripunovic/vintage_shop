@@ -459,3 +459,51 @@ class ProductFormPageTests(TestCase):
         self.assertContains(response, '<details class="group" open>')
         self.assertContains(response, 'value="12.500"')
         self.assertContains(response, "checked")
+
+
+class DefaultsAndAutosaveTests(TestCase):
+    """Remembering the last category/condition, and autosave keys (#46)."""
+
+    def setUp(self):
+        self.user = User.objects.create_user(
+            email="defaults@test.com",
+            username="defaults@test.com",
+            password="testpass123",
+            is_seller=True,
+        )
+        self.seller, _ = Seller.objects.get_or_create(
+            user=self.user, defaults={"shop_name": "Defaults", "shop_slug": "defaults"}
+        )
+        self.client.force_login(self.user)
+        self.category = ProductCategory.objects.create(name="Lampe", slug="lampe")
+        self.condition = ProductCondition.objects.create(name="Dobro")
+        self.original = Product.objects.create(
+            seller=self.seller,
+            title="Stona lampa",
+            description="Mesing, ispravna.",
+            price=Decimal("4500"),
+            category=self.category,
+            condition=self.condition,
+        )
+
+    def test_create_form_remembers_last_category_and_condition(self):
+        response = self.client.get(reverse("product_create"))
+        form = response.context["form"]
+        self.assertEqual(form["category"].value(), self.category.id)
+        self.assertEqual(form["condition"].value(), self.condition.id)
+
+    def test_create_form_ignores_deleted_listings(self):
+        self.original.soft_delete()
+        form = self.client.get(reverse("product_create")).context["form"]
+        self.assertIsNone(form["category"].value())
+
+    def test_form_pages_have_separate_autosave_keys(self):
+        create = self.client.get(reverse("product_create"))
+        edit = self.client.get(reverse("product_edit", args=[self.original.id]))
+        self.assertContains(
+            create, f'data-autosave-key="product-form:{self.seller.id}:new"'
+        )
+        self.assertContains(
+            edit,
+            f'data-autosave-key="product-form:{self.seller.id}:{self.original.id}"',
+        )
