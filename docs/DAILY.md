@@ -1,3 +1,17 @@
+# 2026-11-02
+- Add-item fixes from the HCI review: editing a draft no longer 404s (#40, PR #47); the product form's status dropdown is replaced by Sačuvaj / Sačuvaj i objavi, so publishing always needs a photo and can't bypass mark-sold (#41, PR #48); the photo page shows the real size limits, checks them before nginx returns 413, and leads on to publishing (#42, PR #49)
+- Cover photo and photo order (#43, PR #52): make any photo the cover, move photos up/down; works without JavaScript
+- Smarter product form defaults (#45, PR #55): one item in stock, whole-dinar prices with thousands separators, category and condition required. Remembered last category/condition and autosave of unsaved typing (#46, PR #56); the duplicate-listing action was dropped
+- Front-end bugs: Tailwind config now loads after the CDN script, so the custom fonts apply (#50, PR #51); the desktop category bar no longer flickers after scrolling (#53, PR #54)
+- Deleting a listing soft-deletes it (#57, PR #58): sales and chats keep their product, and the monthly listing slot stays used
+- One-page listing form with photos first (#44, PRs #59, #60, #61):
+  - Photos are processed on upload: rotated upright, metadata (incl. GPS in EXIF/XMP) stripped, capped at 2000px, colour profile kept, 600px thumbnails for grids
+  - Booking.com-style quality tips: score on the seller's product page and live tips on the form (too few photos, small, dark/bright, blurry, cover cropped by the square grid, short or ALL CAPS title, thin description, no measurements)
+  - Photos are resized in the browser and uploaded one by one before the listing exists (`PhotoUpload`), so validation errors keep them; reorder with ★/arrows/drag; up to 12 per listing; works without JavaScript
+  - Step bar (Fotografije · Detalji · Pregled), live buyer-card preview, and publishing straight from the new-listing form
+  - Each PR got a code review; fixes covered photo files shared or lost on double submit or during the purge, reorder races and an off-by-100× price preview
+  - To deploy: run `backfill_photos` (optionally `--all --rewrite-originals` after backing up `media/`) and install `deploy/purge-photo-uploads.cron` by hand
+
 # 2026-10-31
 - Chat fixes (#31, PR #32): live view no longer drops or duplicates messages when both sides send at once; email cooldown is per recipient, so a quick reply still notifies the first sender; threads show the latest 100 messages; inbox no longer runs 2 queries per conversation; polling backs off 3s → 30s when quiet and pauses in hidden tabs
 - Chat privacy and safety (#33, PR #34): chat shows shop names and buyer first names ("Kupac" if unset), never emails; per-user limits of 20 messages/min and 20 new conversations/hour; send errors shown under the form; notification emails sent in a background thread after commit (`CHAT_EMAIL_ASYNC`). Deployed and checked in production
