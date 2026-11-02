@@ -77,7 +77,7 @@ def product_edit_view(request, product_id):
         if form.is_valid():
             product = form.save()
             messages.success(request, "Proizvod je uspešno ažuriran.")
-            return redirect("product_detail", product_id=product.id)
+            return redirect("product_seller_detail", product_id=product.id)
     else:
         form = ProductForm(instance=product, seller=seller)
 

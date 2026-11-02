@@ -147,3 +147,47 @@ class ProductPopularityTests(TestCase):
         self.assertEqual(listed.view_count, 1)
         self.assertEqual(listed.wishlist_count, 1)
         self.assertContains(response, "1 pregleda")
+
+
+class SellerListingFlowTests(TestCase):
+    """Seller-side create, edit, photo and publish flow."""
+
+    def setUp(self):
+        self.user = User.objects.create_user(
+            email="flow@test.com",
+            username="flow@test.com",
+            password="testpass123",
+            is_seller=True,
+        )
+        self.seller, _ = Seller.objects.get_or_create(
+            user=self.user,
+            defaults={"shop_name": "Flow Shop", "shop_slug": "flow-shop"},
+        )
+        self.client.force_login(self.user)
+        self.draft = Product.objects.create(
+            seller=self.seller,
+            title="Old Chair",
+            description="A chair",
+            price=100,
+            status="draft",
+        )
+
+    def _form_data(self, **overrides):
+        data = {
+            "title": "Old Chair",
+            "description": "A chair",
+            "price": "100",
+            "stock": "1",
+            "status": "draft",
+        }
+        data.update(overrides)
+        return data
+
+    def test_editing_draft_returns_to_seller_page(self):
+        url = reverse("product_edit", args=[self.draft.id])
+        response = self.client.post(url, self._form_data(title="Wooden Chair"))
+        self.assertRedirects(
+            response, reverse("product_seller_detail", args=[self.draft.id])
+        )
+        self.draft.refresh_from_db()
+        self.assertEqual(self.draft.title, "Wooden Chair")
