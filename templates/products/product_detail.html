@@ -56,11 +56,23 @@
             <a href="{% url 'product_edit' product.id %}" class="block w-full text-center text-xs uppercase tracking-widest bg-stone-900 text-white py-3 hover:bg-stone-700 transition-colors">Uredi proizvod</a>
             <a href="{% url 'product_images' product.id %}" class="block w-full text-center text-xs uppercase tracking-widest border border-stone-900 text-stone-900 py-3 hover:bg-neutral-50 transition-colors">Upravljaj slikama</a>
 
-            {% if product.status == 'draft' %}
+            {% if product.status == 'draft' or product.status == 'expired' or product.status == 'archived' %}
+            {% if publish_error %}
+            <div class="border border-amber-200 bg-amber-50 p-4">
+                <p class="text-xs text-amber-800">Još nije moguće objaviti: {{ publish_error }}</p>
+                {% if not images %}
+                <a href="{% url 'product_images' product.id %}" class="block w-full text-center text-xs uppercase tracking-widest bg-stone-900 text-white py-3 mt-3 hover:bg-stone-700 transition-colors">Dodaj fotografije</a>
+                {% endif %}
+            </div>
+            {% else %}
             <form method="post" action="{% url 'product_publish' product.id %}">
                 {% csrf_token %}
                 <button type="submit" class="w-full text-xs uppercase tracking-widest bg-emerald-700 text-white py-3 hover:bg-emerald-800 transition-colors">Objavi proizvod</button>
             </form>
+            {% if uses_listing_slot and listings_left is not None %}
+            <p class="text-xs text-stone-400 text-center">Ovo koristi 1 od preostalih {{ listings_left }} novih oglasa ovog meseca.</p>
+            {% endif %}
+            {% endif %}
             {% elif product.status == 'published' %}
             <form method="post" action="{% url 'product_unpublish' product.id %}">
                 {% csrf_token %}
