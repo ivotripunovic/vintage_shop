@@ -324,3 +324,95 @@ class PurgePhotoUploadsTests(PhotoUploadTestCase):
         for path in paths:
             self.assertFalse(os.path.exists(path))
         self.assertTrue(os.path.exists(new.image.path))
+
+
+class ReviewRegressionTests(PhotoUploadTestCase):
+    """Races and leftovers found in the PR #60 review."""
+
+    def pending(self, count):
+        return [self.upload().json()["id"] for _ in range(count)]
+
+    def test_second_submit_of_same_form_does_not_share_photos(self):
+        ids = self.pending(2)
+        with self.captureOnCommitCallbacks(execute=True):
+            self.client.post(reverse("product_create"), self.form_data(photos=ids))
+            response = self.client.post(
+                reverse("product_create"), self.form_data(photos=ids), follow=True
+            )
+        first, second = Product.objects.order_by("id")
+        self.assertEqual(first.images.count(), 2)
+        self.assertEqual(second.images.count(), 0)
+        self.assertContains(response, "Fotografija koje više nema: 2.")
+        for image in first.images.all():
+            self.assertTrue(os.path.exists(image.image.path))
+
+    def test_purge_of_a_just_attached_upload_keeps_the_files(self):
+        upload = PhotoUpload.objects.get(id=self.pending(1)[0])
+        product = self.make_product()
+        image = upload.attach_to(product, 0)
+        # The purge still holds the row it read before the save
+        with self.captureOnCommitCallbacks(execute=True):
+            upload.delete()
+        self.assertTrue(os.path.exists(image.image.path))
+        self.assertTrue(os.path.exists(image.thumbnail.path))
+
+    def test_deleting_a_seller_removes_their_pending_files(self):
+        upload = PhotoUpload.objects.get(id=self.pending(1)[0])
+        paths = [upload.image.path, upload.thumbnail.path]
+        with self.captureOnCommitCallbacks(execute=True):
+            self.seller.user.delete()
+        for path in paths:
+            self.assertFalse(os.path.exists(path))
+
+    def test_rejected_upload_never_deletes_by_client_file_name(self):
+        # A bare JPEG is kept as uploaded, so its name is still the
+        # client's; a file of that name at MEDIA_ROOT must survive
+        bystander = os.path.join(MEDIA_ROOT, "IMG_1.jpg")
+        with open(bystander, "wb") as f:
+            f.write(b"someone else's file")
+        unsaved = PhotoUpload(seller=self.seller)
+        unsaved.image = photo("IMG_1.jpg")
+        self.assertTrue(unsaved.process())
+        self.assertFalse(unsaved.image._committed)
+        thumb = unsaved.thumbnail.path
+        with self.captureOnCommitCallbacks(execute=True):
+            unsaved.discard_unsaved()
+        self.assertTrue(os.path.exists(bystander))
+        self.assertFalse(os.path.exists(thumb))
+
+    def test_purged_uploads_are_reported_on_save(self):
+        (gone,) = self.pending(1)
+        PhotoUpload.objects.filter(id=gone).delete()
+        response = self.client.post(
+            reverse("product_create"), self.form_data(photos=[gone]), follow=True
+        )
+        self.assertContains(response, "Fotografija koje više nema: 1.")
+        response = self.client.post(
+            reverse("product_create"), self.form_data(title="", photos=[gone])
+        )
+        self.assertContains(response, "Fotografija koje više nema: 1.")
+
+    def test_cover_tip_is_kept_apart_from_other_tips(self):
+        data = self.upload(photo("wide.jpg", size=(2000, 800))).json()
+        self.assertIn("seče na kvadrat", data["cover_tip"])
+        self.assertFalse(any("kvadrat" in tip for tip in data["tips"]))
+        # Server-rendered: shown on the first photo only
+        product = self.make_product()
+        ProductImage.objects.create(product=product, image=photo("w1.jpg", (2000, 800)))
+        ProductImage.objects.create(
+            product=product, image=photo("w2.jpg", (2000, 800)), order=1
+        )
+        response = self.client.get(reverse("product_edit", args=[product.id]))
+        html = response.content.decode()
+        self.assertEqual(
+            html.count(
+                'class="photo-cover-tip text-[11px] leading-snug text-amber-700 mt-1"'
+            ),
+            1,
+        )
+
+    def test_bad_product_id_is_not_found(self):
+        response = self.client.post(
+            reverse("photo_upload"), {"photo": photo(), "product": "abc"}
+        )
+        self.assertEqual(response.status_code, 404)

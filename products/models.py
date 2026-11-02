@@ -319,25 +319,16 @@ class ProcessedPhoto(models.Model):
     def _delete_stale_files(self):
         stale = self.__dict__.pop("_stale_files", set())
         stale -= {self.image.name, self.thumbnail.name}
-        if stale:
-            storage = self.image.storage
+        delete_unreferenced_files(self.image.storage, stale)
 
-            def delete():
-                for name in stale:
-                    storage.delete(name)
-
-            transaction.on_commit(delete)
-
-    def delete_files(self):
-        """Remove the photo and thumbnail from storage after commit."""
-        names = [f.name for f in (self.image, self.thumbnail) if f]
-        storage = self.image.storage
-
-        def delete():
-            for name in names:
-                storage.delete(name)
-
-        transaction.on_commit(delete)
+    def discard_unsaved(self):
+        """
+        Remove the files processing stored for a photo whose row was never
+        saved. An upload kept as it is was never written, so only files
+        actually in storage are considered.
+        """
+        names = [f.name for f in (self.image, self.thumbnail) if f and f._committed]
+        delete_unreferenced_files(self.image.storage, names)
 
     @property
     def thumb_url(self):
@@ -398,3 +389,32 @@ class PhotoUpload(ProcessedPhoto, TimeStampedModel):
         # A plain row delete: the files now belong to the ProductImage
         PhotoUpload.objects.filter(pk=self.pk).delete()
         return image
+
+
+def photo_file_in_use(name):
+    """Whether any photo row (attached or pending) still points at name."""
+    uses = models.Q(image=name) | models.Q(thumbnail=name)
+    return (
+        ProductImage.objects.filter(uses).exists()
+        or PhotoUpload.objects.filter(uses).exists()
+    )
+
+
+def delete_unreferenced_files(storage, names):
+    """
+    Once the transaction commits, delete each file no photo row uses.
+
+    The single rule for removing photo files: attaching a pending upload
+    hands its files to a ProductImage, so a racing purge or a double submit
+    must never delete files another row has taken over.
+    """
+    names = {name for name in names if name}
+    if not names:
+        return
+
+    def delete():
+        for name in names:
+            if not photo_file_in_use(name):
+                storage.delete(name)
+
+    transaction.on_commit(delete)

@@ -8,7 +8,12 @@ from django.core.exceptions import ValidationError
 from django.core.paginator import Paginator
 from django.db import transaction
 from django.db.models import Count, Q
-from django.http import HttpResponseBadRequest, HttpResponseForbidden, JsonResponse
+from django.http import (
+    Http404,
+    HttpResponseBadRequest,
+    HttpResponseForbidden,
+    JsonResponse,
+)
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.views.decorators.http import require_http_methods
@@ -17,7 +22,14 @@ from sellers.models import Seller
 
 from .forms import MAX_IMAGE_MB, MAX_PHOTOS, ProductForm
 from .models import PhotoUpload, Product, ProductImage
-from .photos import add_photo, add_posted_files, pending_uploads, photo_item
+from .photos import (
+    add_photo,
+    add_posted_files,
+    missing_message,
+    pending_uploads,
+    photo_item,
+    posted_ids,
+)
 from .popularity import recent_viewer_count, record_view
 from .quality import listing_report
 
@@ -103,22 +115,31 @@ def product_create_view(request):
     uploads, photo_errors = [], []
     if request.method == "POST":
         form = ProductForm(request.POST)
-        uploads = pending_uploads(seller, request.POST.getlist("photos"))
+        ids = posted_ids(request.POST.getlist("photos"))
+        uploads = pending_uploads(seller, ids)
+        # Purged after 24h, or discarded in another tab
+        missing = len(ids) - len(uploads)
         added, photo_errors = add_posted_files(request, seller)
         uploads += added
         if form.is_valid():
-            kept, extra = uploads[:MAX_PHOTOS], uploads[MAX_PHOTOS:]
             with transaction.atomic():
                 product = form.save(commit=False)
                 product.seller = seller
                 product.status = "draft"
                 product.save()
+                # Lock and read again: a second submit of the same form or
+                # the nightly purge may have taken some of them meanwhile
+                wanted = [upload.id for upload in uploads]
+                locked = pending_uploads(seller, wanted, lock=True)
+                missing += len(wanted) - len(locked)
+                kept, extra = locked[:MAX_PHOTOS], locked[MAX_PHOTOS:]
                 for order, upload in enumerate(kept):
                     upload.attach_to(product, order)
                 for upload in extra:
-                    upload.delete_files()
-                    upload.delete()
+                    upload.delete()  # its files go with it (products.signals)
 
+            if missing:
+                messages.warning(request, missing_message(missing))
             for error in photo_errors:
                 messages.warning(request, error)
             if extra:
@@ -133,6 +154,8 @@ def product_create_view(request):
                     "Nacrt je sačuvan. Dodajte fotografije da biste ga objavili.",
                 )
             return redirect("product_seller_detail", product_id=product.id)
+        if missing:
+            photo_errors.insert(0, missing_message(missing))
     else:
         form = ProductForm(initial=_last_used_defaults(seller))
 
@@ -269,10 +292,11 @@ def photo_upload_view(request):
         return JsonResponse({"error": "Morate biti prodavac."}, status=403)
 
     product = None
-    if request.POST.get("product"):
-        product = get_object_or_404(
-            Product, id=request.POST.get("product"), seller=seller
-        )
+    if "product" in request.POST:
+        product_id = request.POST["product"]
+        if not product_id.isdigit():
+            raise Http404("No such product.")
+        product = get_object_or_404(Product, id=int(product_id), seller=seller)
     file = request.FILES.get("photo")
     if file is None:
         return JsonResponse({"error": "Izaberite fotografiju."}, status=400)
@@ -292,8 +316,7 @@ def photo_upload_discard_view(request, upload_id):
     if not seller:
         return JsonResponse({"error": "Morate biti prodavac."}, status=403)
     upload = get_object_or_404(PhotoUpload, id=upload_id, seller=seller)
-    upload.delete_files()
-    upload.delete()
+    upload.delete()  # its files go with it (products.signals)
     return JsonResponse({"status": "success"})
 
 
@@ -385,6 +408,9 @@ def product_image_reorder_view(request, product_id):
         image_ids = data.get("image_ids", [])
 
         with transaction.atomic():
+            # Reorders of one listing take turns; the browser sends them one
+            # at a time too, so the last order the seller made wins
+            Product.objects.select_for_update().filter(pk=product.pk).first()
             for order, image_id in enumerate(image_ids):
                 ProductImage.objects.filter(id=image_id, product=product).update(
                     order=order

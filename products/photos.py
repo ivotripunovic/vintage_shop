@@ -13,6 +13,8 @@ from django.core.exceptions import ValidationError
 from django.db import models, transaction
 from django.urls import reverse
 
+from sellers.models import Seller
+
 from .forms import (
     MAX_PENDING_UPLOADS,
     MAX_PHOTOS,
@@ -33,6 +35,9 @@ class PhotoItem:
     thumb_url: str
     remove_url: str
     tips: list = field(default_factory=list)
+    # Shown only while the photo is first: it depends on the position, which
+    # the seller changes in the browser
+    cover_tip: str = ""
 
     def as_json(self):
         return {
@@ -41,6 +46,7 @@ class PhotoItem:
             "thumb_url": self.thumb_url,
             "remove_url": self.remove_url,
             "tips": self.tips,
+            "cover_tip": self.cover_tip,
         }
 
 
@@ -49,22 +55,46 @@ def photo_item(photo):
         kind, remove_url = "upload", reverse("photo_upload_discard", args=[photo.id])
     else:
         kind, remove_url = "image", reverse("product_image_delete", args=[photo.id])
-    tips = [tip.message for tip in check_photo(photo)]
-    return PhotoItem(photo.id, kind, photo.thumb_url, remove_url, tips)
+    tips, cover_tip = [], ""
+    for tip in check_photo(photo, cover=True):
+        if tip.check == "cover":
+            cover_tip = tip.message
+        else:
+            tips.append(tip.message)
+    return PhotoItem(photo.id, kind, photo.thumb_url, remove_url, tips, cover_tip)
 
 
-def pending_uploads(seller, raw_ids):
-    """The seller's uploads for the posted ids, in the posted order."""
+def posted_ids(raw_ids):
+    """Positive integer ids from the form, without duplicates, in order."""
     ids = []
     for raw in raw_ids:
         try:
             value = int(raw)
         except (TypeError, ValueError):
             continue
-        if value not in ids:
+        if value > 0 and value not in ids:
             ids.append(value)
-    found = {u.id: u for u in PhotoUpload.objects.filter(seller=seller, id__in=ids)}
+    return ids
+
+
+def pending_uploads(seller, ids, lock=False):
+    """
+    The seller's uploads with these ids, in that order. With lock the rows
+    are locked until the transaction ends, so two saves of one form can't
+    both attach them.
+    """
+    uploads = PhotoUpload.objects.filter(seller=seller, id__in=ids)
+    if lock:
+        uploads = uploads.select_for_update()
+    found = {upload.id: upload for upload in uploads}
     return [found[i] for i in ids if i in found]
+
+
+def missing_message(count):
+    return (
+        f"Fotografija koje više nema: {count}. Otpremljene fotografije čuvamo "
+        "24 sata dok se oglas ne sačuva; dodajte ih ponovo."
+    )
 
 
 def room_for_photo(seller, product=None):
@@ -98,15 +128,18 @@ def add_photo(seller, file, product=None):
             f"{file.name}: fotografiju nije moguće obraditi (prevelika ili "
             "oštećena). Pokušajte sa manjom fotografijom."
         )
-    if product is None:
-        photo.save()
-        return photo
-
     with transaction.atomic():
-        # Parallel uploads to one listing take turns, so orders don't collide
-        product = Product.objects.select_for_update().get(pk=product.pk)
-        problem = room_for_photo(seller, product)
-        if not problem:
+        # Parallel uploads take turns on the seller (pending cap) or the
+        # listing (photo cap and order), so the checks hold
+        if product is None:
+            seller = Seller.objects.select_for_update().get(pk=seller.pk)
+            problem = room_for_photo(seller)
+            if not problem:
+                photo.save()
+        else:
+            product = Product.objects.select_for_update().get(pk=product.pk)
+            problem = room_for_photo(seller, product)
+        if product is not None and not problem:
             last = product.images.aggregate(last=models.Max("order"))["last"]
             photo.product = product
             photo.order = 0 if last is None else last + 1
@@ -114,7 +147,7 @@ def add_photo(seller, file, product=None):
             photo.save()
     if problem:
         # Outside the atomic block, so the cleanup isn't rolled back with it
-        photo.delete_files()
+        photo.discard_unsaved()
         raise ValidationError(problem)
     return photo
 

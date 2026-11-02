@@ -64,6 +64,9 @@
             li.querySelector("[data-action=left]").disabled = index === 0;
             li.querySelector("[data-action=right]").disabled = index === list.length - 1;
             li.setAttribute("aria-label", index === 0 ? "Naslovna fotografija" : "Fotografija " + (index + 1));
+            // "Cropped to a square in search" only matters for the cover
+            var coverTip = li.querySelector(".photo-cover-tip");
+            coverTip.classList.toggle("hidden", index !== 0 || !coverTip.textContent);
         });
         countEl.textContent = list.length;
         drop.classList.toggle("hidden", list.length >= maxPhotos);
@@ -79,13 +82,28 @@
         return xhr;
     }
 
+    // One reorder request at a time, always with the latest order: two in
+    // flight could reach the server in the wrong order and undo a move
+    var orderSending = false;
+    var orderChanged = false;
+
     function saveOrder() {
         // A new listing posts its order with the form (hidden inputs)
         if (!productId) return;
+        if (orderSending) {
+            orderChanged = true;
+            return;
+        }
         var ids = items()
             .filter(function (li) { return li.dataset.kind === "image"; })
             .map(function (li) { return Number(li.dataset.id); });
-        post(config.reorderUrl, JSON.stringify({ image_ids: ids }), "application/json");
+        orderSending = true;
+        orderChanged = false;
+        var xhr = post(config.reorderUrl, JSON.stringify({ image_ids: ids }), "application/json");
+        xhr.onloadend = function () {
+            orderSending = false;
+            if (orderChanged) saveOrder();
+        };
     }
 
     // --- Resizing ---------------------------------------------------------
@@ -192,6 +210,7 @@
             hidden.setAttribute("form", "product-form");
             li.insertBefore(hidden, li.firstChild);
         }
+        li.querySelector(".photo-cover-tip").textContent = photo.cover_tip || "";
         var tips = li.querySelector(".photo-tips");
         tips.innerHTML = "";
         photo.tips.forEach(function (text) {
@@ -200,6 +219,7 @@
             tips.appendChild(item);
         });
         delete li._file;
+        refresh();  // shows the cover tip if this photo is first
         // Added at the end on the server; keep any reordering done meanwhile
         saveOrder();
     }
@@ -219,7 +239,6 @@
             if (productId) data.append("product", productId);
 
             var xhr = new XMLHttpRequest();
-            li._xhr = xhr;
             xhr.open("POST", config.uploadUrl);
             xhr.setRequestHeader("X-CSRFToken", csrf);
             xhr.setRequestHeader("X-Requested-With", "XMLHttpRequest");
@@ -229,7 +248,10 @@
             xhr.onload = function () {
                 var response = null;
                 try { response = JSON.parse(xhr.responseText); } catch (e) { /* not JSON */ }
-                if (xhr.status === 201 && response) {
+                if (xhr.status === 201 && response && !li.isConnected) {
+                    // Removed while uploading: the server already has it
+                    post(response.remove_url);
+                } else if (xhr.status === 201 && response) {
                     ready(li, response);
                 } else if (xhr.status === 413) {
                     fail(li, "Fotografija je prevelika za otpremanje.");
@@ -242,7 +264,6 @@
                 fail(li, "Veza je prekinuta.");
                 done();
             };
-            xhr.onabort = done;
             xhr.send(data);
         });
     }
@@ -250,7 +271,8 @@
     // --- Actions on a photo ----------------------------------------------
 
     function remove(li) {
-        if (li._xhr && li._file) li._xhr.abort();
+        // An upload under way isn't aborted: the server may already have
+        // stored it. It finishes, sees the photo is gone and removes it.
         if (li.dataset.id && li.dataset.removeUrl) {
             if (li.dataset.kind === "image" && !window.confirm("Obrisati ovu fotografiju?")) return;
             post(li.dataset.removeUrl);
@@ -362,8 +384,23 @@
             event.stopImmediatePropagation();
             showError("Sačekajte da se fotografije otpreme, pa sačuvajte.");
             section.scrollIntoView({ behavior: "smooth" });
+            return;
         }
+        // No second submit from a double click. After this tick, so the
+        // clicked button's name/value is still sent.
+        setTimeout(function () {
+            Array.prototype.forEach.call(form.querySelectorAll("button[type=submit]"), function (button) {
+                button.disabled = true;
+            });
+        }, 0);
     }, true);
+
+    // Back to this page from the browser cache: the buttons work again
+    window.addEventListener("pageshow", function () {
+        Array.prototype.forEach.call(form.querySelectorAll("button[type=submit]"), function (button) {
+            button.disabled = false;
+        });
+    });
 
     window.addEventListener("beforeunload", function (event) {
         if (busy()) {
