@@ -10,6 +10,7 @@ Safe to run again: photos that already have a thumbnail are skipped unless
 """
 
 from django.core.management.base import BaseCommand
+from django.db import transaction
 
 from products.models import ProductImage
 
@@ -37,18 +38,23 @@ class Command(BaseCommand):
 
         done = failed = 0
         for image in images.iterator():
+            fields = ["thumbnail", "width", "height", "brightness", "sharpness"]
+            if not keep_original:
+                fields.append("image")
             try:
-                with image.image.open("rb"):
-                    ok = image.process(keep_original=keep_original)
-            except FileNotFoundError:
+                # One photo at a time: a failure leaves the others done, and
+                # replaced files are only deleted after the row is saved
+                with transaction.atomic():
+                    with image.image.open("rb"):
+                        ok = image.process(keep_original=keep_original)
+                    if ok:
+                        image.save(update_fields=fields)
+            except Exception as error:  # noqa: BLE001 - keep going, report it
                 ok = False
+                self.stderr.write(f"Error on photo {image.id}: {error!r}")
             if not ok:
                 failed += 1
                 self.stderr.write(f"Skipped photo {image.id}: {image.image.name}")
                 continue
-            fields = ["thumbnail", "width", "height", "brightness", "sharpness"]
-            if not keep_original:
-                fields.append("image")
-            image.save(update_fields=fields)
             done += 1
         self.stdout.write(f"Processed {done} photo(s), skipped {failed}.")

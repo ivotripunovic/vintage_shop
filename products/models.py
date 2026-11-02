@@ -6,7 +6,7 @@ from datetime import timedelta
 
 from django.conf import settings
 from django.core.validators import MinValueValidator
-from django.db import models
+from django.db import models, transaction
 from django.utils import timezone
 
 from core.models import SoftDeleteModel, TimeStampedModel
@@ -279,27 +279,56 @@ class ProductImage(TimeStampedModel):
         # Only a newly assigned file is processed; reorders and alt text
         # changes save without touching the photo
         if self.image and not self.image._committed:
+            if self.pk:
+                # Replacing the photo of an existing row: its old files go
+                old = ProductImage.objects.filter(pk=self.pk).values_list(
+                    "image", "thumbnail"
+                )
+                for name in old.first() or ():
+                    self._mark_stale(name)
+                self.thumbnail = ""
+                self.width = self.height = self.brightness = self.sharpness = None
             self.process(keep_original=False)
         super().save(*args, **kwargs)
+        self._delete_stale_files()
 
     def process(self, keep_original=False):
-        """Rotate, strip, resize and thumbnail the photo; measure its quality."""
+        """
+        Rotate, strip, resize and thumbnail the photo; measure its quality.
+
+        Replaced files are only deleted once the row is saved and committed,
+        so a failed save never leaves the row pointing at missing files.
+        """
         from .images import process_photo
 
         result = process_photo(self.image, self.image.name, keep_original)
         if result is None:
             return False
         if result.image is not None:
-            old_name = self.image.name if self.image._committed else None
+            if self.image._committed:
+                self._mark_stale(self.image.name)
             self.image.save(result.image.name, result.image, save=False)
-            if old_name and old_name != self.image.name:
-                self.image.storage.delete(old_name)
-        if self.thumbnail:
-            self.thumbnail.delete(save=False)
+        self._mark_stale(self.thumbnail.name)
         self.thumbnail.save(result.thumbnail.name, result.thumbnail, save=False)
         self.width, self.height = result.width, result.height
         self.brightness, self.sharpness = result.brightness, result.sharpness
         return True
+
+    def _mark_stale(self, name):
+        if name:
+            self.__dict__.setdefault("_stale_files", set()).add(name)
+
+    def _delete_stale_files(self):
+        stale = self.__dict__.pop("_stale_files", set())
+        stale -= {self.image.name, self.thumbnail.name}
+        if stale:
+            storage = self.image.storage
+
+            def delete():
+                for name in stale:
+                    storage.delete(name)
+
+            transaction.on_commit(delete)
 
     @property
     def thumb_url(self):

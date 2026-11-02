@@ -7,6 +7,7 @@ import os
 import shutil
 import tempfile
 from io import BytesIO, StringIO
+from unittest import mock
 
 from django.core.files.base import ContentFile
 from django.core.files.uploadedfile import SimpleUploadedFile
@@ -15,9 +16,9 @@ from django.test import SimpleTestCase, TestCase, override_settings
 from django.urls import reverse
 from PIL import Image, ImageDraw, ImageFilter
 
-from products.images import MAX_EDGE, THUMB_EDGE
+from products.images import MAX_EDGE, MAX_PIXELS, THUMB_EDGE, _flatten
 from products.models import Product, ProductImage
-from products.quality import CHECKS, listing_report, photo_tips, text_tips
+from products.quality import CHECKS, check_photos, check_text, listing_report
 from sellers.models import Seller
 from users.models import User
 
@@ -137,6 +138,66 @@ class PhotoProcessingTests(SellerMixin, TestCase):
         self.assertGreater(sharp.sharpness, 10 * blurry.sharpness)
         self.assertAlmostEqual(sharp.brightness, 127, delta=20)
 
+    def test_xmp_and_comment_metadata_are_stripped(self):
+        # GPS can travel in XMP instead of EXIF; such a JPEG must not be
+        # stored as uploaded
+        img = Image.open(BytesIO(photo_bytes(size=(800, 600))))
+        buffer = BytesIO()
+        xmp = b'<x:xmpmeta><rdf:Description exif:GPSLatitude="44,49N"/></x:xmpmeta>'
+        img.save(buffer, format="JPEG", xmp=xmp, comment=b"Ulica 12, Beograd")
+        image = self.add(SimpleUploadedFile("xmp.jpg", buffer.getvalue()))
+        with open(image.image.path, "rb") as stored:
+            data = stored.read()
+        self.assertNotIn(b"GPSLatitude", data)
+        self.assertNotIn(b"Beograd", data)
+
+    def test_colour_profile_is_kept(self):
+        from PIL import ImageCms
+
+        icc = ImageCms.ImageCmsProfile(ImageCms.createProfile("sRGB")).tobytes()
+        img = Image.open(BytesIO(photo_bytes(size=(3000, 2000))))
+        buffer = BytesIO()
+        img.save(buffer, format="JPEG", icc_profile=icc)
+        image = self.add(SimpleUploadedFile("p3.jpg", buffer.getvalue()))
+        for field in (image.image, image.thumbnail):
+            with Image.open(field.path) as stored:
+                self.assertEqual(stored.info.get("icc_profile"), icc)
+
+    def test_transparent_and_16_bit_images_flatten_sensibly(self):
+        # PNG can't store "PA"; it only appears in memory, so test it directly
+        for mode in ("LA", "PA"):
+            clear = Image.new("RGBA", (40, 40), (10, 20, 30, 0)).convert(mode)
+            flat = _flatten(clear)
+            self.assertEqual(flat.getpixel((0, 0)), (255, 255, 255), mode)
+
+        transparent = BytesIO()
+        Image.new("LA", (400, 400), (0, 0)).save(transparent, format="PNG")
+        image = self.add(SimpleUploadedFile("la.png", transparent.getvalue()))
+        self.assertGreater(image.brightness, 250)  # white, not black
+
+        gray16 = BytesIO()
+        Image.new("I;16", (400, 400), 0x8000).save(gray16, format="PNG")  # mid gray
+        image = self.add(SimpleUploadedFile("g16.png", gray16.getvalue()))
+        self.assertAlmostEqual(image.brightness, 128, delta=2)
+
+    def test_huge_png_is_kept_unprocessed(self):
+        side = int(MAX_PIXELS**0.5) + 10
+        buffer = BytesIO()
+        Image.new("1", (side, side)).save(buffer, format="PNG")
+        image = self.add(SimpleUploadedFile("huge.png", buffer.getvalue()))
+        self.assertFalse(image.thumbnail)
+
+    def test_replacing_photo_deletes_old_files_after_commit(self):
+        image = self.add(upload())
+        old = [image.image.path, image.thumbnail.path]
+        image.image = upload(name="new.jpg", size=(800, 600))
+        with self.captureOnCommitCallbacks(execute=True):
+            image.save()
+        self.assertEqual((image.width, image.height), (800, 600))
+        for path in old:
+            self.assertFalse(os.path.exists(path))
+        self.assertTrue(os.path.exists(image.thumbnail.path))
+
     def test_deleting_photo_removes_files(self):
         image = self.add(upload())
         paths = [image.image.path, image.thumbnail.path]
@@ -176,11 +237,22 @@ class BackfillPhotosTests(SellerMixin, TestCase):
 
     def test_rewrite_originals_resizes_and_deletes_old_file(self):
         old_path = self.image.image.path
-        self.run_command("--rewrite-originals")
+        with self.captureOnCommitCallbacks(execute=True):
+            self.run_command("--rewrite-originals")
         with Image.open(self.image.image.path) as stored:
             self.assertEqual(stored.size, (1333, MAX_EDGE))
             self.assertEqual(len(stored.getexif()), 0)
         self.assertFalse(os.path.exists(old_path))
+
+    def test_error_on_one_photo_skips_it_and_keeps_its_files(self):
+        old_path = self.image.image.path
+        with mock.patch.object(
+            ProductImage, "save", side_effect=RuntimeError("disk full")
+        ), self.captureOnCommitCallbacks(execute=True):
+            out = self.run_command("--rewrite-originals")
+        self.assertIn("skipped 1", out)
+        self.assertTrue(os.path.exists(old_path))
+        self.assertFalse(self.image.thumbnail)
 
     def test_missing_file_is_skipped(self):
         self.image.image.storage.delete(self.image.image.name)
@@ -204,16 +276,16 @@ class QualityTipsTests(SimpleTestCase):
         return [Photo(id=i) for i in range(1, 4)]
 
     def test_good_photos_get_no_tips(self):
-        self.assertEqual(photo_tips(self.good_photos()), [])
+        self.assertEqual(check_photos(self.good_photos()), [])
 
     def test_too_few_photos(self):
-        self.assertEqual(checks(photo_tips([Photo()])), ["count"])
-        self.assertIn("Dodajte fotografije", photo_tips([])[0].message)
+        self.assertEqual(checks(check_photos([Photo()])), ["count"])
+        self.assertIn("Dodajte fotografije", check_photos([])[0].message)
 
     def test_bad_photo_gets_tips_tied_to_it(self):
         photos = self.good_photos()
         photos[1] = Photo(id=2, width=640, height=480, brightness=20, sharpness=40)
-        tips = photo_tips(photos)
+        tips = check_photos(photos)
         self.assertEqual(checks(tips), ["light", "resolution", "sharpness"])
         self.assertTrue(all(tip.image_id == 2 for tip in tips))
         self.assertTrue(all(tip.message.startswith("Fotografija 2:") for tip in tips))
@@ -221,28 +293,30 @@ class QualityTipsTests(SimpleTestCase):
     def test_overexposed_photo(self):
         photos = self.good_photos()
         photos[0] = Photo(id=1, brightness=250)
-        self.assertIn("Naslovna fotografija: presvetla", photo_tips(photos)[0].message)
+        self.assertIn(
+            "Naslovna fotografija: presvetla", check_photos(photos)[0].message
+        )
 
     def test_long_cover_gets_crop_tip_but_later_photos_do_not(self):
         photos = self.good_photos()
         photos[2] = Photo(id=3, width=2000, height=800)
-        self.assertEqual(photo_tips(photos), [])
+        self.assertEqual(check_photos(photos), [])
         photos[0] = Photo(id=1, width=2000, height=800)
-        self.assertEqual(checks(photo_tips(photos)), ["cover"])
+        self.assertEqual(checks(check_photos(photos)), ["cover"])
 
     def test_unmeasured_photos_are_skipped(self):
         photos = [
             Photo(id=i, width=None, brightness=None, sharpness=None) for i in (1, 2, 3)
         ]
-        self.assertEqual(photo_tips(photos), [])
+        self.assertEqual(check_photos(photos), [])
 
     def test_good_text_gets_no_tips(self):
-        self.assertEqual(text_tips(GOOD_TITLE, GOOD_DESCRIPTION), [])
+        self.assertEqual(check_text(GOOD_TITLE, GOOD_DESCRIPTION), [])
 
     def test_weak_text(self):
-        tips = text_tips("JAKNA KOZNA ODLICNA", "Kao nova.")
+        tips = check_text("JAKNA KOZNA ODLICNA", "Kao nova.")
         self.assertEqual(checks(tips), ["capitals", "description", "measurements"])
-        self.assertEqual(checks(text_tips("Jakna", GOOD_DESCRIPTION)), ["title"])
+        self.assertEqual(checks(check_text("Jakna", GOOD_DESCRIPTION)), ["title"])
 
     def test_report_counts_each_check_once(self):
         product = Product(title="Jakna", description=GOOD_DESCRIPTION)

@@ -67,7 +67,7 @@ class Report:
         return [tip for tip in self.tips if tip.image_id == image_id]
 
 
-def photo_tips(images):
+def check_photos(images):
     """Tips for the ordered photos of one listing."""
     tips = []
     if len(images) < MIN_PHOTOS:
@@ -132,7 +132,7 @@ def photo_tips(images):
     return tips
 
 
-def text_tips(title, description):
+def check_text(title, description):
     """Tips for the listing title and description."""
     tips = []
     title = (title or "").strip()
@@ -177,4 +177,4 @@ def text_tips(title, description):
 def listing_report(product, images=None):
     """Quality report for a saved product; images default to its photos."""
     images = list(product.images.all() if images is None else images)
-    return Report(photo_tips(images) + text_tips(product.title, product.description))
+    return Report(check_photos(images) + check_text(product.title, product.description))
