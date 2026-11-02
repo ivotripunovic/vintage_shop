@@ -129,37 +129,51 @@
         });
 
         (function () {
-            var lastY = 0;
+            var THRESHOLD = 10;   // px: ignore tiny moves and jitter
+            var SETTLE_MS = 350;  // the category bar transition is 0.3s
+            var lastY = window.scrollY;
+            var lockedUntil = 0;
             var ticking = false;
 
+            function setHidden(el, cls, hidden) {
+                if (el.classList.contains(cls) === hidden) return;
+                el.classList.toggle(cls, hidden);
+                // Collapsing the category bar changes the header height, and the
+                // browser adjusts scrollY to compensate (scroll anchoring). Ignore
+                // scrolling until that settles, or the adjustment reads as the
+                // user scrolling the other way and the bar flickers (#53).
+                lockedUntil = performance.now() + SETTLE_MS;
+            }
+
             window.addEventListener('scroll', function () {
-                if (!ticking) {
-                    requestAnimationFrame(function () {
-                        var currentY = window.scrollY;
-                        var isMobile = window.innerWidth < 768;
-                        var header = document.querySelector('header');
-                        var nav = document.getElementById('nav-categories');
-                        var mobileMenuOpen = !document.getElementById('mobile-menu').classList.contains('hidden');
-
-                        if (isMobile && header && !mobileMenuOpen) {
-                            if (currentY > lastY && currentY > 80) {
-                                header.classList.add('header-hidden');
-                            } else if (currentY < lastY) {
-                                header.classList.remove('header-hidden');
-                            }
-                        } else if (!isMobile && nav) {
-                            if (currentY > lastY && currentY > 60) {
-                                nav.classList.add('nav-hidden');
-                            } else if (currentY < lastY) {
-                                nav.classList.remove('nav-hidden');
-                            }
-                        }
-
+                if (ticking) return;
+                ticking = true;
+                requestAnimationFrame(function () {
+                    ticking = false;
+                    var currentY = window.scrollY;
+                    if (performance.now() < lockedUntil) {
                         lastY = currentY;
-                        ticking = false;
-                    });
-                    ticking = true;
-                }
+                        return;
+                    }
+                    var delta = currentY - lastY;
+                    // Keep lastY so slow scrolling still adds up past the threshold
+                    if (Math.abs(delta) < THRESHOLD) return;
+
+                    var isMobile = window.innerWidth < 768;
+                    var header = document.querySelector('header');
+                    var nav = document.getElementById('nav-categories');
+                    var mobileMenu = document.getElementById('mobile-menu');
+                    var mobileMenuOpen = mobileMenu && !mobileMenu.classList.contains('hidden');
+
+                    if (isMobile && header && !mobileMenuOpen) {
+                        if (delta > 0 && currentY > 80) setHidden(header, 'header-hidden', true);
+                        else if (delta < 0) setHidden(header, 'header-hidden', false);
+                    } else if (!isMobile && nav) {
+                        if (delta > 0 && currentY > 60) setHidden(nav, 'nav-hidden', true);
+                        else if (delta < 0) setHidden(nav, 'nav-hidden', false);
+                    }
+                    lastY = currentY;
+                });
             }, { passive: true });
         })();
     </script>
