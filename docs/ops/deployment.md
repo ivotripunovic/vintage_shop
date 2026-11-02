@@ -136,6 +136,61 @@ sudo chmod +x /var/repo/vintage_shop.git/hooks/post-receive
 
 ---
 
+## One-time steps after a deploy
+
+The hook runs migrations and `collectstatic`, but some changes need a step by
+hand on a server that already exists. Each one is safe to run again. Run the
+`manage.py` commands as the app user:
+
+```bash
+sudo -u django bash -c "cd /srv/django/apps/vintage_shop && venv/bin/python manage.py <command>"
+```
+
+### Product photo processing (#44, November 2026)
+
+New photos are processed on upload: rotated upright, metadata stripped (phone
+photos carry GPS), capped at 2000px, with a thumbnail for grids. Photos
+uploaded before that need a backfill.
+
+1. **Thumbnails and quality measurements** for the existing photos. The
+   original files stay as they are:
+
+   ```bash
+   manage.py backfill_photos
+   ```
+
+   It prints `Processed N photo(s), skipped M.`; skipped photos (missing or
+   unreadable files) are listed on stderr and keep showing the full-size
+   image. Run it again any time: photos that already have a thumbnail are
+   skipped.
+
+2. **Optional: rewrite the old originals** to resize them and remove their
+   GPS and other metadata. This replaces the files and deletes the old ones,
+   so copy `media/` first. Use a copy of its own: the nightly media mirror
+   ([backup.md](backup.md)) runs `rsync --delete` and would drop the old
+   originals the next night.
+
+   ```bash
+   sudo cp -a /srv/django/apps/vintage_shop/media /var/backups/vintage_shop/media-before-photo-rewrite
+   manage.py backfill_photos --all --rewrite-originals
+   ```
+
+   Check a few listings, then remove the copy:
+   `sudo rm -rf /var/backups/vintage_shop/media-before-photo-rewrite`.
+
+3. **Install the daily purge** of photos uploaded on listing forms that were
+   never saved (fresh servers get it from `setup.sh`):
+
+   ```bash
+   sudo install -m 644 /srv/django/apps/vintage_shop/deploy/purge-photo-uploads.cron /etc/cron.d/purge-photo-uploads
+   ```
+
+   It runs at 03:40 as `django`, deletes uploads older than 24 hours with
+   their files, and logs to `logs/purge-photo-uploads.log`. To run it once by
+   hand: `manage.py purge_photo_uploads`.
+
+---
+
 ## Files
 
 | File | Purpose |
@@ -147,6 +202,8 @@ sudo chmod +x /var/repo/vintage_shop.git/hooks/post-receive
 | `deploy/nginx.conf` | Nginx site configuration |
 | `deploy/vintage_shop.service` | Systemd service unit |
 | `deploy/backup-db.sh` | Nightly database backup, see [backup.md](backup.md) |
+| `deploy/expire-listings.cron` | Hourly: take down listings past their expiry date |
+| `deploy/purge-photo-uploads.cron` | Daily: delete photos from listing forms that were never saved |
 
 
 ## Deploying manualy
