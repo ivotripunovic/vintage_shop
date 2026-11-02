@@ -17,6 +17,19 @@ from .forms import BulkProductImageForm, ProductForm, ProductImageForm
 from .models import Product, ProductImage
 from .popularity import recent_viewer_count, record_view
 
+# Statuses a seller can move to published / archived from the edit form
+PUBLISHABLE_STATUSES = ("draft", "expired", "archived")
+ARCHIVABLE_STATUSES = ("draft", "published", "expired")
+
+
+def publish_error(seller, product):
+    """Why the product can't be published right now, or None if it can."""
+    if not product.images.exists():
+        return "Dodajte bar jednu fotografiju pre objavljivanja."
+    if not seller.can_publish(product):
+        return seller.listing_limit_message()
+    return None
+
 
 def _get_seller_or_403(request):
     """Helper to get seller profile or return 403."""
@@ -41,16 +54,19 @@ def product_create_view(request):
         return redirect("seller_register")
 
     if request.method == "POST":
-        form = ProductForm(request.POST, seller=seller)
+        form = ProductForm(request.POST)
         if form.is_valid():
             product = form.save(commit=False)
             product.seller = seller
+            product.status = "draft"
             product.save()
 
-            messages.success(request, "Product created successfully. Now add images.")
+            messages.success(
+                request, "Nacrt je sačuvan. Dodajte fotografije da biste ga objavili."
+            )
             return redirect("product_images", product_id=product.id)
     else:
-        form = ProductForm(seller=seller)
+        form = ProductForm()
 
     context = {
         "form": form,
@@ -73,18 +89,36 @@ def product_edit_view(request, product_id):
     product = get_object_or_404(Product, id=product_id, seller=seller)
 
     if request.method == "POST":
-        form = ProductForm(request.POST, instance=product, seller=seller)
+        form = ProductForm(request.POST, instance=product)
         if form.is_valid():
             product = form.save()
-            messages.success(request, "Proizvod je uspešno ažuriran.")
+            action = request.POST.get("action")
+
+            if action == "publish" and product.status in PUBLISHABLE_STATUSES:
+                error = publish_error(seller, product)
+                if error:
+                    messages.error(request, f"Izmene su sačuvane, ali: {error}")
+                    if not product.images.exists():
+                        return redirect("product_images", product_id=product.id)
+                    return redirect("product_seller_detail", product_id=product.id)
+                product.publish()
+                messages.success(request, f'"{product.title}" je objavljen.')
+            elif action == "archive" and product.status in ARCHIVABLE_STATUSES:
+                product.status = "archived"
+                product.save()
+                messages.success(request, f'"{product.title}" je arhiviran.')
+            else:
+                messages.success(request, "Proizvod je uspešno ažuriran.")
             return redirect("product_seller_detail", product_id=product.id)
     else:
-        form = ProductForm(instance=product, seller=seller)
+        form = ProductForm(instance=product)
 
     context = {
         "form": form,
         "product": product,
         "page_title": f"Izmeni: {product.title}",
+        "can_publish_action": product.status in PUBLISHABLE_STATUSES,
+        "can_archive_action": product.status in ARCHIVABLE_STATUSES,
     }
 
     return render(request, "products/product_form.html", context)
@@ -253,13 +287,11 @@ def product_publish_view(request, product_id):
 
     product = get_object_or_404(Product, id=product_id, seller=seller)
 
-    # Check if product has at least one image
-    if not product.images.exists():
-        messages.error(request, "Please add at least one image before publishing.")
-        return redirect("product_images", product_id=product.id)
-
-    if not seller.can_publish(product):
-        messages.error(request, seller.listing_limit_message())
+    error = publish_error(seller, product)
+    if error:
+        messages.error(request, error)
+        if not product.images.exists():
+            return redirect("product_images", product_id=product.id)
         return redirect("seller_products_list")
 
     product.publish()
