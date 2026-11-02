@@ -2,6 +2,9 @@
 Forms for product management (CRUD operations).
 """
 
+import re
+from decimal import Decimal
+
 from django import forms
 from django.core.exceptions import ValidationError
 
@@ -12,6 +15,25 @@ MB = 1024 * 1024
 # (client_max_body_size in deploy/nginx.conf) before Django sees them.
 MAX_IMAGE_MB = 10
 MAX_UPLOAD_MB = 19
+
+# Whole dinars, optionally grouped by thousands (4500, 4.500, 4 500), with
+# zero decimals allowed out of habit (4500,00); 4500,50 is rejected.
+PRICE_PATTERN = re.compile(r"^(?P<whole>\d+|\d{1,3}(?:[. ]\d{3})+)(?:[.,]0{1,2})?$")
+MAX_PRICE = 99_999_999  # Product.price has 10 digits, 2 of them decimals
+
+
+def format_rsd(value):
+    """Format a whole-dinar amount with dots between thousands: 4.500."""
+    return f"{int(value):,}".replace(",", ".")
+
+
+class PriceInput(forms.TextInput):
+    """Text input showing whole dinars grouped by thousands."""
+
+    def format_value(self, value):
+        if isinstance(value, (int, Decimal)):
+            return format_rsd(value)
+        return super().format_value(value)
 
 
 class ProductForm(forms.ModelForm):
@@ -42,12 +64,12 @@ class ProductForm(forms.ModelForm):
                     "rows": 6,
                 }
             ),
-            "price": forms.NumberInput(
+            "price": PriceInput(
                 attrs={
                     "class": "w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500",
-                    "placeholder": "0.00",
-                    "min": "0.01",
-                    "step": "0.01",
+                    "placeholder": "npr. 4.500",
+                    "inputmode": "numeric",
+                    "autocomplete": "off",
                 }
             ),
             "category": forms.Select(
@@ -55,15 +77,11 @@ class ProductForm(forms.ModelForm):
                     "class": "w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 }
             ),
-            "condition": forms.Select(
-                attrs={
-                    "class": "w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                }
-            ),
+            # Rendered as cards with descriptions in product_form.html
+            "condition": forms.RadioSelect,
             "stock": forms.NumberInput(
                 attrs={
                     "class": "w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500",
-                    "placeholder": "1",
                     "min": "0",
                 }
             ),
@@ -71,6 +89,28 @@ class ProductForm(forms.ModelForm):
 
     # Status is not edited here: the views save drafts and publish through
     # publish_error(), so the photo and listing limit rules always apply.
+
+    # Whole dinars as text, so sellers can type thousands separators
+    price = forms.CharField(label="Cena (RSD)", widget=Meta.widgets["price"])
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for name, message in [
+            ("title", "Naziv proizvoda je obavezan."),
+            ("description", "Opis proizvoda je obavezan."),
+            ("price", "Unesite cenu."),
+        ]:
+            self.fields[name].error_messages["required"] = message
+        # Buyers browse and filter by both, so a listing needs them
+        self.fields["category"].required = True
+        self.fields["category"].empty_label = "Izaberite kategoriju"
+        self.fields["category"].error_messages["required"] = "Izaberite kategoriju."
+        self.fields["condition"].required = True
+        self.fields["condition"].empty_label = None
+        self.fields["condition"].error_messages["required"] = "Izaberite stanje."
+        self.fields["stock"].required = False
+        if not self.instance.pk:
+            self.fields["stock"].initial = 1
 
     def clean_title(self):
         """Validate title is not empty."""
@@ -86,14 +126,24 @@ class ProductForm(forms.ModelForm):
         return description.strip()
 
     def clean_price(self):
-        price = self.cleaned_data.get("price")
-        if price and price <= 0:
+        raw = (self.cleaned_data.get("price") or "").strip()
+        match = PRICE_PATTERN.match(raw)
+        if not match:
+            raise ValidationError("Unesite cenu u celim dinarima, npr. 4.500.")
+        price = int(re.sub(r"[. ]", "", match["whole"]))
+        if price <= 0:
             raise ValidationError("Cena mora biti veća od 0.")
-        return price
+        if price > MAX_PRICE:
+            raise ValidationError(
+                f"Cena može biti najviše {format_rsd(MAX_PRICE)} RSD."
+            )
+        return Decimal(price)
 
     def clean_stock(self):
         stock = self.cleaned_data.get("stock")
-        if stock is not None and stock < 0:
+        if stock is None:
+            return 1  # the field sits in a collapsed section; one item by default
+        if stock < 0:
             raise ValidationError("Zalihe ne mogu biti negativne.")
         return stock
 

@@ -2,6 +2,7 @@
 View tests for product view counting, wishlist counts and recent viewers.
 """
 
+from decimal import Decimal
 from unittest import mock
 
 from django.core.cache import cache
@@ -11,7 +12,13 @@ from django.urls import reverse
 
 from favourites.models import WishlistItem
 from products.forms import MAX_UPLOAD_MB, MB
-from products.models import Product, ProductImage, ProductView
+from products.models import (
+    Product,
+    ProductCategory,
+    ProductCondition,
+    ProductImage,
+    ProductView,
+)
 from products.popularity import (
     RECENT_VIEWER_WINDOW,
     recent_viewer_count,
@@ -175,11 +182,18 @@ class SellerListingFlowTests(TestCase):
         )
 
     def _form_data(self, **overrides):
+        parent = ProductCategory.objects.get_or_create(name="Kuća", slug="kuca")[0]
+        category = ProductCategory.objects.get_or_create(
+            name="Nameštaj", slug="namestaj", parent=parent
+        )[0]
+        condition = ProductCondition.objects.get_or_create(name="Dobro")[0]
         data = {
             "title": "Old Chair",
             "description": "A chair",
             "price": "100",
             "stock": "1",
+            "category": category.id,
+            "condition": condition.id,
         }
         data.update(overrides)
         return data
@@ -211,9 +225,7 @@ class SellerListingFlowTests(TestCase):
         response = self._edit(title="Wooden Chair", action="publish")
         self.assertEqual(self.draft.status, "draft")
         self.assertEqual(self.draft.title, "Wooden Chair")
-        self.assertRedirects(
-            response, reverse("product_images", args=[self.draft.id])
-        )
+        self.assertRedirects(response, reverse("product_images", args=[self.draft.id]))
 
     def test_publish_with_photo(self):
         ProductImage.objects.create(product=self.draft, image="products/test.jpg")
@@ -404,3 +416,46 @@ class SellerPhotoPageTests(TestCase):
         self.assertContains(response, 'value="first"', count=2)
         self.assertContains(response, 'value="up"', count=2)
         self.assertContains(response, 'value="down"', count=2)
+
+
+class ProductFormPageTests(TestCase):
+    """How the product form renders the defaults from #45."""
+
+    def setUp(self):
+        user = User.objects.create_user(
+            email="form@test.com",
+            username="form@test.com",
+            password="testpass123",
+            is_seller=True,
+        )
+        self.seller, _ = Seller.objects.get_or_create(
+            user=user, defaults={"shop_name": "Form Shop", "shop_slug": "form-shop"}
+        )
+        self.client.force_login(user)
+        self.condition = ProductCondition.objects.create(
+            name="Kao novo", description="Korišćeno jednom ili dvaput"
+        )
+
+    def test_create_page_shows_condition_cards_and_collapsed_stock(self):
+        response = self.client.get(reverse("product_create"))
+        self.assertContains(response, 'type="radio"')
+        self.assertContains(response, "Korišćeno jednom ili dvaput")
+        self.assertContains(response, "Izaberite kategoriju")
+        self.assertContains(response, '<details class="group">')
+        self.assertRegex(
+            response.content.decode(), r"<title>Dodaj proizvod — [^<]*</title>"
+        )
+
+    def test_edit_page_opens_stock_when_several_items(self):
+        product = Product.objects.create(
+            seller=self.seller,
+            title="Čaše",
+            description="Set",
+            price=Decimal("12500"),
+            stock=6,
+            condition=self.condition,
+        )
+        response = self.client.get(reverse("product_edit", args=[product.id]))
+        self.assertContains(response, '<details class="group" open>')
+        self.assertContains(response, 'value="12.500"')
+        self.assertContains(response, "checked")
