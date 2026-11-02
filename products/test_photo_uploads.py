@@ -4,17 +4,21 @@ discard endpoints, attaching on save, the no-JavaScript fallback and the
 purge command.
 """
 
+import json
 import os
+import re
 import shutil
 import tempfile
 from datetime import timedelta
 from io import StringIO
+from unittest import mock
 
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.core.management import call_command
 from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
+from django.utils.html import escape
 
 from products.forms import MAX_PENDING_UPLOADS, MAX_PHOTOS
 from products.models import (
@@ -24,6 +28,7 @@ from products.models import (
     ProductCondition,
     ProductImage,
 )
+from products.quality import TEXT_RULES, TEXT_TIPS
 from products.test_images import photo_bytes
 from sellers.models import Seller
 from users.models import User
@@ -416,3 +421,107 @@ class ReviewRegressionTests(PhotoUploadTestCase):
             reverse("photo_upload"), {"photo": photo(), "product": "abc"}
         )
         self.assertEqual(response.status_code, 404)
+
+
+class PublishFromCreateTests(PhotoUploadTestCase):
+    """'Sačuvaj i objavi' on a new listing (#44, part 3)."""
+
+    def test_publish_with_photo(self):
+        ids = [self.upload().json()["id"]]
+        response = self.client.post(
+            reverse("product_create"),
+            self.form_data(photos=ids, action="publish"),
+            follow=True,
+        )
+        product = Product.objects.get(title="Stona lampa")
+        self.assertEqual(product.status, "published")
+        self.assertIsNotNone(product.listed_at)
+        self.assertContains(response, "je objavljen i vidljiv kupcima")
+
+    def test_publish_without_photo_saves_draft_and_says_why(self):
+        response = self.client.post(
+            reverse("product_create"), self.form_data(action="publish"), follow=True
+        )
+        product = Product.objects.get(title="Stona lampa")
+        self.assertEqual(product.status, "draft")
+        self.assertContains(response, "Nacrt je sačuvan, ali: Dodajte bar jednu")
+
+    def test_publish_respects_listing_limit(self):
+        ids = [self.upload().json()["id"]]
+        with mock.patch.object(Seller, "can_publish", return_value=False):
+            self.client.post(
+                reverse("product_create"),
+                self.form_data(photos=ids, action="publish"),
+            )
+        self.assertEqual(Product.objects.get(title="Stona lampa").status, "draft")
+
+    def test_plain_save_stays_draft(self):
+        ids = [self.upload().json()["id"]]
+        self.client.post(
+            reverse("product_create"), self.form_data(photos=ids, action="save")
+        )
+        self.assertEqual(Product.objects.get(title="Stona lampa").status, "draft")
+
+
+class StepsAndPreviewTests(PhotoUploadTestCase):
+    def test_form_has_steps_preview_and_shared_tip_texts(self):
+        response = self.client.get(reverse("product_create"))
+        for anchor in ("#fotografije", "#detalji", "#pregled"):
+            self.assertContains(response, f'href="{anchor}"')
+        self.assertContains(response, 'id="preview-card"')
+        self.assertContains(response, self.seller.shop_name)
+        # The live tips show the server's own messages
+        for message in TEXT_TIPS.values():
+            self.assertContains(response, escape(message))
+        self.assertContains(response, 'id="listing-tip-rules"')
+        self.assertContains(response, "js/listing-preview.js")
+        self.assertContains(response, 'value="publish"')
+
+    def test_edit_form_has_preview_with_cover(self):
+        product = self.make_product()
+        image = ProductImage.objects.create(product=product, image=photo())
+        response = self.client.get(reverse("product_edit", args=[product.id]))
+        self.assertContains(response, 'id="pregled"')
+        self.assertContains(
+            response, f'<img id="preview-image" src="{image.thumb_url}"'
+        )
+
+
+class PublishReviewTests(PhotoUploadTestCase):
+    """Fixes from the PR #61 review."""
+
+    def test_publish_without_photo_goes_to_the_photos(self):
+        response = self.client.post(
+            reverse("product_create"), self.form_data(action="publish")
+        )
+        product = Product.objects.get(title="Stona lampa")
+        self.assertRedirects(
+            response,
+            reverse("product_edit", args=[product.id]) + "#fotografije",
+            fetch_redirect_response=False,
+        )
+
+    def test_no_free_slot_offers_only_a_draft(self):
+        with mock.patch.object(Seller, "listings_left_this_month", return_value=0):
+            response = self.client.get(reverse("product_create"))
+        self.assertNotContains(response, 'value="publish"')
+        self.assertContains(response, "Oglas možete sačuvati kao nacrt")
+        self.assertNotContains(response, "od preostalih 0")
+
+    def test_publish_takes_the_seller_lock(self):
+        product = self.make_product()
+        ProductImage.objects.create(product=product, image=photo())
+        with mock.patch(
+            "products.views.Seller.objects.select_for_update",
+            wraps=Seller.objects.select_for_update,
+        ) as lock:
+            self.client.post(reverse("product_publish", args=[product.id]))
+        lock.assert_called_once()
+        product.refresh_from_db()
+        self.assertEqual(product.status, "published")
+
+    def test_tip_rules_on_the_page_come_from_quality(self):
+        response = self.client.get(reverse("product_create"))
+        script = r'<script id="listing-tip-rules" type="application/json">(.*?)<'
+        rules = json.loads(re.search(script, response.content.decode()).group(1))
+        self.assertEqual(rules, TEXT_RULES)

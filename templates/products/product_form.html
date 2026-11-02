@@ -5,10 +5,19 @@
 {% block content %}
 
 <div class="max-w-2xl mx-auto">
-    <h1 class="font-serif text-4xl font-light mb-10">{{ page_title }}</h1>
+    <h1 class="font-serif text-4xl font-light mb-6">{{ page_title }}</h1>
+
+    {# One page in three parts; the bar shows what each still needs (static/js/listing-preview.js) #}
+    <nav id="listing-steps" aria-label="Delovi oglasa" class="sticky z-40 bg-white border-b border-neutral-200 mb-8 -mx-4 px-4" style="top: var(--header-height, 0px)">
+        <ol class="grid grid-cols-3 text-center">
+            <li><a href="#fotografije" class="block py-3 hover:bg-neutral-50"><span class="block text-xs uppercase tracking-widest text-stone-700">1 · Fotografije</span><span class="block text-[11px] text-stone-400 mt-0.5" data-step-status="photos">{{ photos|length }} / {{ max_photos }}</span></a></li>
+            <li><a href="#detalji" class="block py-3 hover:bg-neutral-50"><span class="block text-xs uppercase tracking-widest text-stone-700">2 · Detalji</span><span class="block text-[11px] text-stone-400 mt-0.5" data-step-status="details">&nbsp;</span></a></li>
+            <li><a href="#pregled" class="block py-3 hover:bg-neutral-50"><span class="block text-xs uppercase tracking-widest text-stone-700">3 · Pregled</span><span class="block text-[11px] text-stone-400 mt-0.5" data-step-status="preview">&nbsp;</span></a></li>
+        </ol>
+    </nav>
 
     {# Photos first: for second-hand goods the photo is the listing. Outside the form so the no-JS move/delete forms can live here; inputs join the form via form="product-form". #}
-    <section id="fotografije" class="scroll-mt-40 mb-10"
+    <section id="fotografije" class="scroll-mt-56 mb-10"
              data-upload-url="{% url 'photo_upload' %}"
              {% if product %}data-product-id="{{ product.id }}" data-reorder-url="{% url 'product_image_reorder' product.id %}"{% endif %}
              data-max-photos="{{ max_photos }}" data-max-mb="{{ max_image_mb }}" data-max-edge="2000">
@@ -65,6 +74,8 @@
             {% for error in form.non_field_errors %}<p class="text-xs text-red-600">{{ error }}</p>{% endfor %}
         </div>
         {% endif %}
+
+        <h2 id="detalji" class="scroll-mt-56 text-xs uppercase tracking-widest text-stone-700 border-t border-neutral-200 pt-8">Detalji</h2>
 
         <div>
             <label for="{{ form.title.id_for_label }}" class="block text-xs uppercase tracking-widest text-stone-500 mb-2">Naziv proizvoda *</label>
@@ -123,6 +134,38 @@
             </div>
         </details>
 
+
+        <section id="pregled" class="scroll-mt-56 border-t border-neutral-200 pt-8" aria-labelledby="pregled-title">
+            <h2 id="pregled-title" class="text-xs uppercase tracking-widest text-stone-700 mb-1">Pregled</h2>
+            <p class="text-xs text-stone-400 mb-5">Ovako kupci vide oglas u pretrazi. Menja se dok popunjavate.</p>
+            <div class="flex flex-col sm:flex-row gap-6">
+                {# Same markup as the browse card (products/browse.html) #}
+                <div id="preview-card" class="w-44 shrink-0" aria-hidden="true">
+                    <div class="aspect-square bg-neutral-100 overflow-hidden mb-3">
+                        <img id="preview-image" src="{% if photos %}{{ photos.0.thumb_url }}{% endif %}" alt="" class="w-full h-full object-cover{% if not photos %} hidden{% endif %}">
+                        <div id="preview-no-image" class="w-full h-full flex items-center justify-center{% if photos %} hidden{% endif %}">
+                            <span class="text-xs uppercase tracking-widest text-neutral-400">Nema slike</span>
+                        </div>
+                    </div>
+                    <p id="preview-category" class="text-xs uppercase tracking-widest text-stone-400 mb-1 truncate"></p>
+                    <h3 id="preview-title" class="text-sm text-stone-900 mb-1 truncate">{{ form.title.value|default:"Naziv proizvoda" }}</h3>
+                    <p id="preview-price" class="text-sm font-light text-stone-600"></p>
+                    <p class="text-xs text-stone-400 mt-0.5">{{ shop_name }}</p>
+                </div>
+                <div class="flex-1 min-w-0">
+                    <p class="text-xs uppercase tracking-widest text-stone-500 mb-2">Saveti za bolji oglas</p>
+                    <ul id="preview-tips" class="text-xs text-stone-700 space-y-1.5 list-disc pl-4" aria-live="polite">
+                        <li data-tip="count" data-none="{{ count_tips.none }}" data-few="{{ count_tips.few }}" class="hidden"></li>
+                        <li data-tip="photos" class="hidden">Pogledajte savete ispod fotografija.</li>
+                        {% for check, message in text_tips.items %}<li data-tip="{{ check }}" class="hidden">{{ message }}</li>{% endfor %}
+                    </ul>
+                    <p id="preview-ok" class="hidden text-xs text-emerald-700">Odlično — oglas ima sve što kupci traže.</p>
+                    <noscript><p class="text-xs text-stone-400">Saveti se prikazuju posle čuvanja, na stranici oglasa.</p></noscript>
+                </div>
+            </div>
+            {{ tip_rules|json_script:"listing-tip-rules" }}
+        </section>
+
         {% if product %}
         <p class="text-xs text-stone-400">Status: <span class="text-stone-700">{{ product.get_status_display }}</span></p>
 
@@ -144,11 +187,23 @@
         </div>
         {% endif %}
         {% else %}
-        <p class="text-xs text-stone-400">Oglas se čuva kao nacrt. Pre objave videćete kako ga vide kupci.</p>
-
+        {% if listings_left == 0 %}
+        {# No free slot this month: publishing would only fail, so don't offer it #}
+        <p class="text-xs text-amber-700 border border-amber-200 bg-amber-50 p-3">{{ listing_limit_message }} Oglas možete sačuvati kao nacrt i objaviti kad se oslobodi mesto.</p>
         <div class="flex flex-col sm:flex-row gap-4 pt-2">
-            <button type="submit" class="flex-1 text-xs uppercase tracking-widest bg-stone-900 text-white py-3 hover:bg-stone-700 transition-colors">Sačuvaj nacrt →</button>
-            <a href="{% url 'seller_products_list' %}" class="flex-1 text-center text-xs uppercase tracking-widest border border-neutral-200 text-stone-500 py-3 hover:border-stone-400 hover:text-stone-900 transition-colors">Otkaži</a>
+            <button type="submit" name="action" value="save" class="flex-1 text-xs uppercase tracking-widest bg-stone-900 text-white py-3 hover:bg-stone-700 transition-colors">Sačuvaj nacrt</button>
+        </div>
+        {% else %}
+        <div class="flex flex-col sm:flex-row gap-4 pt-2">
+            {# Save comes first: Enter in a text field triggers the first submit button #}
+            <button type="submit" name="action" value="save" class="flex-1 text-xs uppercase tracking-widest border border-stone-900 text-stone-900 py-3 hover:bg-neutral-50 transition-colors">Sačuvaj nacrt</button>
+            <button type="submit" name="action" value="publish" class="flex-1 text-xs uppercase tracking-widest bg-stone-900 text-white py-3 hover:bg-stone-700 transition-colors">Sačuvaj i objavi</button>
+        </div>
+        <p id="publish-needs-photo" class="text-xs text-amber-700{% if photos %} hidden{% endif %}">Za objavu je potrebna bar jedna fotografija; bez nje se oglas čuva kao nacrt.</p>
+        {% if listings_left is not None %}<p class="text-xs text-stone-400">Objava koristi 1 od preostalih {{ listings_left }} novih oglasa ovog meseca.</p>{% endif %}
+        {% endif %}
+        <div class="text-center">
+            <a href="{% url 'seller_products_list' %}" class="text-xs uppercase tracking-widest text-stone-400 hover:text-stone-900 transition-colors">Otkaži</a>
         </div>
         {% endif %}
     </form>
@@ -192,6 +247,8 @@
             if (field && name in values) field.value = values[name];
         });
         form.elements.price.dispatchEvent(new Event("blur"));  // regroup thousands
+        // Setting .value fires nothing; tell the preview the fields changed
+        form.dispatchEvent(new Event("input", { bubbles: true }));
     }
     function same(a, b) {
         return FIELDS.every(function (name) { return (a[name] || "") === (b[name] || ""); });
@@ -246,5 +303,6 @@
 })();
 </script>
 <script src="{% static 'js/listing-photos.js' %}" defer></script>
+<script src="{% static 'js/listing-preview.js' %}" defer></script>
 
 {% endblock %}

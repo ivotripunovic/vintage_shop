@@ -1,6 +1,6 @@
 {# One photo on the listing form. Also cloned by static/js/listing-photos.js from the empty copy in <template> (photo is None there). #}
 <li {% if photo %}id="{% if photo.kind == 'image' %}image-{% else %}upload-{% endif %}{{ photo.id }}" data-id="{{ photo.id }}" data-kind="{{ photo.kind }}" data-remove-url="{{ photo.remove_url }}"{% endif %}
-    class="photo-item scroll-mt-40" aria-label="{% if forloop.first %}Naslovna fotografija{% else %}Fotografija {{ forloop.counter }}{% endif %}">
+    class="photo-item scroll-mt-56" aria-label="{% if forloop.first %}Naslovna fotografija{% else %}Fotografija {{ forloop.counter }}{% endif %}">
     {% if photo.kind == "upload" %}<input type="hidden" name="photos" value="{{ photo.id }}" form="product-form">{% endif %}
     <div class="photo-frame relative aspect-square bg-neutral-100 overflow-hidden">
         <img src="{% if photo %}{{ photo.thumb_url }}{% endif %}" alt="" class="w-full h-full object-cover" draggable="false">

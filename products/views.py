@@ -31,7 +31,7 @@ from .photos import (
     posted_ids,
 )
 from .popularity import recent_viewer_count, record_view
-from .quality import listing_report
+from .quality import COUNT_TIPS, TEXT_RULES, TEXT_TIPS, listing_report
 
 # Statuses a seller can move to published / archived from the edit form
 PUBLISHABLE_STATUSES = ("draft", "expired", "archived")
@@ -45,6 +45,21 @@ def publish_error(seller, product):
     if not seller.can_publish(product):
         return seller.listing_limit_message()
     return None
+
+
+def publish_listing(seller, product):
+    """
+    Publish product if publish_error allows it; returns the error or None.
+
+    The seller row is locked while checking and publishing, so two publishes
+    at once (two tabs, a double click) can't both take the last free slot.
+    """
+    with transaction.atomic():
+        Seller.objects.select_for_update().filter(pk=seller.pk).first()
+        error = publish_error(seller, product)
+        if error is None:
+            product.publish()
+    return error
 
 
 def _get_seller_or_403(request):
@@ -82,11 +97,18 @@ def _form_context(seller, form, photos, photo_errors, product=None):
         "photo_errors": photo_errors,
         "max_photos": MAX_PHOTOS,
         "max_image_mb": MAX_IMAGE_MB,
+        "shop_name": seller.shop_name,
+        # For the live tips in the preview (static/js/listing-preview.js)
+        "text_tips": TEXT_TIPS,
+        "tip_rules": TEXT_RULES,
+        "count_tips": COUNT_TIPS,
     }
     if product is None:
         context.update(
             page_title="Dodaj proizvod",
             autosave_key=f"product-form:{seller.id}:new",
+            listings_left=seller.listings_left_this_month(),
+            listing_limit_message=seller.listing_limit_message(),
         )
     else:
         context.update(
@@ -146,7 +168,18 @@ def product_create_view(request):
                 messages.warning(
                     request, f"Sačuvano je prvih {MAX_PHOTOS} fotografija."
                 )
-            if kept:
+            if request.POST.get("action") == "publish":
+                # Same rules as everywhere: a photo, and a free listing slot
+                error = publish_listing(seller, product)
+                if error:
+                    messages.error(request, f"Nacrt je sačuvan, ali: {error}")
+                    if not kept:
+                        return redirect(_photos_url(product))
+                else:
+                    messages.success(
+                        request, f'"{product.title}" je objavljen i vidljiv kupcima.'
+                    )
+            elif kept:
                 messages.success(request, "Nacrt je sačuvan.")
             else:
                 messages.success(
@@ -190,13 +223,12 @@ def product_edit_view(request, product_id):
             action = request.POST.get("action")
 
             if action == "publish" and product.status in PUBLISHABLE_STATUSES:
-                error = publish_error(seller, product)
+                error = publish_listing(seller, product)
                 if error:
                     messages.error(request, f"Izmene su sačuvane, ali: {error}")
                     if not product.images.exists():
                         return redirect(_photos_url(product))
                     return redirect("product_seller_detail", product_id=product.id)
-                product.publish()
                 messages.success(request, f'"{product.title}" je objavljen.')
             elif action == "archive" and product.status in ARCHIVABLE_STATUSES:
                 product.status = "archived"
@@ -435,14 +467,13 @@ def product_publish_view(request, product_id):
 
     product = get_object_or_404(Product, id=product_id, seller=seller)
 
-    error = publish_error(seller, product)
+    error = publish_listing(seller, product)
     if error:
         messages.error(request, error)
         if not product.images.exists():
             return redirect(_photos_url(product))
         return redirect("seller_products_list")
 
-    product.publish()
     messages.success(request, f'"{product.title}" je objavljen i vidljiv kupcima.')
 
     if request.headers.get("X-Requested-With") == "XMLHttpRequest":
