@@ -461,18 +461,18 @@ class ProductFormPageTests(TestCase):
         self.assertContains(response, "checked")
 
 
-class DuplicateAndDefaultsTests(TestCase):
-    """Copying a listing and remembering the last category/condition (#46)."""
+class DefaultsAndAutosaveTests(TestCase):
+    """Remembering the last category/condition, and autosave keys (#46)."""
 
     def setUp(self):
         self.user = User.objects.create_user(
-            email="copy@test.com",
-            username="copy@test.com",
+            email="defaults@test.com",
+            username="defaults@test.com",
             password="testpass123",
             is_seller=True,
         )
         self.seller, _ = Seller.objects.get_or_create(
-            user=self.user, defaults={"shop_name": "Copy", "shop_slug": "copy"}
+            user=self.user, defaults={"shop_name": "Defaults", "shop_slug": "defaults"}
         )
         self.client.force_login(self.user)
         self.category = ProductCategory.objects.create(name="Lampe", slug="lampe")
@@ -484,42 +484,7 @@ class DuplicateAndDefaultsTests(TestCase):
             price=Decimal("4500"),
             category=self.category,
             condition=self.condition,
-            stock=0,
-            status="sold",
         )
-        ProductImage.objects.create(product=self.original, image="products/l.jpg")
-
-    def _duplicate(self, product):
-        return self.client.post(reverse("product_duplicate", args=[product.id]))
-
-    def test_duplicate_copies_details_as_draft_without_photos(self):
-        response = self._duplicate(self.original)
-        copy = Product.objects.exclude(id=self.original.id).get()
-        self.assertRedirects(response, reverse("product_edit", args=[copy.id]))
-        for field in ["title", "description", "price", "category", "condition"]:
-            self.assertEqual(getattr(copy, field), getattr(self.original, field))
-        self.assertEqual(copy.status, "draft")
-        self.assertEqual(copy.stock, 1)  # the original was sold out
-        self.assertIsNone(copy.listed_at)
-        self.assertFalse(copy.images.exists())
-
-    def test_cannot_duplicate_another_sellers_or_deleted_listing(self):
-        self.original.soft_delete()
-        self.assertEqual(self._duplicate(self.original).status_code, 404)
-        other = User.objects.create_user(
-            email="x@test.com", username="x@test.com", password="p", is_seller=True
-        )
-        Seller.objects.get_or_create(
-            user=other, defaults={"shop_name": "X", "shop_slug": "x"}
-        )
-        theirs = Product.objects.create(
-            seller=other.seller_profile, title="T", description="D", price=1
-        )
-        self.assertEqual(self._duplicate(theirs).status_code, 404)
-
-    def test_duplicate_requires_post(self):
-        url = reverse("product_duplicate", args=[self.original.id])
-        self.assertEqual(self.client.get(url).status_code, 405)
 
     def test_create_form_remembers_last_category_and_condition(self):
         response = self.client.get(reverse("product_create"))
@@ -542,12 +507,3 @@ class DuplicateAndDefaultsTests(TestCase):
             edit,
             f'data-autosave-key="product-form:{self.seller.id}:{self.original.id}"',
         )
-
-    def test_copy_buttons_on_seller_pages(self):
-        url = reverse("product_duplicate", args=[self.original.id])
-        detail = self.client.get(
-            reverse("product_seller_detail", args=[self.original.id])
-        )
-        self.assertContains(detail, f'action="{url}"')
-        listing = self.client.get(reverse("seller_products_list"))
-        self.assertContains(listing, f'action="{url}"')

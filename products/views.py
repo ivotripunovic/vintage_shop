@@ -246,38 +246,6 @@ def product_images_view(request, product_id):
 
 @login_required
 @require_http_methods(["POST"])
-def product_duplicate_view(request, product_id):
-    """
-    Copy a listing's details (not its photos) into a new draft.
-    """
-    seller = _get_seller_or_403(request)
-    if not seller:
-        return HttpResponseForbidden("You are not authorized to access this resource.")
-
-    original = get_object_or_404(
-        Product, id=product_id, seller=seller, is_deleted=False
-    )
-    copy = Product.objects.create(
-        seller=seller,
-        title=original.title,
-        description=original.description,
-        price=original.price,
-        category=original.category,
-        condition=original.condition,
-        stock=max(original.stock, 1),
-        status="draft",
-    )
-
-    messages.success(
-        request,
-        "Napravljena je kopija kao nacrt. Izmenite šta treba, "
-        "pa dodajte fotografije.",
-    )
-    return redirect("product_edit", product_id=copy.id)
-
-
-@login_required
-@require_http_methods(["POST"])
 def product_image_delete_view(request, image_id):
     """
     Delete a specific product image.
