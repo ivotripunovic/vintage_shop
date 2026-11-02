@@ -283,11 +283,16 @@ def shops_browse_view(request):
 
     # Get sellers with at least one published product
     sellers = (
-        Seller.objects.filter(status="active", products__status="published")
+        Seller.objects.filter(
+            status="active", products__status="published", products__is_deleted=False
+        )
         .distinct()
         .annotate(
             published_count=Count(
-                "products", filter=models.Q(products__status="published")
+                "products",
+                filter=models.Q(
+                    products__status="published", products__is_deleted=False
+                ),
             )
         )
     )
@@ -332,7 +337,10 @@ def shop_detail_view(request, shop_slug):
     seller = get_object_or_404(
         Seller.objects.annotate(
             published_count=Count(
-                "products", filter=models.Q(products__status="published")
+                "products",
+                filter=models.Q(
+                    products__status="published", products__is_deleted=False
+                ),
             )
         ),
         shop_slug=shop_slug,

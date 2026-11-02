@@ -157,7 +157,8 @@ def product_delete_view(request, product_id):
     product = get_object_or_404(Product, id=product_id, seller=seller)
 
     if request.method == "POST":
-        product.delete()  # Uses soft delete from SoftDeleteModel
+        # Soft delete: keeps sales and chats linked and the listing slot used
+        product.soft_delete()
         messages.success(request, f'Proizvod "{product.title}" je obrisan.')
         return redirect("seller_products_list")
 
@@ -254,7 +255,9 @@ def product_image_delete_view(request, image_id):
     if not seller:
         return HttpResponseForbidden("You are not authorized to access this resource.")
 
-    image = get_object_or_404(ProductImage, id=image_id, product__seller=seller)
+    image = get_object_or_404(
+        ProductImage, id=image_id, product__seller=seller, product__is_deleted=False
+    )
     product = image.product
 
     image.delete()
@@ -280,7 +283,9 @@ def product_image_move_view(request, image_id):
     if not seller:
         return HttpResponseForbidden("You are not authorized to access this resource.")
 
-    image = get_object_or_404(ProductImage, id=image_id, product__seller=seller)
+    image = get_object_or_404(
+        ProductImage, id=image_id, product__seller=seller, product__is_deleted=False
+    )
     product = image.product
     direction = request.POST.get("to")
 
