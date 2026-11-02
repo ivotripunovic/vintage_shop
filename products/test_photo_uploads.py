@@ -4,7 +4,9 @@ discard endpoints, attaching on save, the no-JavaScript fallback and the
 purge command.
 """
 
+import json
 import os
+import re
 import shutil
 import tempfile
 from datetime import timedelta
@@ -26,7 +28,7 @@ from products.models import (
     ProductCondition,
     ProductImage,
 )
-from products.quality import TEXT_TIPS
+from products.quality import TEXT_RULES, TEXT_TIPS
 from products.test_images import photo_bytes
 from sellers.models import Seller
 from users.models import User
@@ -483,3 +485,43 @@ class StepsAndPreviewTests(PhotoUploadTestCase):
         self.assertContains(
             response, f'<img id="preview-image" src="{image.thumb_url}"'
         )
+
+
+class PublishReviewTests(PhotoUploadTestCase):
+    """Fixes from the PR #61 review."""
+
+    def test_publish_without_photo_goes_to_the_photos(self):
+        response = self.client.post(
+            reverse("product_create"), self.form_data(action="publish")
+        )
+        product = Product.objects.get(title="Stona lampa")
+        self.assertRedirects(
+            response,
+            reverse("product_edit", args=[product.id]) + "#fotografije",
+            fetch_redirect_response=False,
+        )
+
+    def test_no_free_slot_offers_only_a_draft(self):
+        with mock.patch.object(Seller, "listings_left_this_month", return_value=0):
+            response = self.client.get(reverse("product_create"))
+        self.assertNotContains(response, 'value="publish"')
+        self.assertContains(response, "Oglas možete sačuvati kao nacrt")
+        self.assertNotContains(response, "od preostalih 0")
+
+    def test_publish_takes_the_seller_lock(self):
+        product = self.make_product()
+        ProductImage.objects.create(product=product, image=photo())
+        with mock.patch(
+            "products.views.Seller.objects.select_for_update",
+            wraps=Seller.objects.select_for_update,
+        ) as lock:
+            self.client.post(reverse("product_publish", args=[product.id]))
+        lock.assert_called_once()
+        product.refresh_from_db()
+        self.assertEqual(product.status, "published")
+
+    def test_tip_rules_on_the_page_come_from_quality(self):
+        response = self.client.get(reverse("product_create"))
+        script = r'<script id="listing-tip-rules" type="application/json">(.*?)<'
+        rules = json.loads(re.search(script, response.content.decode()).group(1))
+        self.assertEqual(rules, TEXT_RULES)

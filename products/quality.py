@@ -140,7 +140,7 @@ def check_photos(images):
     """Tips for the ordered photos of one listing."""
     tips = []
     if len(images) < MIN_PHOTOS:
-        tips.append(Tip("count", count_tip(len(images))))
+        tips.append(Tip("count", COUNT_TIPS["few" if images else "none"]))
     for number, image in enumerate(images, start=1):
         label = "Naslovna fotografija" if number == 1 else f"Fotografija {number}"
         tips += check_photo(image, label, cover=number == 1)
@@ -159,14 +159,24 @@ TEXT_TIPS = {
     "širina 50 cm). To je najčešće pitanje kupaca.",
 }
 MIN_CAPITALS = 8  # letters, before an all-caps title gets a tip
+# Every threshold the live check needs, handed to the page as JSON
+TEXT_RULES = {
+    "min_photos": MIN_PHOTOS,
+    "min_title_chars": MIN_TITLE_CHARS,
+    "min_title_words": MIN_TITLE_WORDS,
+    "min_capitals": MIN_CAPITALS,
+    "min_description_chars": MIN_DESCRIPTION_CHARS,
+}
 
-
-def count_tip(photo_count):
-    more = "još fotografija" if photo_count else "fotografije"
-    return (
-        f"Dodajte {more}: bar {MIN_PHOTOS} — ceo predmet spreda i pozadi, "
-        "pa detalj (etiketa, pečat, oštećenje)."
-    )
+_COUNT_TIP = (
+    "Dodajte {}: bar {} — ceo predmet spreda i pozadi, pa detalj "
+    "(etiketa, pečat, oštećenje)."
+)
+# Too few photos: none yet, or some but fewer than MIN_PHOTOS
+COUNT_TIPS = {
+    "none": _COUNT_TIP.format("fotografije", MIN_PHOTOS),
+    "few": _COUNT_TIP.format("još fotografija", MIN_PHOTOS),
+}
 
 
 def check_text(title, description):

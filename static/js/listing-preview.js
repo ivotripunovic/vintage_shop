@@ -60,10 +60,17 @@
 
     // --- The text rules from products/quality.py --------------------------
 
-    function textFailures(title, description) {
+    // Count like Python's len(): characters, not UTF-16 units (emoji)
+    function chars(text) {
+        return Array.from(text).length;
+    }
+
+    function textFailures(title, rawDescription) {
         var failed = [];
+        // The browser submits line breaks as CRLF and the server keeps them
+        var description = rawDescription.replace(/\r?\n/g, "\r\n");
         var words = title.split(/\s+/).filter(Boolean);
-        if (title.length < rules.min_title_chars || words.length < rules.min_title_words) {
+        if (chars(title) < rules.min_title_chars || words.length < rules.min_title_words) {
             failed.push("title");
         }
         var letters = title.match(/\p{L}/gu) || [];
@@ -71,8 +78,9 @@
             return c === c.toUpperCase() && c !== c.toLowerCase();
         });
         if (letters.length >= rules.min_capitals && shouting) failed.push("capitals");
-        if (description.length < rules.min_description_chars) failed.push("description");
-        if (!/\d/.test(description)) failed.push("measurements");
+        if (chars(description) < rules.min_description_chars) failed.push("description");
+        // Python's \d matches any decimal digit, not only 0-9
+        if (!/\p{Nd}/u.test(description)) failed.push("measurements");
         return failed;
     }
 
@@ -85,10 +93,16 @@
         el.classList.toggle("text-stone-400", !done);
     }
 
+    // Same as PRICE_PATTERN in products/forms.py: whole dinars, optionally
+    // grouped (4.500, 4 500), with zero decimals allowed (4500,00). Anything
+    // the server would reject shows no price.
+    var PRICE = /^(\d+|\d{1,3}(?:[. ]\d{3})+)(?:[.,]0{1,2})?$/;
+
     function formatPrice(raw) {
-        var digits = raw.replace(/[. ]/g, "").replace(/[.,]0{1,2}$/, "");
-        if (!/^\d+$/.test(digits)) return "";
-        return Number(digits).toLocaleString("de-DE") + " RSD";
+        var match = PRICE.exec(raw);
+        if (!match) return "";
+        var whole = Number(match[1].replace(/[. ]/g, ""));
+        return whole > 0 ? whole.toLocaleString("de-DE") + " RSD" : "";
     }
 
     function categoryName() {
@@ -153,10 +167,6 @@
         subtree: true,
         attributes: true,
         attributeFilter: ["data-id", "class"],
-    });
-    // Autosave may refill the fields after load ("Vrati")
-    document.addEventListener("click", function (event) {
-        if (event.target.id === "autosave-restore") soon();
     });
     update();
 })();
