@@ -255,8 +255,17 @@ class ProductImage(TimeStampedModel):
         related_name="images",
     )
     image = models.ImageField(upload_to="products/%Y/%m/%d/")
+    # Grid-sized copy made on save (products.images); empty if processing failed
+    thumbnail = models.ImageField(
+        upload_to="products/thumbs/%Y/%m/%d/", blank=True, editable=False
+    )
     alt_text = models.CharField(max_length=255, blank=True)
     order = models.IntegerField(default=0)
+    # Measured on save, for the photo tips in products.quality
+    width = models.PositiveIntegerField(null=True, blank=True, editable=False)
+    height = models.PositiveIntegerField(null=True, blank=True, editable=False)
+    brightness = models.FloatField(null=True, blank=True, editable=False)
+    sharpness = models.FloatField(null=True, blank=True, editable=False)
 
     class Meta:
         ordering = ["order", "created_at"]
@@ -265,3 +274,34 @@ class ProductImage(TimeStampedModel):
 
     def __str__(self):
         return f"{self.product.title} - Image {self.order}"
+
+    def save(self, *args, **kwargs):
+        # Only a newly assigned file is processed; reorders and alt text
+        # changes save without touching the photo
+        if self.image and not self.image._committed:
+            self.process(keep_original=False)
+        super().save(*args, **kwargs)
+
+    def process(self, keep_original=False):
+        """Rotate, strip, resize and thumbnail the photo; measure its quality."""
+        from .images import process_photo
+
+        result = process_photo(self.image, self.image.name, keep_original)
+        if result is None:
+            return False
+        if result.image is not None:
+            old_name = self.image.name if self.image._committed else None
+            self.image.save(result.image.name, result.image, save=False)
+            if old_name and old_name != self.image.name:
+                self.image.storage.delete(old_name)
+        if self.thumbnail:
+            self.thumbnail.delete(save=False)
+        self.thumbnail.save(result.thumbnail.name, result.thumbnail, save=False)
+        self.width, self.height = result.width, result.height
+        self.brightness, self.sharpness = result.brightness, result.sharpness
+        return True
+
+    @property
+    def thumb_url(self):
+        """Thumbnail for grids and lists, or the full photo if there is none."""
+        return (self.thumbnail or self.image).url

@@ -412,7 +412,8 @@ class SellerPhotoPageTests(TestCase):
     def test_photo_page_shows_cover_and_controls(self):
         a, b, c = self._three_photos()
         response = self.client.get(self.url)
-        self.assertContains(response, "Naslovna", count=2)  # badge + footer hint
+        # badge, footer hint and the "Za dobre fotografije" tip
+        self.assertContains(response, "Naslovna", count=3)
         self.assertContains(response, 'value="first"', count=2)
         self.assertContains(response, 'value="up"', count=2)
         self.assertContains(response, 'value="down"', count=2)

@@ -71,7 +71,7 @@
             <div class="aspect-square bg-neutral-100 overflow-hidden mb-3">
                 {% with image=product.images.all.0 %}
                 {% if image %}
-                    <img src="{{ image.image.url }}" alt="{{ image.alt_text }}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
+                    <img src="{{ image.thumb_url }}" alt="{{ image.alt_text }}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
                 {% else %}
                     <div class="w-full h-full flex items-center justify-center">
                         <span class="text-xs uppercase tracking-widest text-neutral-400">Nema slike</span>

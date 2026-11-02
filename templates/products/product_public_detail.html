@@ -32,7 +32,7 @@
             {% if images.count > 1 %}
             <div class="grid grid-cols-5 gap-2">
                 {% for image in images %}
-                    <img src="{{ image.image.url }}" alt="{{ image.alt_text }}" class="aspect-square object-cover cursor-pointer border-2 {% if forloop.first %}border-stone-900{% else %}border-transparent hover:border-neutral-300{% endif %} transition-colors" onclick="changeMainImage('{{ image.image.url }}', '{{ image.alt_text }}', this)">
+                    <img src="{{ image.thumb_url }}" alt="{{ image.alt_text }}" class="aspect-square object-cover cursor-pointer border-2 {% if forloop.first %}border-stone-900{% else %}border-transparent hover:border-neutral-300{% endif %} transition-colors" onclick="changeMainImage('{{ image.image.url }}', '{{ image.alt_text }}', this)">
                 {% endfor %}
             </div>
             {% endif %}
@@ -134,7 +134,7 @@
         <a href="{% url 'product_detail' related.id %}" class="group">
             <div class="aspect-square bg-neutral-100 overflow-hidden mb-3">
                 {% if related.images.exists %}
-                    <img src="{{ related.images.first.image.url }}" alt="{{ related.images.first.alt_text }}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
+                    <img src="{{ related.images.first.thumb_url }}" alt="{{ related.images.first.alt_text }}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
                 {% else %}
                     <div class="w-full h-full flex items-center justify-center"><span class="text-xs uppercase tracking-widest text-neutral-400">Nema slike</span></div>
                 {% endif %}
