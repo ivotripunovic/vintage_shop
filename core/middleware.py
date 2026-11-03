@@ -60,3 +60,31 @@ class ComingSoonMiddleware:
             {"waitlist_timestamp": WaitlistSubscribeForm.generate_timestamp()},
             status=200,
         )
+
+
+class HeadResponseMiddleware:
+    """
+    Send HEAD responses without a body, as RFC 9110 requires.
+
+    Django leaves this to the server under WSGI; gunicorn 26 drops the body
+    but logs a warning each time (UptimeRobot's HEAD /health/ every 5
+    minutes). Content-Length keeps the GET's value, as HEAD should report.
+    Outermost in MIDDLEWARE, so it sees the final response.
+    """
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        response = self.get_response(request)
+        if request.method != "HEAD":
+            return response
+        if response.streaming:
+            # Not read; a file behind it is still closed when the server
+            # closes the response
+            response.streaming_content = []
+        else:
+            length = len(response.content)
+            response.content = b""
+            response["Content-Length"] = str(length)
+        return response

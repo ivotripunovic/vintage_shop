@@ -55,6 +55,8 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    # Outermost: strips the body of HEAD responses (see the class docstring)
+    "core.middleware.HeadResponseMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
