@@ -5,9 +5,21 @@ itself, so these tests use the middleware and the WSGI handler directly.
 
 import tempfile
 
+from asgiref.sync import iscoroutinefunction
 from django.core.handlers.wsgi import WSGIHandler
-from django.http import FileResponse, HttpResponse, HttpResponseNotModified
-from django.test import RequestFactory, SimpleTestCase, TestCase, override_settings
+from django.http import (
+    FileResponse,
+    HttpResponse,
+    HttpResponseNotModified,
+    StreamingHttpResponse,
+)
+from django.test import (
+    AsyncRequestFactory,
+    RequestFactory,
+    SimpleTestCase,
+    TestCase,
+    override_settings,
+)
 from django.urls import path
 
 from core.middleware import HeadResponseMiddleware
@@ -55,6 +67,36 @@ class HeadResponseMiddlewareTests(SimpleTestCase):
     def test_get_untouched(self):
         response = self.run_middleware("GET", HttpResponse("ok"))
         self.assertEqual(response.content, b"ok")
+
+
+class AsyncHeadResponseMiddlewareTests(SimpleTestCase):
+    """Under ASGI the middleware runs async instead of being adapted."""
+
+    async def test_async_chain_head_body_removed(self):
+        async def get_response(request):
+            return HttpResponse("ok")
+
+        middleware = HeadResponseMiddleware(get_response)
+        self.assertTrue(iscoroutinefunction(middleware))
+        response = await middleware(AsyncRequestFactory().head("/x/"))
+        self.assertEqual(response.content, b"")
+        self.assertEqual(response["Content-Length"], "2")
+
+    async def test_async_streaming_stays_async_and_empty(self):
+        async def chunks():
+            yield b"secret"
+
+        async def get_response(request):
+            return StreamingHttpResponse(chunks())
+
+        middleware = HeadResponseMiddleware(get_response)
+        response = await middleware(AsyncRequestFactory().head("/x/"))
+        self.assertTrue(response.is_async)
+        self.assertEqual([chunk async for chunk in response.streaming_content], [])
+
+    def test_sync_chain_stays_sync(self):
+        middleware = HeadResponseMiddleware(lambda request: HttpResponse("ok"))
+        self.assertFalse(iscoroutinefunction(middleware))
 
 
 FILE_CONTENT = b"x" * 1000

@@ -1,3 +1,4 @@
+from asgiref.sync import iscoroutinefunction, markcoroutinefunction
 from django.conf import settings
 from django.shortcuts import render
 
@@ -62,6 +63,11 @@ class ComingSoonMiddleware:
         )
 
 
+async def _no_content():
+    return
+    yield  # an async generator that yields nothing
+
+
 class HeadResponseMiddleware:
     """
     Send HEAD responses without a body, as RFC 9110 requires.
@@ -69,14 +75,29 @@ class HeadResponseMiddleware:
     Django leaves this to the server under WSGI; gunicorn 26 drops the body
     but logs a warning each time (UptimeRobot's HEAD /health/ every 5
     minutes). Content-Length keeps the GET's value, as HEAD should report.
-    Outermost in MIDDLEWARE, so it sees the final response.
+    Outermost in MIDDLEWARE, so it sees the final response. Works in both
+    sync (WSGI) and async (ASGI) stacks, so it never forces Django to adapt
+    the chain between the two.
     """
+
+    sync_capable = True
+    async_capable = True
 
     def __init__(self, get_response):
         self.get_response = get_response
+        if iscoroutinefunction(self.get_response):
+            markcoroutinefunction(self)
 
     def __call__(self, request):
-        response = self.get_response(request)
+        if iscoroutinefunction(self):
+            return self.__acall__(request)
+        return self.strip_body(request, self.get_response(request))
+
+    async def __acall__(self, request):
+        return self.strip_body(request, await self.get_response(request))
+
+    @staticmethod
+    def strip_body(request, response):
         if request.method != "HEAD":
             return response
         status = response.status_code
@@ -86,8 +107,9 @@ class HeadResponseMiddleware:
             return response
         if response.streaming:
             # Not read; a file behind it is still closed when the server
-            # closes the response
-            response.streaming_content = []
+            # closes the response. An async response stays async, so ASGI
+            # doesn't warn about a sync iterator.
+            response.streaming_content = _no_content() if response.is_async else []
         else:
             # Keep a length set earlier (CommonMiddleware, or a view that
             # answers HEAD itself); count it only when missing
