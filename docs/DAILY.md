@@ -1,3 +1,7 @@
+# 2026-11-03
+- Deployed the one-page listing form (#44) to production and ran `backfill_photos` there: existing photos now have thumbnails and quality measurements (originals not rewritten). Installed the daily `purge-photo-uploads` cron (03:40)
+- HEAD responses without a body (#64, PR #65): since gunicorn 26, every HEAD request logged `WSGI app sent body bytes on a no-body response`, every 5 minutes for UptimeRobot's `HEAD /health/`. A middleware that runs first now empties HEAD bodies, keeps the GET's `Content-Length`, leaves 1xx/204/304 alone, and works under WSGI and ASGI
+
 # 2026-11-02
 - Add-item fixes from the HCI review: editing a draft no longer 404s (#40, PR #47); the product form's status dropdown is replaced by Sačuvaj / Sačuvaj i objavi, so publishing always needs a photo and can't bypass mark-sold (#41, PR #48); the photo page shows the real size limits, checks them before nginx returns 413, and leads on to publishing (#42, PR #49)
 - Cover photo and photo order (#43, PR #52): make any photo the cover, move photos up/down; works without JavaScript
@@ -11,6 +15,7 @@
   - Step bar (Fotografije · Detalji · Pregled), live buyer-card preview, and publishing straight from the new-listing form
   - Each PR got a code review; fixes covered photo files shared or lost on double submit or during the purge, reorder races and an off-by-100× price preview
   - To deploy: run `backfill_photos` (optionally `--all --rewrite-originals` after backing up `media/`) and install `deploy/purge-photo-uploads.cron` by hand
+- Deployment docs (PR #63): `docs/ops/deployment.md` has a new "One-time steps after a deploy" section with the #44 photo backfill and purge cron
 
 # 2026-10-31
 - Chat fixes (#31, PR #32): live view no longer drops or duplicates messages when both sides send at once; email cooldown is per recipient, so a quick reply still notifies the first sender; threads show the latest 100 messages; inbox no longer runs 2 queries per conversation; polling backs off 3s → 30s when quiet and pauses in hidden tabs
