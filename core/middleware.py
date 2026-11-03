@@ -79,12 +79,18 @@ class HeadResponseMiddleware:
         response = self.get_response(request)
         if request.method != "HEAD":
             return response
+        status = response.status_code
+        if status < 200 or status in (204, 304):
+            # No body to begin with, and Content-Length: 0 would be wrong on
+            # a 304 (it must match the full 200 response)
+            return response
         if response.streaming:
             # Not read; a file behind it is still closed when the server
             # closes the response
             response.streaming_content = []
         else:
-            length = len(response.content)
+            # Keep a length set earlier (CommonMiddleware, or a view that
+            # answers HEAD itself); count it only when missing
+            response.headers.setdefault("Content-Length", str(len(response.content)))
             response.content = b""
-            response["Content-Length"] = str(length)
         return response

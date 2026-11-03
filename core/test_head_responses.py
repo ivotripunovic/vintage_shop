@@ -3,57 +3,88 @@ HEAD responses carry no body (#64). Django's test client strips HEAD bodies
 itself, so these tests use the middleware and the WSGI handler directly.
 """
 
-from io import BytesIO
+import tempfile
 
 from django.core.handlers.wsgi import WSGIHandler
-from django.http import FileResponse, HttpResponse
-from django.test import RequestFactory, TestCase
+from django.http import FileResponse, HttpResponse, HttpResponseNotModified
+from django.test import RequestFactory, SimpleTestCase, TestCase, override_settings
+from django.urls import path
 
 from core.middleware import HeadResponseMiddleware
 
 
-class HeadResponseMiddlewareTests(TestCase):
+def wsgi_request(method, url):
+    """
+    Run one request through Django's WSGI handler as gunicorn does,
+    closing the response afterwards. Returns status line, headers, body.
+    """
+    environ = RequestFactory().generic(method, url).environ
+    started = {}
+
+    def start_response(line, headers):
+        started["line"], started["headers"] = line, dict(headers)
+
+    result = WSGIHandler()(environ, start_response)
+    try:
+        body = b"".join(result)
+    finally:
+        result.close()
+    return started["line"], started["headers"], body
+
+
+class HeadResponseMiddlewareTests(SimpleTestCase):
     def run_middleware(self, method, response):
         request = getattr(RequestFactory(), method.lower())("/x/")
         return HeadResponseMiddleware(lambda request: response)(request)
 
-    def test_head_body_removed_and_length_kept(self):
+    def test_head_body_removed_and_length_counted_when_missing(self):
         response = self.run_middleware("HEAD", HttpResponse("ok"))
         self.assertEqual(response.content, b"")
         self.assertEqual(response["Content-Length"], "2")
+
+    def test_length_set_earlier_is_kept(self):
+        early = HttpResponse("")
+        early["Content-Length"] = "5120"  # e.g. a view answering HEAD itself
+        response = self.run_middleware("HEAD", early)
+        self.assertEqual(response["Content-Length"], "5120")
+
+    def test_not_modified_is_left_alone(self):
+        response = self.run_middleware("HEAD", HttpResponseNotModified())
+        self.assertNotIn("Content-Length", response)
 
     def test_get_untouched(self):
         response = self.run_middleware("GET", HttpResponse("ok"))
         self.assertEqual(response.content, b"ok")
 
-    def test_streaming_head_sends_nothing(self):
-        file = BytesIO(b"x" * 1000)
-        response = self.run_middleware("HEAD", FileResponse(file))
-        self.assertEqual(b"".join(response.streaming_content), b"")
-        response.close()  # as the server does after sending
-        self.assertTrue(file.closed)
+
+FILE_CONTENT = b"x" * 1000
+opened = []
 
 
-class HeadThroughWsgiTests(TestCase):
-    """The real request path gunicorn uses, without the test client."""
+def file_view(request):
+    file = tempfile.TemporaryFile()
+    file.write(FILE_CONTENT)
+    file.seek(0)
+    opened.append(file)
+    return FileResponse(file)
 
-    def wsgi(self, method, path):
-        environ = RequestFactory().generic(method, path).environ
-        status = {}
 
-        def start_response(line, headers):
-            status["line"], status["headers"] = line, dict(headers)
+urlpatterns = [path("file/", file_view)]
 
-        body = b"".join(WSGIHandler()(environ, start_response))
-        return status["line"], status["headers"], body
 
-    def test_health_head_has_no_body(self):
-        line, headers, body = self.wsgi("HEAD", "/health/")
+@override_settings(ROOT_URLCONF=__name__)
+class StreamingHeadThroughWsgiTests(TestCase):
+    def setUp(self):
+        opened.clear()
+
+    def test_head_sends_nothing_and_closes_the_file(self):
+        line, headers, body = wsgi_request("HEAD", "/file/")
         self.assertTrue(line.startswith("200"))
         self.assertEqual(body, b"")
-        self.assertEqual(headers["Content-Length"], "2")
+        self.assertEqual(headers["Content-Length"], str(len(FILE_CONTENT)))
+        self.assertTrue(opened[0].closed)
 
-    def test_health_get_still_says_ok(self):
-        line, _, body = self.wsgi("GET", "/health/")
-        self.assertTrue(line.startswith("200"))
-        self.assertEqual(body, b"ok")
+    def test_get_still_streams_the_file(self):
+        _, _, body = wsgi_request("GET", "/file/")
+        self.assertEqual(body, FILE_CONTENT)
+        self.assertTrue(opened[0].closed)
