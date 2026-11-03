@@ -1,5 +1,5 @@
 # 2026-11-03
-- Deployed the one-page listing form (#44) to production and ran `backfill_photos` there: existing photos now have thumbnails and quality measurements (originals not rewritten)
+- Deployed the one-page listing form (#44) to production and ran `backfill_photos` there: existing photos now have thumbnails and quality measurements (originals not rewritten). Installed the daily `purge-photo-uploads` cron (03:40)
 - HEAD responses without a body (#64, PR #65): since gunicorn 26, every HEAD request logged `WSGI app sent body bytes on a no-body response`, every 5 minutes for UptimeRobot's `HEAD /health/`. A middleware that runs first now empties HEAD bodies, keeps the GET's `Content-Length`, leaves 1xx/204/304 alone, and works under WSGI and ASGI
 
 # 2026-11-02
