@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Instaliraj aplikaciju — {{ SITE_NAME }}{% endblock %}
+
+{% block content %}
+
+<div class="max-w-xl mx-auto py-6 md:py-12">
+    <h1 class="font-serif text-4xl font-light text-center mb-3">Instaliraj aplikaciju</h1>
+    <p class="text-xs text-stone-400 text-center leading-relaxed mb-10">Dodajte {{ SITE_NAME }} na početni ekran telefona. Ikonica se otvara preko celog ekrana, a ništa ne morate da preuzimate iz prodavnice aplikacija.</p>
+
+    <section class="border border-neutral-200 p-5 mb-6" aria-labelledby="install-android">
+        <h2 id="install-android" class="text-xs uppercase tracking-widest text-stone-700 mb-4">Android (Chrome)</h2>
+        <ol class="text-sm text-stone-700 space-y-2 list-decimal pl-5">
+            <li>Otvorite sajt u Chrome pregledaču.</li>
+            <li>Dodirnite meni <span aria-hidden="true">⋮</span> u gornjem desnom uglu.</li>
+            <li>Izaberite „Dodaj na početni ekran” ili „Instaliraj aplikaciju” i potvrdite.</li>
+        </ol>
+    </section>
+
+    <section class="border border-neutral-200 p-5 mb-6" aria-labelledby="install-iphone">
+        <h2 id="install-iphone" class="text-xs uppercase tracking-widest text-stone-700 mb-4">iPhone i iPad (Safari)</h2>
+        <ol class="text-sm text-stone-700 space-y-2 list-decimal pl-5">
+            <li>Otvorite sajt u Safari pregledaču.</li>
+            <li>Dodirnite dugme „Deli” (Share).</li>
+            <li>Izaberite „Dodaj na početni ekran”. Ako vidite opciju „Open as Web App”, ostavite je uključenu.</li>
+            <li>Dodirnite „Dodaj” (Add).</li>
+        </ol>
+    </section>
+
+    <section aria-labelledby="install-notes">
+        <h2 id="install-notes" class="text-xs uppercase tracking-widest text-stone-500 mb-3">Napomene</h2>
+        <ul class="text-xs text-stone-500 leading-relaxed space-y-1.5 list-disc pl-4">
+            <li>Za korišćenje je potreban internet.</li>
+            <li>Ako ste sajt otvorili iz Facebook ili Instagram aplikacije, prvo ga otvorite u Chrome ili Safari pregledaču.</li>
+            <li>Nazivi opcija mogu da se razlikuju u zavisnosti od jezika i verzije telefona.</li>
+        </ul>
+    </section>
+</div>
+
+{% endblock %}

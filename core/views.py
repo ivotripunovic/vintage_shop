@@ -6,7 +6,7 @@ from django.core.cache import cache
 from django.core.signing import BadSignature
 from django.db import connection
 from django.http import HttpResponse, JsonResponse
-from django.shortcuts import redirect
+from django.shortcuts import redirect, render
 from django.templatetags.static import static
 from django.utils import timezone
 from django.views.decorators.cache import never_cache
@@ -207,3 +207,9 @@ def manifest(request):
         ],
     }
     return JsonResponse(data, content_type="application/manifest+json")
+
+
+@require_safe
+def install_app(request):
+    """How to add the site to a phone's home screen."""
+    return render(request, "core/install_app.html")
