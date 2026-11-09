@@ -537,6 +537,7 @@
     </a>
     {% endif %}
 
+    {% if url_name != 'install_app' %}{% include "core/_install_banner.html" %}{% endif %}
     {% endwith %}
 </nav>
 
