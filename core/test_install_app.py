@@ -16,6 +16,18 @@ class InstallAppPageTests(TestCase):
         response = self.client.get(reverse("home"))
         self.assertContains(response, f'href="{reverse("install_app")}"')
 
+    def test_banner_on_other_pages_links_to_instructions(self):
+        response = self.client.get(reverse("home"))
+        self.assertTemplateUsed(response, "core/_install_banner.html")
+        self.assertContains(response, 'id="install-banner" class="hidden')
+        self.assertContains(
+            response, f'href="{reverse("install_app")}" id="install-banner-howto"'
+        )
+
+    def test_no_banner_on_instructions_page(self):
+        response = self.client.get(reverse("install_app"))
+        self.assertTemplateNotUsed(response, "core/_install_banner.html")
+
     @override_settings(
         COMING_SOON=True,
         COMING_SOON_SECRET="",

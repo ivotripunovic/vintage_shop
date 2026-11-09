@@ -1,0 +1,97 @@
+{% load static %}
+{# Suggests adding the site to the home screen; included inside the mobile bottom nav. #}
+{# Hidden until the script below decides to show it, so the installed app never flashes it. #}
+<div id="install-banner" class="hidden absolute bottom-full left-0 right-0 bg-white border-t border-neutral-200 px-4 py-3 items-center gap-3" role="region" aria-label="Instaliraj aplikaciju">
+    <img src="{% static 'icons/icon-192.png' %}" alt="" class="w-9 h-9 flex-shrink-0">
+    <p class="flex-1 text-xs text-stone-600 leading-snug">Dodajte {{ SITE_NAME }} na početni ekran telefona.</p>
+    <button type="button" id="install-banner-install" class="hidden bg-stone-900 text-white text-xs uppercase tracking-widest px-3 py-2 hover:bg-stone-700 transition-colors">Instaliraj</button>
+    <a href="{% url 'install_app' %}" id="install-banner-howto" class="text-xs uppercase tracking-widest text-stone-500 hover:text-stone-900 transition-colors">Kako?</a>
+    <button type="button" id="install-banner-close" class="text-stone-400 hover:text-stone-900 transition-colors p-1 -mr-1" aria-label="Zatvori">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M6 18L18 6M6 6l12 12"/>
+        </svg>
+    </button>
+</div>
+<script>
+(function () {
+    var banner = document.getElementById("install-banner");
+    var installButton = document.getElementById("install-banner-install");
+    var DISMISSED_KEY = "installBannerDismissedAt";
+    var INSTALLED_KEY = "installBannerInstalled";
+    var SNOOZE_MS = 30 * 24 * 60 * 60 * 1000;
+    var deferredPrompt = null;
+
+    // Opened from the home-screen icon: Android and desktop report a display
+    // mode, iOS Safari sets navigator.standalone
+    function runningAsApp() {
+        if (window.navigator.standalone === true) return true;
+        return ["standalone", "fullscreen", "minimal-ui"].some(function (mode) {
+            return window.matchMedia("(display-mode: " + mode + ")").matches;
+        });
+    }
+
+    function isPhone() {
+        var ua = navigator.userAgent;
+        // iPadOS reports a Mac user agent but has a touch screen
+        return /Android|iPhone|iPad|iPod/i.test(ua) ||
+            (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
+    }
+
+    // Storage can be blocked (private mode); then the banner just shows again
+    function read(key) {
+        try { return localStorage.getItem(key); } catch (e) { return null; }
+    }
+    function write(key, value) {
+        try { localStorage.setItem(key, value); } catch (e) {}
+    }
+
+    function snoozed() {
+        var at = Number(read(DISMISSED_KEY));
+        return at > 0 && Date.now() - at < SNOOZE_MS;
+    }
+
+    function show() {
+        banner.classList.remove("hidden");
+        banner.classList.add("flex");
+        // Keep the bottom of the page reachable above the banner
+        document.body.style.paddingBottom = banner.offsetHeight + "px";
+    }
+    function hide() {
+        banner.classList.add("hidden");
+        banner.classList.remove("flex");
+        document.body.style.paddingBottom = "";
+    }
+
+    if (runningAsApp() || !isPhone() || read(INSTALLED_KEY) || snoozed()) return;
+
+    // Chrome on Android offers its own install dialog; use it for a one-tap
+    // button instead of only linking to the instructions
+    window.addEventListener("beforeinstallprompt", function (event) {
+        event.preventDefault();
+        deferredPrompt = event;
+        installButton.classList.remove("hidden");
+    });
+
+    installButton.addEventListener("click", function () {
+        if (!deferredPrompt) return;
+        deferredPrompt.prompt();
+        deferredPrompt.userChoice.then(function (choice) {
+            deferredPrompt = null;
+            installButton.classList.add("hidden");
+            if (choice.outcome === "accepted") hide();
+        });
+    });
+
+    window.addEventListener("appinstalled", function () {
+        write(INSTALLED_KEY, "1");
+        hide();
+    });
+
+    document.getElementById("install-banner-close").addEventListener("click", function () {
+        write(DISMISSED_KEY, String(Date.now()));
+        hide();
+    });
+
+    show();
+})();
+</script>
