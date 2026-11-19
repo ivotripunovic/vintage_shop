@@ -1,11 +1,11 @@
-{% extends "base.html" %}
-{% block title %}{% block error_title %}{% endblock %} — {{ SITE_NAME }}{% endblock %}
+{% extends COMING_SOON|yesno:"errors/_standalone.html,base.html" %}
+{% block title %}{% block error_title %}{% endblock %}{% if SITE_NAME %} — {{ SITE_NAME }}{% endif %}{% endblock %}
 
 {% block content %}
-<div class="max-w-md mx-auto py-16 text-center">
+<div class="max-w-md w-full mx-auto py-16 text-center">
     <p class="text-xs uppercase tracking-[0.3em] text-stone-400 mb-6">{% block error_code %}{% endblock %}</p>
     <h1 class="font-serif text-4xl font-light mb-4">{% block error_heading %}{% endblock %}</h1>
     <p class="text-sm text-stone-500 leading-relaxed mb-10">{% block error_message %}{% endblock %}</p>
-    <a href="{% url 'home' %}" class="inline-block bg-stone-900 text-white text-xs uppercase tracking-widest px-8 py-3.5 hover:bg-stone-700 transition-colors">Nazad na početnu</a>
+    <a href="/" class="inline-block bg-stone-900 text-white text-xs uppercase tracking-widest px-8 py-3.5 hover:bg-stone-700 transition-colors">Nazad na početnu</a>
 </div>
 {% endblock %}

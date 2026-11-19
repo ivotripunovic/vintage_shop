@@ -13,4 +13,6 @@ def site_settings(request):
         "INSTAGRAM_URL": settings.INSTAGRAM_URL,
         "FACEBOOK_URL": settings.FACEBOOK_URL,
         "nav_categories": nav_categories,
+        # Error pages drop the site navigation while the pre-launch gate is on
+        "COMING_SOON": settings.COMING_SOON,
     }

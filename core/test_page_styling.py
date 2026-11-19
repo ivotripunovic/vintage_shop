@@ -82,3 +82,43 @@ def test_permission_denied_uses_site_layout(client):
 def test_500_template_is_styled_without_context():
     html = loader.get_template("500.html").render()
     assert SITE_CSS in html
+
+
+SITE_NAV = 'id="nav-categories"'
+
+
+@pytest.mark.django_db
+@override_settings(DEBUG=False, ALLOWED_HOSTS=["good.example"])
+def test_disallowed_host_returns_styled_400(client):
+    """Raised before AuthenticationMiddleware, so request.user does not exist."""
+    response = client.get("/", HTTP_HOST="evil.example")
+    assert response.status_code == 400
+    assert SITE_CSS in response.content.decode()
+
+
+@pytest.mark.django_db
+def test_csrf_failure_uses_site_layout():
+    from django.test import Client
+
+    client = Client(enforce_csrf_checks=True)
+    response = client.post("/auth/login/", {"email": "x@example.com"})
+    assert response.status_code == 403
+    assert_styled(response)
+
+
+@pytest.mark.django_db
+@override_settings(DEBUG=False, COMING_SOON=True)
+def test_error_pages_hide_site_nav_while_coming_soon(client):
+    """The gate lets /waitlist/ through; its 404 must not reveal the site menu."""
+    response = client.get("/waitlist/no-such-page/")
+    assert response.status_code == 404
+    body = response.content.decode()
+    assert SITE_CSS in body
+    assert SITE_NAV not in body
+
+
+@pytest.mark.django_db
+@override_settings(DEBUG=False)
+def test_error_pages_show_site_nav_normally(client):
+    response = client.get("/no-such-page/")
+    assert SITE_NAV in response.content.decode()

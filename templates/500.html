@@ -1,29 +1,14 @@
+{% extends "errors/_standalone.html" %}
 {% comment %}
-Standalone on purpose: Django renders 500.html without a request or context
-processors, and the failure may come from the database, so it must not extend
-base.html.
-{% endcomment %}<!DOCTYPE html>
-<html lang="sr">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Greška na serveru</title>
-    <link rel="icon" href="/static/favicon.ico" sizes="any">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400&family=Inter:wght@300;400&display=swap" rel="stylesheet">
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        .font-serif { font-family: 'Cormorant Garamond', Georgia, serif; }
-        body { font-family: 'Inter', system-ui, sans-serif; }
-    </style>
-</head>
-<body class="min-h-screen bg-white text-stone-900 antialiased flex items-center justify-center px-6">
-    <div class="max-w-md w-full text-center">
-        <p class="text-xs uppercase tracking-[0.3em] text-stone-400 mb-6">500</p>
-        <h1 class="font-serif text-4xl font-light mb-4">Nešto je pošlo naopako</h1>
-        <p class="text-sm text-stone-500 leading-relaxed mb-10">Došlo je do greške na serveru. Pokušajte ponovo za nekoliko trenutaka.</p>
-        <a href="/" class="inline-block bg-stone-900 text-white text-xs uppercase tracking-widest px-8 py-3.5 hover:bg-stone-700 transition-colors">Nazad na početnu</a>
-    </div>
-</body>
-</html>
+Standalone: Django renders 500.html without a request or context processors,
+and the failure may come from the database.
+{% endcomment %}
+{% block title %}Greška na serveru{% endblock %}
+{% block content %}
+<div class="max-w-md w-full text-center">
+    <p class="text-xs uppercase tracking-[0.3em] text-stone-400 mb-6">500</p>
+    <h1 class="font-serif text-4xl font-light mb-4">Nešto je pošlo naopako</h1>
+    <p class="text-sm text-stone-500 leading-relaxed mb-10">Došlo je do greške na serveru. Pokušajte ponovo za nekoliko trenutaka.</p>
+    <a href="/" class="inline-block bg-stone-900 text-white text-xs uppercase tracking-widest px-8 py-3.5 hover:bg-stone-700 transition-colors">Nazad na početnu</a>
+</div>
+{% endblock %}
