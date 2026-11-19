@@ -7,10 +7,11 @@ from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.cache import cache
+from django.core.exceptions import PermissionDenied
 from django.core.mail import BadHeaderError, send_mail
 from django.db import transaction
 from django.db.models import Count, OuterRef, Q, Subquery
-from django.http import HttpResponseBadRequest, HttpResponseForbidden, JsonResponse
+from django.http import HttpResponseBadRequest, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
@@ -194,7 +195,7 @@ def chat_detail(request, pk):
         pk=pk,
     )
     if not _assert_participant(conversation, request.user):
-        return HttpResponseForbidden()
+        raise PermissionDenied
 
     # Mark incoming messages as read
     conversation.messages.filter(is_read=False).exclude(sender=request.user).update(

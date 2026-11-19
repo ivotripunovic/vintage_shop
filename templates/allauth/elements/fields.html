@@ -1,0 +1,21 @@
+{% if attrs.form.non_field_errors %}
+    <div class="border border-red-200 p-4">
+        {% for error in attrs.form.non_field_errors %}<p class="text-xs text-red-600">{{ error }}</p>{% endfor %}
+    </div>
+{% endif %}
+{% for field in attrs.form.hidden_fields %}{{ field }}{% endfor %}
+{% for field in attrs.form.visible_fields %}
+    <div>
+        {% if field.widget_type == "checkbox" %}
+            <div class="flex items-center gap-2">
+                {{ field }}
+                <label for="{{ field.id_for_label }}" class="text-xs text-stone-500">{{ field.label }}</label>
+            </div>
+        {% else %}
+            <label for="{{ field.id_for_label }}" class="block text-xs uppercase tracking-widest text-stone-500 mb-2">{{ field.label }}</label>
+            {{ field }}
+        {% endif %}
+        {% for error in field.errors %}<p class="text-xs text-red-600 mt-1">{{ error }}</p>{% endfor %}
+        {% if field.help_text %}<p class="text-xs text-stone-400 mt-1">{{ field.help_text|safe }}</p>{% endif %}
+    </div>
+{% endfor %}

@@ -1,0 +1,5 @@
+{% load allauth %}
+<span class="inline-block ml-2 px-2 py-0.5 text-[10px] uppercase tracking-widest border border-stone-300 text-stone-500" {% if attrs.title %}title="{{ attrs.title }}"{% endif %}>
+    {% slot %}
+    {% endslot %}
+</span>

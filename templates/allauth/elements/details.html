@@ -1,0 +1,11 @@
+{% load allauth %}
+<details class="mb-6 text-sm text-stone-600" {% if attrs.open %}open{% endif %}>
+    <summary class="cursor-pointer text-xs uppercase tracking-widest text-stone-500 hover:text-stone-900">
+        {% slot summary %}
+        {% endslot %}
+    </summary>
+    <div class="mt-4">
+        {% slot body %}
+        {% endslot %}
+    </div>
+</details>

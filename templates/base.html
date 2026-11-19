@@ -177,6 +177,7 @@
             }, { passive: true });
         })();
     </script>
+    {% block extra_head %}{% endblock %}
 </head>
 <body class="bg-white text-stone-900 font-sans antialiased">
 
@@ -430,7 +431,7 @@
     </div>
 {% endif %}
 
-<main class="max-w-7xl mx-auto px-6 lg:px-8 pt-4 pb-20 md:py-10">
+<main class="{% block main_class %}max-w-7xl mx-auto px-6 lg:px-8 pt-4 pb-20 md:py-10{% endblock %}">
     {% block content %}{% endblock %}
 </main>
 
