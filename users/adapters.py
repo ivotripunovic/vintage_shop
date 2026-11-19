@@ -39,24 +39,53 @@ class SocialAccountAdapter(DefaultSocialAccountAdapter):
         from django.contrib.auth import get_user_model
         from django.shortcuts import redirect
 
-        # Allow registration flow initiated from the register page
-        if sociallogin.state.get("process") == "signup":
-            return
-
         if sociallogin.is_existing:
             return
 
         email = sociallogin.user.email
+        user = None
         if email:
             User = get_user_model()
-            if User.objects.filter(email=email).exists():
-                return
+            user = User.objects.filter(email__iexact=email).first()
+
+        if user:
+            if self._provider_verified(sociallogin, email):
+                self._connect_existing_user(request, sociallogin, user)
+            return
+
+        # Allow registration flow initiated from the register page
+        if sociallogin.state.get("process") == "signup":
+            return
 
         messages.error(
             request,
             "Ne postoji nalog za ovaj Google nalog. Molimo vas da se najpre registrujete.",
         )
         raise ImmediateHttpResponse(redirect("/auth/register/"))
+
+    @staticmethod
+    def _provider_verified(sociallogin, email):
+        """True if the provider vouches that this email belongs to the user."""
+        return any(
+            address.verified and address.email.lower() == email.lower()
+            for address in sociallogin.email_addresses
+        )
+
+    @staticmethod
+    def _connect_existing_user(request, sociallogin, user):
+        """Link the social account to a user who registered with email/password.
+
+        Without this, allauth treats the login as a new signup, finds the email
+        taken and sends an "account already exists" email instead of logging in.
+        """
+        if not user.email_verified:
+            # Someone else may have registered this unverified email; the
+            # provider has now proven ownership, so lock out that password.
+            user.set_unusable_password()
+            user.email_verified = True
+            user.email_verified_at = timezone.now()
+            user.save(update_fields=["password", "email_verified", "email_verified_at"])
+        sociallogin.connect(request, user)
 
     def save_user(self, request, sociallogin, form=None):
         """Mark social users as buyers with verified email."""

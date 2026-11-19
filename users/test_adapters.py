@@ -20,11 +20,16 @@ def _make_request(factory):
     return request
 
 
-def _make_sociallogin(*, is_existing=False, email="user@example.com", process="login"):
+def _make_sociallogin(
+    *, is_existing=False, email="user@example.com", process="login", verified=True
+):
     sociallogin = MagicMock()
     sociallogin.is_existing = is_existing
     sociallogin.user.email = email
     sociallogin.state = {"process": process}
+    sociallogin.email_addresses = (
+        [MagicMock(email=email, verified=verified)] if email else []
+    )
     return sociallogin
 
 
@@ -52,16 +57,63 @@ class TestPreSocialLogin(TestCase):
         sociallogin = _make_sociallogin(is_existing=True)
         self.adapter.pre_social_login(request, sociallogin)  # must not raise
 
-    def test_allows_login_when_email_matches_existing_user(self):
-        """Login passes if the provider email matches a registered account."""
-        User.objects.create_user(
+    def test_connects_existing_user_when_email_matches(self):
+        """A verified provider email matching a registered account links the two."""
+        user = User.objects.create_user(
+            email="registered@example.com",
+            username="registered",
+            password="pass",
+            email_verified=True,
+        )
+        request = _make_request(self.factory)
+        sociallogin = _make_sociallogin(email="Registered@example.com")
+        self.adapter.pre_social_login(request, sociallogin)  # must not raise
+        sociallogin.connect.assert_called_once_with(request, user)
+        user.refresh_from_db()
+        self.assertTrue(user.has_usable_password())
+
+    def test_connects_existing_user_from_signup_process(self):
+        """Using Google on the register page with a taken email logs into it."""
+        user = User.objects.create_user(
+            email="registered@example.com",
+            username="registered",
+            password="pass",
+            email_verified=True,
+        )
+        request = _make_request(self.factory)
+        sociallogin = _make_sociallogin(
+            email="registered@example.com", process="signup"
+        )
+        self.adapter.pre_social_login(request, sociallogin)
+        sociallogin.connect.assert_called_once_with(request, user)
+
+    def test_connecting_unverified_user_wipes_password_and_verifies(self):
+        """An unverified local account may belong to someone else: lock its password."""
+        user = User.objects.create_user(
             email="registered@example.com",
             username="registered",
             password="pass",
         )
         request = _make_request(self.factory)
         sociallogin = _make_sociallogin(email="registered@example.com")
+        self.adapter.pre_social_login(request, sociallogin)
+        sociallogin.connect.assert_called_once_with(request, user)
+        user.refresh_from_db()
+        self.assertFalse(user.has_usable_password())
+        self.assertTrue(user.email_verified)
+        self.assertIsNotNone(user.email_verified_at)
+
+    def test_does_not_connect_when_provider_email_unverified(self):
+        """Without provider verification the account is not linked."""
+        User.objects.create_user(
+            email="registered@example.com",
+            username="registered",
+            password="pass",
+        )
+        request = _make_request(self.factory)
+        sociallogin = _make_sociallogin(email="registered@example.com", verified=False)
         self.adapter.pre_social_login(request, sociallogin)  # must not raise
+        sociallogin.connect.assert_not_called()
 
     def test_blocks_login_for_unknown_email(self):
         """Login is blocked and redirects to register when email is not registered."""
