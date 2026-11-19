@@ -9,7 +9,9 @@ from django.contrib import messages
 from django.contrib.auth import login, logout
 from django.contrib.auth.decorators import login_required
 from django.core.mail import BadHeaderError, send_mail
+from django.http import HttpResponseRedirect
 from django.shortcuts import redirect, render
+from django.urls import reverse
 from django.utils.crypto import get_random_string
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.csrf import csrf_protect
@@ -69,12 +71,27 @@ def register_view(request):
     return render(request, "users/register.html", context)
 
 
+def _safe_next_url(request):
+    """The ?next= target if it is a path on this site, otherwise the home page.
+
+    Only paths are accepted: redirect() would treat a bare word as a URL name
+    (an unknown one raises NoReverseMatch, and "logout" would log the user
+    straight back out), and absolute URLs are never needed here.
+    """
+    next_url = request.GET.get("next", "")
+    if next_url.startswith("/") and url_has_allowed_host_and_scheme(
+        next_url, allowed_hosts={request.get_host()}
+    ):
+        return next_url
+    return reverse("home")
+
+
 @csrf_protect
 @require_http_methods(["GET", "POST"])
 def login_view(request):
     """Login user."""
     if request.user.is_authenticated:
-        return redirect("home")
+        return HttpResponseRedirect(_safe_next_url(request))
 
     if request.method == "POST":
         form = UserLoginForm(request.POST)
@@ -91,15 +108,7 @@ def login_view(request):
 
             login(request, user, backend="django.contrib.auth.backends.ModelBackend")
 
-            # Redirect to next page or home; only same-site URLs are followed
-            next_url = request.GET.get("next", "")
-            if not url_has_allowed_host_and_scheme(
-                next_url,
-                allowed_hosts={request.get_host()},
-                require_https=request.is_secure(),
-            ):
-                next_url = "home"
-            return redirect(next_url)
+            return HttpResponseRedirect(_safe_next_url(request))
         else:
             for error in form.non_field_errors():
                 messages.error(request, error)

@@ -222,6 +222,9 @@ class TestLoginView(TestCase):
             "//evil.example/",
             "/\\evil.example/",
             "javascript:alert(1)",
+            "http://testserver/products/",
+            "logout",
+            "no-such-url-name",
         ):
             with self.subTest(next=evil):
                 self.client.logout()
@@ -229,6 +232,16 @@ class TestLoginView(TestCase):
                 self.assertRedirects(
                     response, reverse("home"), fetch_redirect_response=False
                 )
+
+    def test_logged_in_user_follows_same_site_next(self):
+        self.client.force_login(self.user)
+        response = self.client.get(f"{self.login_url}?next=/products/")
+        self.assertRedirects(response, "/products/", fetch_redirect_response=False)
+
+    def test_logged_in_user_ignores_external_next(self):
+        self.client.force_login(self.user)
+        response = self.client.get(f"{self.login_url}?next=https://evil.example/")
+        self.assertRedirects(response, reverse("home"), fetch_redirect_response=False)
 
     def test_login_invalid_password(self):
         """Test login with invalid password."""
