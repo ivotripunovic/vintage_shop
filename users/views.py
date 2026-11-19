@@ -11,6 +11,7 @@ from django.contrib.auth.decorators import login_required
 from django.core.mail import BadHeaderError, send_mail
 from django.shortcuts import redirect, render
 from django.utils.crypto import get_random_string
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.csrf import csrf_protect
 from django.views.decorators.http import require_http_methods
 
@@ -90,8 +91,14 @@ def login_view(request):
 
             login(request, user, backend="django.contrib.auth.backends.ModelBackend")
 
-            # Redirect to next page or home
-            next_url = request.GET.get("next", "home")
+            # Redirect to next page or home; only same-site URLs are followed
+            next_url = request.GET.get("next", "")
+            if not url_has_allowed_host_and_scheme(
+                next_url,
+                allowed_hosts={request.get_host()},
+                require_https=request.is_secure(),
+            ):
+                next_url = "home"
             return redirect(next_url)
         else:
             for error in form.non_field_errors():

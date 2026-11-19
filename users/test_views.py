@@ -205,6 +205,31 @@ class TestLoginView(TestCase):
 
         self.assertTrue(response.wsgi_request.user.is_authenticated)
 
+    def _login_with_next(self, next_url):
+        return self.client.post(
+            f"{self.login_url}?next={next_url}",
+            {"email": "test@example.com", "password": "TestPass123!"},
+        )
+
+    def test_login_follows_same_site_next(self):
+        response = self._login_with_next("/products/")
+        self.assertRedirects(response, "/products/", fetch_redirect_response=False)
+
+    def test_login_ignores_external_next(self):
+        """An external ?next= must not turn login into an open redirect."""
+        for evil in (
+            "https://evil.example/",
+            "//evil.example/",
+            "/\\evil.example/",
+            "javascript:alert(1)",
+        ):
+            with self.subTest(next=evil):
+                self.client.logout()
+                response = self._login_with_next(evil)
+                self.assertRedirects(
+                    response, reverse("home"), fetch_redirect_response=False
+                )
+
     def test_login_invalid_password(self):
         """Test login with invalid password."""
         response = self.client.post(
