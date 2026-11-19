@@ -1,0 +1,25 @@
+{% comment %}
+Minimal shell for error pages that must not depend on the request: no context
+processors, no database, no site navigation. Used by 500.html and 400.html
+(raised before middleware sets request.user), and by every error page shown to
+a visitor held by the Coming Soon gate, so the unreleased site's menu is never shown.
+{% endcomment %}{% load static %}<!DOCTYPE html>
+<html lang="sr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}{% endblock %}</title>
+    <link rel="icon" href="{% static 'favicon.ico' %}" sizes="any">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400&family=Inter:wght@300;400&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .font-serif { font-family: 'Cormorant Garamond', Georgia, serif; }
+        body { font-family: 'Inter', system-ui, sans-serif; }
+    </style>
+</head>
+<body class="min-h-screen bg-white text-stone-900 antialiased flex items-center justify-center px-6">
+    {% block content %}{% endblock %}
+</body>
+</html>

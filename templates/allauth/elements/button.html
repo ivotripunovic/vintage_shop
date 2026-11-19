@@ -6,7 +6,7 @@
 {% if attrs.name %}name="{{ attrs.name }}"{% endif %}
 {% if attrs.value %}value="{{ attrs.value }}"{% endif %}
 {% if attrs.type %}type="{{ attrs.type }}"{% endif %}
-class="{% if 'outline' in attrs.tags or 'secondary' in attrs.tags or 'link' in attrs.tags %}border border-stone-300 text-stone-700 hover:bg-stone-50{% elif 'danger' in attrs.tags %}bg-red-700 text-white hover:bg-red-600{% else %}bg-stone-900 text-white hover:bg-stone-700{% endif %} block w-full text-center text-xs uppercase tracking-widest py-3.5 transition-colors"
+class="{% if 'link' in attrs.tags or 'minor' in attrs.tags or 'tool' in attrs.tags %}inline-block text-xs uppercase tracking-widest {% if 'danger' in attrs.tags %}text-red-700 hover:text-red-500{% else %}text-stone-500 hover:text-stone-900{% endif %} underline py-1{% else %}{% if 'danger' in attrs.tags %}{% if 'outline' in attrs.tags or 'secondary' in attrs.tags %}border border-red-300 text-red-700 hover:bg-red-50{% else %}bg-red-700 text-white hover:bg-red-600{% endif %}{% elif 'secondary' in attrs.tags or 'outline' in attrs.tags %}border border-stone-300 text-stone-700 hover:bg-stone-50{% else %}bg-stone-900 text-white hover:bg-stone-700{% endif %} block w-full text-center text-xs uppercase tracking-widest py-3.5{% endif %} transition-colors"
 >
 {% slot %}
 {% endslot %}

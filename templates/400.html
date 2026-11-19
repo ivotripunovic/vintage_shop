@@ -1,5 +1,14 @@
-{% extends "errors/_error.html" %}
-{% block error_title %}Neispravan zahtev{% endblock %}
-{% block error_code %}400{% endblock %}
-{% block error_heading %}Neispravan zahtev{% endblock %}
-{% block error_message %}Zahtev nije mogao da bude obrađen.{% endblock %}
+{% extends "errors/_standalone.html" %}
+{% comment %}
+Standalone: a 400 is often raised for a disallowed Host header, before
+AuthenticationMiddleware runs, so base.html's context must not be needed.
+{% endcomment %}
+{% block title %}Neispravan zahtev{% endblock %}
+{% block content %}
+<div class="max-w-md w-full text-center">
+    <p class="text-xs uppercase tracking-[0.3em] text-stone-400 mb-6">400</p>
+    <h1 class="font-serif text-4xl font-light mb-4">Neispravan zahtev</h1>
+    <p class="text-sm text-stone-500 leading-relaxed mb-10">Zahtev nije mogao da bude obrađen.</p>
+    <a href="/" class="inline-block bg-stone-900 text-white text-xs uppercase tracking-widest px-8 py-3.5 hover:bg-stone-700 transition-colors">Nazad na početnu</a>
+</div>
+{% endblock %}
