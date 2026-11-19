@@ -1,4 +1,9 @@
-{% extends COMING_SOON|yesno:"errors/_standalone.html,base.html" %}
+{% extends ERROR_PAGE_BASE|default:"errors/_standalone.html" %}
+{% comment %}
+ERROR_PAGE_BASE comes from core.context_processors.site_settings. If it is
+missing (rendered without a request), fall back to the standalone shell, never
+to the site layout.
+{% endcomment %}
 {% block title %}{% block error_title %}{% endblock %}{% if SITE_NAME %} — {{ SITE_NAME }}{% endif %}{% endblock %}
 
 {% block content %}

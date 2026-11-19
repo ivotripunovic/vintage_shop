@@ -19,23 +19,6 @@ class ComingSoonMiddleware:
         if not getattr(settings, "COMING_SOON", False):
             return self.get_response(request)
 
-        # Admin, static/media assets, the favicon, the web app manifest, and
-        # the uptime monitor's health check always pass through
-        if request.path.startswith(
-            ("/admin/", "/static/", "/media/")
-        ) or request.path in (
-            HEALTH_PATH,
-            "/favicon.ico",
-            MANIFEST_PATH,
-            ROBOTS_PATH,
-        ):
-            return self.get_response(request)
-
-        # Waitlist endpoints (subscribe, confirm, unsubscribe) always pass
-        # through, so visitors can join the mailing list while the site is gated
-        if request.path.startswith(WAITLIST_PREFIX):
-            return self.get_response(request)
-
         # Staff and superusers pass through
         if request.user.is_authenticated and (
             request.user.is_staff or request.user.is_superuser
@@ -53,6 +36,17 @@ class ComingSoonMiddleware:
 
         # Bypass cookie grants access
         if secret and request.COOKIES.get(BYPASS_COOKIE) == secret:
+            return self.get_response(request)
+
+        # Admin, static/media assets, the favicon, the web app manifest, the
+        # uptime monitor's health check, and the waitlist endpoints (so
+        # visitors can join the mailing list) pass through for everyone.
+        # The visitor is still gated, so error pages on these paths must not
+        # show the site navigation (see core.context_processors).
+        if request.path.startswith(
+            ("/admin/", "/static/", "/media/", WAITLIST_PREFIX)
+        ) or request.path in (HEALTH_PATH, "/favicon.ico", MANIFEST_PATH, ROBOTS_PATH):
+            request.coming_soon_gated = True
             return self.get_response(request)
 
         return render(

@@ -1,12 +1,18 @@
 """
-Every user-facing HTML page must render inside the site layout (base.html),
-including pages served by django-allauth and Django's error handlers.
+Every user-facing HTML page must carry the site styling.
+
+Pages, including django-allauth's and the 403/404/CSRF error pages, render
+inside the site layout (base.html). The exceptions use the standalone shell
+errors/_standalone.html on purpose: 400 and 500 (rendered without a usable
+request), and every error page shown to a visitor held by the Coming Soon gate,
+so the unreleased site's navigation is never shown.
 """
 
 import pytest
 from django.template import loader
 from django.test import override_settings
 
+from core.test_waitlist import _middleware_with_coming_soon_gate
 from users.models import User
 
 SITE_CSS = "cdn.tailwindcss.com"
@@ -85,6 +91,7 @@ def test_500_template_is_styled_without_context():
 
 
 SITE_NAV = 'id="nav-categories"'
+SITE_HEADER = "<header"
 
 
 @pytest.mark.django_db
@@ -107,7 +114,9 @@ def test_csrf_failure_uses_site_layout():
 
 
 @pytest.mark.django_db
-@override_settings(DEBUG=False, COMING_SOON=True)
+@override_settings(
+    DEBUG=False, COMING_SOON=True, MIDDLEWARE=_middleware_with_coming_soon_gate()
+)
 def test_error_pages_hide_site_nav_while_coming_soon(client):
     """The gate lets /waitlist/ through; its 404 must not reveal the site menu."""
     response = client.get("/waitlist/no-such-page/")
@@ -115,10 +124,52 @@ def test_error_pages_hide_site_nav_while_coming_soon(client):
     body = response.content.decode()
     assert SITE_CSS in body
     assert SITE_NAV not in body
+    assert SITE_HEADER not in body
+
+
+@pytest.mark.django_db
+@override_settings(
+    DEBUG=False, COMING_SOON=True, MIDDLEWARE=_middleware_with_coming_soon_gate()
+)
+def test_staff_keep_site_nav_on_error_pages_while_coming_soon(client):
+    """Staff browse the gated site, so their error pages keep the layout."""
+    staff = User.objects.create_user(
+        email="staff@example.com",
+        username="staff@example.com",
+        password="pw-12345678",
+        is_staff=True,
+        email_verified=True,
+    )
+    client.force_login(staff)
+    response = client.get("/no-such-page/")
+    assert response.status_code == 404
+    assert SITE_NAV in response.content.decode()
+
+
+@pytest.mark.django_db
+@override_settings(
+    DEBUG=False,
+    COMING_SOON=True,
+    COMING_SOON_SECRET="s3cret",
+    MIDDLEWARE=_middleware_with_coming_soon_gate(),
+)
+def test_preview_visitors_keep_site_nav_on_error_pages(client):
+    client.cookies["vs_preview"] = "s3cret"
+    response = client.get("/no-such-page/")
+    assert response.status_code == 404
+    assert SITE_NAV in response.content.decode()
+
+
+@override_settings(COMING_SOON=True)
+def test_error_template_without_request_uses_standalone_shell():
+    html = loader.get_template("404.html").render()
+    assert SITE_CSS in html
+    assert SITE_HEADER not in html
 
 
 @pytest.mark.django_db
 @override_settings(DEBUG=False)
 def test_error_pages_show_site_nav_normally(client):
     response = client.get("/no-such-page/")
+    assert response.status_code == 404
     assert SITE_NAV in response.content.decode()

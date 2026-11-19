@@ -13,6 +13,12 @@ def site_settings(request):
         "INSTAGRAM_URL": settings.INSTAGRAM_URL,
         "FACEBOOK_URL": settings.FACEBOOK_URL,
         "nav_categories": nav_categories,
-        # Error pages drop the site navigation while the pre-launch gate is on
-        "COMING_SOON": settings.COMING_SOON,
+        # Layout for error pages (templates/errors/_error.html). Visitors held
+        # by the pre-launch gate on a path it lets through get the standalone
+        # shell, so the unreleased site's navigation is not shown.
+        "ERROR_PAGE_BASE": (
+            "errors/_standalone.html"
+            if getattr(request, "coming_soon_gated", False)
+            else "base.html"
+        ),
     }
