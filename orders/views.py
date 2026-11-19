@@ -4,9 +4,9 @@ Sales: the seller marks a product as sold to a buyer from chat.
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.core.exceptions import PermissionDenied
 from django.db import IntegrityError, transaction
 from django.db.models import F
-from django.http import HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_http_methods
@@ -63,7 +63,7 @@ def product_mark_sold_view(request, product_id):
         Product.objects.select_related("seller"), pk=product_id, is_deleted=False
     )
     if product.seller.user_id != request.user.id:
-        return HttpResponseForbidden()
+        raise PermissionDenied
     if not can_be_sold(product):
         messages.error(request, "Ovaj artikal se ne može označiti kao prodat.")
         return redirect("seller_products_list")

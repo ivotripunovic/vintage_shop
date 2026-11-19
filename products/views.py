@@ -4,14 +4,13 @@ Views for product management (CRUD operations).
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.core.exceptions import ValidationError
+from django.core.exceptions import PermissionDenied, ValidationError
 from django.core.paginator import Paginator
 from django.db import transaction
 from django.db.models import Count, Q
 from django.http import (
     Http404,
     HttpResponseBadRequest,
-    HttpResponseForbidden,
     JsonResponse,
 )
 from django.shortcuts import get_object_or_404, redirect, render
@@ -208,7 +207,7 @@ def product_edit_view(request, product_id):
     """
     seller = _get_seller_or_403(request)
     if not seller:
-        return HttpResponseForbidden("You are not authorized to access this resource.")
+        raise PermissionDenied
 
     product = get_object_or_404(Product, id=product_id, seller=seller)
 
@@ -255,7 +254,7 @@ def product_delete_view(request, product_id):
     """
     seller = _get_seller_or_403(request)
     if not seller:
-        return HttpResponseForbidden("You are not authorized to access this resource.")
+        raise PermissionDenied
 
     product = get_object_or_404(Product, id=product_id, seller=seller)
 
@@ -305,7 +304,7 @@ def product_images_view(request, product_id):
     """Old photo page: photos are now managed on the listing form."""
     seller = _get_seller_or_403(request)
     if not seller:
-        return HttpResponseForbidden("You are not authorized to access this resource.")
+        raise PermissionDenied
     product = get_object_or_404(Product, id=product_id, seller=seller)
     return redirect(_photos_url(product))
 
@@ -360,7 +359,7 @@ def product_image_delete_view(request, image_id):
     """
     seller = _get_seller_or_403(request)
     if not seller:
-        return HttpResponseForbidden("You are not authorized to access this resource.")
+        raise PermissionDenied
 
     image = get_object_or_404(
         ProductImage, id=image_id, product__seller=seller, product__is_deleted=False
@@ -388,7 +387,7 @@ def product_image_move_view(request, image_id):
     """
     seller = _get_seller_or_403(request)
     if not seller:
-        return HttpResponseForbidden("You are not authorized to access this resource.")
+        raise PermissionDenied
 
     image = get_object_or_404(
         ProductImage, id=image_id, product__seller=seller, product__is_deleted=False
@@ -463,7 +462,7 @@ def product_publish_view(request, product_id):
     """
     seller = _get_seller_or_403(request)
     if not seller:
-        return HttpResponseForbidden("You are not authorized to access this resource.")
+        raise PermissionDenied
 
     product = get_object_or_404(Product, id=product_id, seller=seller)
 
@@ -490,7 +489,7 @@ def product_unpublish_view(request, product_id):
     """
     seller = _get_seller_or_403(request)
     if not seller:
-        return HttpResponseForbidden("You are not authorized to access this resource.")
+        raise PermissionDenied
 
     product = get_object_or_404(Product, id=product_id, seller=seller)
     product.unpublish()

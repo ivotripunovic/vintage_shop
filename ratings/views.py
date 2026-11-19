@@ -4,9 +4,9 @@ Rate a sale, reply to a rating, and report a rating.
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.core.exceptions import PermissionDenied
 from django.core.paginator import Paginator
 from django.db import IntegrityError, transaction
-from django.http import HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.utils.http import url_has_allowed_host_and_scheme
@@ -62,7 +62,7 @@ def rate_sale_view(request, sale_id):
     sale = get_object_or_404(Sale.objects.select_related("seller", "buyer"), pk=sale_id)
     direction = rating_direction(sale, request.user)
     if direction is None:
-        return HttpResponseForbidden()
+        raise PermissionDenied
     if not can_rate(sale, request.user):
         messages.error(request, "Ovu prodaju više ne možete oceniti.")
         return redirect("my_ratings")
@@ -117,7 +117,7 @@ def rating_reply_view(request, rating_id):
     """The rated person posts one short public reply."""
     rating = _own_visible_rating(request, rating_id)
     if rating is None:
-        return HttpResponseForbidden()
+        raise PermissionDenied
     form = ReplyForm(request.POST)
     if rating.reply:
         messages.error(request, "Na ovu ocenu ste već odgovorili.")
@@ -137,7 +137,7 @@ def rating_report_view(request, rating_id):
     """The rated person reports the rating to staff."""
     rating = _own_visible_rating(request, rating_id)
     if rating is None:
-        return HttpResponseForbidden()
+        raise PermissionDenied
     form = ReportForm(request.POST)
     if form.is_valid():
         _, created = RatingReport.objects.get_or_create(
