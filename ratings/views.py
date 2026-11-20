@@ -29,7 +29,7 @@ def _redirect_back(request):
     return redirect("my_ratings")
 
 
-@login_required(login_url="login")
+@login_required
 def my_ratings_view(request):
     """Sales waiting for the user's rating, ratings received and given."""
     user = request.user
@@ -55,7 +55,7 @@ def my_ratings_view(request):
     return render(request, "ratings/my_ratings.html", context)
 
 
-@login_required(login_url="login")
+@login_required
 @require_http_methods(["GET", "POST"])
 def rate_sale_view(request, sale_id):
     """Rate the other side of a sale, once, while the window is open."""
@@ -111,7 +111,7 @@ def _own_visible_rating(request, rating_id):
     return rating if rating.subject_id == request.user.pk else None
 
 
-@login_required(login_url="login")
+@login_required
 @require_POST
 def rating_reply_view(request, rating_id):
     """The rated person posts one short public reply."""
@@ -131,7 +131,7 @@ def rating_reply_view(request, rating_id):
     return _redirect_back(request)
 
 
-@login_required(login_url="login")
+@login_required
 @require_POST
 def rating_report_view(request, rating_id):
     """The rated person reports the rating to staff."""

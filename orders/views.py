@@ -55,7 +55,7 @@ def _record_sale(product_id, buyer):
     return sale
 
 
-@login_required(login_url="login")
+@login_required
 @require_http_methods(["GET", "POST"])
 def product_mark_sold_view(request, product_id):
     """Pick the buyer from chat and record the sale."""
