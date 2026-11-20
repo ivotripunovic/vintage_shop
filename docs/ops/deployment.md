@@ -160,10 +160,14 @@ HTTPS, session and CSRF cookies are marked Secure, and allauth builds
      `https://www.<domain>/auth/social/google/login/callback/`.
    - Facebook (if enabled): Valid OAuth Redirect URIs: add
      `https://www.<domain>/auth/social/facebook/login/callback/`.
+   - Apple (if enabled): Sign in with Apple → Return URLs must include
+     `https://www.<domain>/auth/social/apple/login/callback/`. Apple only
+     accepts https, so this is just a check that it matches.
    - Keep the old `http://` entries until Google login is confirmed working,
      then remove them.
 2. Check that `SITE_DOMAIN` in the server `.env` starts with `https://`. The
-   custom verification and reset emails build their links from it.
+   custom verification, reset and chat emails build their links from it.
+   `manage.py check --deploy` warns (`core.W001`) if it does not.
 
 After deploying:
 

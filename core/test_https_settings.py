@@ -33,11 +33,18 @@ def load_settings(**env):
     result = subprocess.run(
         [sys.executable, "-c", PRINT_SETTINGS],
         cwd=ROOT,
-        env={**os.environ, "SECRET_KEY": "x" * 50, **env},
+        # Pin the vars under test so a developer's .env or shell cannot change
+        # them (decouple prefers os.environ over .env)
+        env={
+            **os.environ,
+            "SECRET_KEY": "x" * 50,
+            "SECURE_HSTS_SECONDS": "0",
+            **env,
+        },
         capture_output=True,
         text=True,
-        check=True,
     )
+    assert result.returncode == 0, result.stderr
     return json.loads(result.stdout.strip().splitlines()[-1])
 
 
@@ -63,3 +70,36 @@ def test_development_keeps_plain_http():
     assert s["session_secure"] is False
     assert s["csrf_secure"] is False
     assert s["allauth_protocol"] == "http"
+
+
+def test_site_domain_check_warns_without_https():
+    from django.test import override_settings
+
+    from core.checks import site_domain_uses_https
+
+    with override_settings(DEBUG=False, SITE_DOMAIN="http://www.example.com"):
+        assert [w.id for w in site_domain_uses_https(None)] == ["core.W001"]
+    with override_settings(DEBUG=False, SITE_DOMAIN="https://www.example.com"):
+        assert site_domain_uses_https(None) == []
+    with override_settings(DEBUG=True, SITE_DOMAIN="http://localhost:8000"):
+        assert site_domain_uses_https(None) == []
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("secure", [True, False])
+def test_preview_bypass_cookie_follows_secure_cookie_setting(client, secure):
+    """The bypass cookie's value is the preview secret; keep it off plain HTTP."""
+    from django.test import override_settings
+
+    from core.test_waitlist import _middleware_with_coming_soon_gate
+
+    with override_settings(
+        COMING_SOON=True,
+        COMING_SOON_SECRET="s3cret",
+        SESSION_COOKIE_SECURE=secure,
+        MIDDLEWARE=_middleware_with_coming_soon_gate(),
+    ):
+        response = client.get("/?preview=s3cret")
+    cookie = response.cookies["vs_preview"]
+    assert bool(cookie["secure"]) is secure
+    assert cookie["httponly"]
