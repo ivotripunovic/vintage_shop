@@ -146,25 +146,31 @@ Each step gets its own issue, branch and PR.
      email-change wording) to the new address.
    - Un-verifying a user by hand needs both records: edit the User and the
      allauth email address in the admin.
-2. **Switch email auth to allauth** (#77).
-   - Move `templates/users/login.html`, `register.html`,
-     `password_reset_*.html` and `verify_email_resend.html` to
-     `templates/account/…`, adapting the form field names. The design and
-     Serbian text stay the same.
-   - Email signup sets no `is_buyer` / `is_seller` (see Decisions). Check
-     every view and template that reads `is_buyer` before dropping it from
-     the signup flow.
-   - Write Serbian email templates in `templates/account/email/`
-     (`email_confirmation_*`, `password_reset_key_*`, `account_already_exists_*`).
-   - Keep `/auth/login/`, `/auth/register/`, `/auth/password-reset/` and the
-     other old URLs working as redirects.
-   - Set `ACCOUNT_RATE_LIMITS` explicitly and review the defaults.
-   - `/seller/register/` (`seller_register_view`) creates the account and
-     logs the user in with no email verification at all. Fold it into the
-     allauth signup.
-   - Seller settings email change: #76 makes it reset verification and
-     send the custom link. Replace that with allauth's email change flow.
-   - This fixes problems 2–6.
+2. **Switch email auth to allauth** (#77). *Done.*
+   - allauth is mounted at `/auth/`, so the login page stays `/auth/login/`.
+     The old custom paths (`/auth/register/`, `/auth/password-reset/`,
+     `/auth/password-change/`, `/auth/verify-email-resend/`) and the earlier
+     `/auth/accounts/*` mount redirect to their allauth pages. Links from
+     custom verification emails (`/auth/verify-email/<token>/`) still work
+     until #79.
+   - Serbian templates for every allauth page are in `templates/account/`
+     and `templates/socialaccount/`, built from the earlier designs. The
+     emails are in `templates/account/email/`. `AccountAdapter.send_mail` adds
+     `SITE_NAME`, because allauth renders emails without context processors.
+   - Error messages are Serbian: `AccountAdapter.error_messages` plus
+     `users/allauth_forms.py` for form-level checks and Django's password
+     validators. Translation stays off site-wide (see "Language").
+   - Signup sets no roles. `/seller/register/` sends visitors to the
+     verified signup, then to the welcome page, where they open a shop.
+   - Email change is allauth's re-verifying flow (`/auth/email/`). Seller
+     settings no longer edit the email; they link there.
+   - Logout is POST-only.
+   - `ACCOUNT_RATE_LIMITS` is written out in settings. Enumeration
+     prevention is on: duplicate signups and resets for unknown emails get
+     an email instead of an on-page hint.
+   - The custom register/login/logout/reset/change views, forms, templates
+     and tests are deleted. `users/test_auth_flows.py` covers the allauth
+     flows instead.
 3. **Simplify social linking** (#78).
    - Enable `SOCIALACCOUNT_EMAIL_AUTHENTICATION` and `..._AUTO_CONNECT`.
    - Cut `pre_social_login` down to what allauth does not cover. Drop the
@@ -174,12 +180,12 @@ Each step gets its own issue, branch and PR.
      account when linking) unless allauth is shown to cover it.
    - The existing `users/test_adapters.py` cases are the acceptance tests.
 4. **Clean up** (#79).
-   - Delete `VerificationToken`, `send_verification_email`,
-     `send_password_reset_email`, and the custom views and forms they replace.
-   - Delete `User.email_verified` and `email_verified_at`, or keep them as a
-     read-only property backed by `EmailAddress`.
-   - Old `/auth/verify-email/<token>/` and `/auth/reset-password/<token>/` URLs
-     redirect to the "request a new link" pages.
+   - Delete `VerificationToken`, `verify_email_view` and its URL, after
+     every custom verification link has expired (24 h after #77 deploys).
+   - Decide whether `User.email_verified` / `email_verified_at` and
+     `users/email_sync.py` stay. allauth's `EmailAddress` is now the source
+     of truth, and the custom login that read the flag is gone.
+   - Decide how long the old-URL redirects stay.
 
 ### Do Now, Whichever Option Wins
 
