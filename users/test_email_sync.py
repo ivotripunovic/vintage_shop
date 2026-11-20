@@ -59,9 +59,7 @@ class TestBackfill:
         flag_only = make_user("flag@example.com")
         EmailAddress.objects.filter(user=flag_only).update(verified=False)
         row_only = make_user("row@example.com", verified=False)
-        EmailAddress.objects.create(
-            user=row_only, email="row@example.com", primary=True, verified=True
-        )
+        EmailAddress.objects.filter(user=row_only).update(verified=True)
         self.run()
         assert addresses(flag_only) == [("flag@example.com", True, True)]
         assert addresses(row_only) == [("row@example.com", True, True)]
@@ -89,18 +87,57 @@ class TestBackfill:
 
 @pytest.mark.django_db
 class TestUserSaveMirrorsIntoAllauth:
-    def test_verifying_and_unverifying_is_mirrored(self):
-        user = make_user("a@example.com")
-        assert addresses(user) == [("a@example.com", True, True)]
-        user.email_verified = False
-        user.save()
+    def test_verifying_is_mirrored(self):
+        user = make_user("a@example.com", verified=False)
         assert addresses(user) == [("a@example.com", True, False)]
+        user.email_verified = True
+        user.save()
+        assert addresses(user) == [("a@example.com", True, True)]
+
+    def test_stale_unverified_save_does_not_undo_allauth_verification(self):
+        user = make_user("a@example.com", verified=False)
+        stale = User.objects.get(pk=user.pk)  # e.g. request.user in another tab
+        EmailAddress.objects.filter(user=user).update(verified=True)  # allauth
+        stale.save()
+        assert addresses(user) == [("a@example.com", True, True)]
+        user.refresh_from_db()
+        assert user.email_verified
+
+    def test_addresses_are_stored_lowercased(self):
+        user = make_user("Mixed.Case@Example.com")
+        assert addresses(user) == [("mixed.case@example.com", True, True)]
+
+    def test_blank_email_removes_the_address(self):
+        user = make_user("a@example.com")
+        User.objects.filter(pk=user.pk).update(email="")
+        user.refresh_from_db()
+        user.save()
+        assert addresses(user) == []
+
+    def test_users_created_outside_the_register_views_get_an_address(self):
+        admin = User.objects.create_superuser(
+            email="admin@example.com", username="admin", password=PASSWORD
+        )
+        assert addresses(admin) == [("admin@example.com", True, False)]
 
     def test_email_change_moves_the_address(self):
+        """A trusted change (admin) keeps the flag; the old row goes."""
         user = make_user("old@example.com")
         user.email = "new@example.com"
         user.save()
         assert addresses(user) == [("new@example.com", True, True)]
+
+    def test_email_change_keeps_other_rows_the_user_owns(self):
+        user = make_user("a@example.com")
+        EmailAddress.objects.create(
+            user=user, email="work@example.com", primary=False, verified=True
+        )
+        user.email = "b@example.com"
+        user.save()
+        assert sorted(addresses(user)) == [
+            ("b@example.com", True, True),
+            ("work@example.com", False, True),
+        ]
 
     def test_unrelated_update_fields_skip_the_sync(self):
         user = make_user("a@example.com")
@@ -131,11 +168,11 @@ class TestUserSaveMirrorsIntoAllauth:
         assert addresses(a) == [("a@example.com", True, True)]
         assert addresses(b) == [("b@example.com", True, True)]
 
-    def test_other_users_current_email_in_other_case_is_kept(self):
+    def test_case_variant_duplicates_do_not_crash_and_first_keeps_verified(self):
         upper = make_user("Foo@example.com")
-        lower = make_user("foo@example.com")
-        assert addresses(upper) == [("Foo@example.com", True, True)]
-        assert addresses(lower) == [("foo@example.com", True, True)]
+        lower = make_user("foo@example.com")  # must not raise IntegrityError
+        assert addresses(upper) == [("foo@example.com", True, True)]
+        assert addresses(lower) == [("foo@example.com", True, False)]
 
 
 @pytest.mark.django_db
@@ -185,3 +222,61 @@ def test_verified_user_is_not_asked_to_verify_again_by_allauth(client):
     )
     assert response.status_code == 302
     assert "confirm-email" not in response["Location"]
+
+
+@pytest.mark.django_db
+def test_verified_mixed_case_user_can_log_in_through_allauth(client):
+    """allauth looks addresses up lowercased (review of #85)."""
+    make_user("Foo.Bar@Example.com")
+    response = client.post(
+        "/auth/accounts/login/",
+        {"login": "Foo.Bar@Example.com", "password": PASSWORD},
+    )
+    assert response.status_code == 302
+    assert "confirm-email" not in response["Location"]
+
+
+@pytest.mark.django_db
+def test_social_signup_keeps_extra_verified_provider_emails(rf):
+    """The sync must not delete secondary addresses allauth just created."""
+    from allauth.socialaccount.models import SocialAccount, SocialLogin
+    from django.contrib.auth.models import AnonymousUser
+    from django.contrib.messages.storage.fallback import FallbackStorage
+    from django.contrib.sessions.backends.db import SessionStore
+
+    from users.adapters import SocialAccountAdapter
+
+    request = rf.get("/")
+    request.session = SessionStore()
+    request._messages = FallbackStorage(request)
+    request.user = AnonymousUser()
+    user = User(email="a@gmail.com")
+    sociallogin = SocialLogin(
+        user=user,
+        account=SocialAccount(provider="google", uid="123"),
+        email_addresses=[
+            EmailAddress(email="a@gmail.com", verified=True, primary=True),
+            EmailAddress(email="a@work.com", verified=True, primary=False),
+        ],
+    )
+    SocialAccountAdapter().save_user(request, sociallogin)
+    assert sorted(addresses(user)) == [
+        ("a@gmail.com", True, True),
+        ("a@work.com", False, True),
+    ]
+    user.refresh_from_db()
+    assert user.email_verified
+
+
+@pytest.mark.django_db
+def test_registration_is_atomic_when_the_sync_fails(client, monkeypatch):
+    def boom(*args, **kwargs):
+        raise RuntimeError("sync failed")
+
+    monkeypatch.setattr("users.signals.sync_primary_email", boom)
+    with pytest.raises(RuntimeError):
+        client.post(
+            reverse("register"),
+            {"email": "new@example.com", "password1": PASSWORD, "password2": PASSWORD},
+        )
+    assert not User.objects.filter(email="new@example.com").exists()

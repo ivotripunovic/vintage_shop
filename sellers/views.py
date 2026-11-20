@@ -36,15 +36,15 @@ def seller_register_view(request):
     if request.method == "POST":
         form = SellerRegistrationForm(request.POST)
         if form.is_valid():
-            # Create user
-            user = User.objects.create_user(
-                email=form.cleaned_data["email"],
-                username=form.cleaned_data["email"],
-                password=form.cleaned_data["password1"],
-                is_seller=True,
-                is_buyer=False,
-            )
-            sync_primary_email(user)
+            # Create user; the post_save sync adds its allauth EmailAddress
+            with transaction.atomic():
+                user = User.objects.create_user(
+                    email=form.cleaned_data["email"],
+                    username=form.cleaned_data["email"],
+                    password=form.cleaned_data["password1"],
+                    is_seller=True,
+                    is_buyer=False,
+                )
 
             # Authenticate and log in
             user = authenticate(
@@ -205,6 +205,12 @@ def seller_settings_view(request):
         if form.is_valid():
             seller = form.save()
             messages.success(request, "Account settings updated successfully.")
+            if form.email_changed:
+                messages.info(
+                    request,
+                    f"Poslali smo link za potvrdu na {seller.user.email}. "
+                    "Potvrdite novu adresu pre sledeće prijave.",
+                )
             return redirect("seller_settings")
     else:
         form = SellerAccountSettingsForm(instance=seller, user=request.user)

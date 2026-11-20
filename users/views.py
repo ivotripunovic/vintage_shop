@@ -9,6 +9,7 @@ from django.contrib import messages
 from django.contrib.auth import login, logout
 from django.contrib.auth.decorators import login_required
 from django.core.mail import BadHeaderError, send_mail
+from django.db import transaction
 from django.http import HttpResponseRedirect
 from django.shortcuts import redirect, render
 from django.urls import reverse
@@ -23,7 +24,6 @@ from datetime import timedelta
 
 from django.utils import timezone
 
-from .email_sync import sync_primary_email
 from .forms import (
     UserLoginForm,
     UserPasswordChangeForm,
@@ -45,11 +45,12 @@ def register_view(request):
     if request.method == "POST":
         form = UserRegistrationForm(request.POST)
         if form.is_valid():
-            user = form.save(commit=False)
-            # Set email as not verified initially
-            user.email_verified = False
-            user.save()
-            sync_primary_email(user)
+            # The post_save sync also creates the allauth EmailAddress; keep
+            # it in one transaction so a failure leaves no half-made account
+            with transaction.atomic():
+                user = form.save(commit=False)
+                user.email_verified = False
+                user.save()
 
             # Send verification email
             send_verification_email(user)

@@ -125,14 +125,24 @@ Costs and risks:
 Each step gets its own issue, branch and PR.
 
 1. **Copy verification state into allauth** (#76). *Done.*
-   - Migration `users/0004` gives every user one primary `EmailAddress` for
-     their current email. It is verified if either side was, and old-email
-     rows are removed.
-   - Until step 2, `users/email_sync.py` keeps the records in step. Saving a
-     User mirrors `email`/`email_verified` into allauth, and allauth's
-     `email_confirmed` signal sets `User.email_verified`. New users are left
-     to allauth's own signup (`setup_user_email` asserts there is no row
-     yet), and the custom register views call the sync themselves.
+   - Migration `users/0004` gives every user a primary `EmailAddress` for
+     their current email. It is stored lowercased, as allauth looks
+     addresses up, and is verified if either side was.
+   - Until step 2, `users/email_sync.py` and `users/signals.py` keep the
+     two in step:
+     - Saving a User raises allauth's `verified`, but never quietly lowers
+       it, so a stale instance cannot undo a confirmation.
+     - allauth's `email_confirmed` sets `User.email_verified`.
+     - Changing the email removes only the previous address. A provider's
+       extra emails are kept.
+     - allauth's own signups are skipped (our adapters mark them) because
+       `setup_user_email` creates their rows.
+     - Emails differing only in case are verified for one user only, with
+       a warning logged instead of a crash.
+   - Changing the email in seller settings now resets verification and
+     emails a link to the new address.
+   - Un-verifying a user by hand needs both records: edit the User and the
+     allauth email address in the admin.
 2. **Switch email auth to allauth** (#77).
    - Move `templates/users/login.html`, `register.html`,
      `password_reset_*.html` and `verify_email_resend.html` to
@@ -149,8 +159,8 @@ Each step gets its own issue, branch and PR.
    - `/seller/register/` (`seller_register_view`) creates the account and
      logs the user in with no email verification at all. Fold it into the
      allauth signup.
-   - Seller settings change the email without re-verifying it
-     (`sellers/forms.py` `_save_related`). Use allauth's email change flow.
+   - Seller settings email change: #76 makes it reset verification and
+     send the custom link. Replace that with allauth's email change flow.
    - This fixes problems 2–6.
 3. **Simplify social linking** (#78).
    - Enable `SOCIALACCOUNT_EMAIL_AUTHENTICATION` and `..._AUTO_CONNECT`.

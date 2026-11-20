@@ -1,27 +1,40 @@
 from allauth.account.signals import email_confirmed
-from django.db.models.signals import post_save
+from django.db.models.signals import post_save, pre_save
 from django.dispatch import receiver
 from django.utils import timezone
 
 from .email_sync import SYNCED_FIELDS, sync_primary_email
 from .models import User
 
+# Set on a User instance by our allauth adapters while allauth signs it up:
+# allauth then creates the EmailAddress rows itself (setup_user_email asserts
+# there are none yet), so the sync must wait for the adapter's own save.
+SKIP_SYNC_ATTR = "_allauth_signup_in_progress"
+
+
+def _syncs(update_fields):
+    return update_fields is None or bool(SYNCED_FIELDS & set(update_fields))
+
+
+@receiver(pre_save, sender=User)
+def remember_previous_email(sender, instance, update_fields=None, raw=False, **kwargs):
+    if raw or instance.pk is None or not _syncs(update_fields):
+        return
+    instance._previous_email = (
+        User.objects.filter(pk=instance.pk).values_list("email", flat=True).first()
+    )
+
 
 @receiver(post_save, sender=User)
 def sync_allauth_email_address(
     sender, instance, created, update_fields=None, raw=False, **kwargs
 ):
-    """Mirror the user's email and verification state into allauth (#76).
-
-    New users are skipped: allauth's own signup creates their EmailAddress
-    right after the first save (setup_user_email asserts there is none yet).
-    The custom register views call sync_primary_email themselves.
-    """
-    if raw or created:  # loaddata, or a new user
+    """Mirror the user's email and verification state into allauth (#76)."""
+    if raw or getattr(instance, SKIP_SYNC_ATTR, False):  # loaddata, allauth signup
         return
-    if update_fields is not None and not SYNCED_FIELDS & set(update_fields):
+    if not created and not _syncs(update_fields):
         return  # e.g. login() saving last_login
-    sync_primary_email(instance)
+    sync_primary_email(instance, getattr(instance, "_previous_email", None))
 
 
 @receiver(email_confirmed)
