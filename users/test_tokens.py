@@ -226,9 +226,12 @@ class TestEmailVerificationFlow(TestCase):
         user.refresh_from_db()
         self.assertTrue(user.email_verified)
 
-        # Reset email_verified to test reuse prevention
-        user.email_verified = False
-        user.save()
+        # Reset verification on both sides (bypassing the sync, which never
+        # quietly un-verifies) to test reuse prevention
+        from allauth.account.models import EmailAddress
+
+        User.objects.filter(pk=user.pk).update(email_verified=False)
+        EmailAddress.objects.filter(user=user).update(verified=False)
 
         # Try to reuse same token
         response2 = self.client.get(

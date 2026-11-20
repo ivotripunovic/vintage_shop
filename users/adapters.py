@@ -21,6 +21,19 @@ class AccountAdapter(DefaultAccountAdapter):
                 i += 1
             user_username(user, username)
 
+    def save_user(self, request, user, form, commit=True):
+        """allauth creates this user's EmailAddress itself; see users.signals."""
+        from .signals import SKIP_SYNC_ATTR
+
+        # Restore, not clear: social signup with a form calls this from
+        # inside SocialAccountAdapter.save_user, which set the flag first
+        previous = getattr(user, SKIP_SYNC_ATTR, False)
+        setattr(user, SKIP_SYNC_ATTR, True)
+        try:
+            return super().save_user(request, user, form, commit=commit)
+        finally:
+            setattr(user, SKIP_SYNC_ATTR, previous)
+
     def get_signup_redirect_url(self, request):
         from django.urls import reverse
 
@@ -135,7 +148,16 @@ class SocialAccountAdapter(DefaultSocialAccountAdapter):
 
     def save_user(self, request, sociallogin, form=None):
         """Mark social users as buyers with verified email."""
-        user = super().save_user(request, sociallogin, form)
+        from .signals import SKIP_SYNC_ATTR
+
+        # allauth creates the EmailAddress rows (setup_user_email) during
+        # super().save_user; the save below then runs the sync on top of them
+        previous = getattr(sociallogin.user, SKIP_SYNC_ATTR, False)
+        setattr(sociallogin.user, SKIP_SYNC_ATTR, True)
+        try:
+            user = super().save_user(request, sociallogin, form)
+        finally:
+            setattr(sociallogin.user, SKIP_SYNC_ATTR, previous)
         user.is_buyer = True
         user.email_verified = True
         user.email_verified_at = timezone.now()

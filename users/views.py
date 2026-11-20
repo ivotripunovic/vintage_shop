@@ -9,6 +9,7 @@ from django.contrib import messages
 from django.contrib.auth import login, logout
 from django.contrib.auth.decorators import login_required
 from django.core.mail import BadHeaderError, send_mail
+from django.db import transaction
 from django.http import HttpResponseRedirect
 from django.shortcuts import redirect, render
 from django.urls import reverse
@@ -44,10 +45,12 @@ def register_view(request):
     if request.method == "POST":
         form = UserRegistrationForm(request.POST)
         if form.is_valid():
-            user = form.save(commit=False)
-            # Set email as not verified initially
-            user.email_verified = False
-            user.save()
+            # The post_save sync also creates the allauth EmailAddress; keep
+            # it in one transaction so a failure leaves no half-made account
+            with transaction.atomic():
+                user = form.save(commit=False)
+                user.email_verified = False
+                user.save()
 
             # Send verification email
             send_verification_email(user)
@@ -346,8 +349,8 @@ def social_become_seller_view(request):
 # ============================================================================
 
 
-def send_verification_email(user):
-    """Send email verification link to user."""
+def send_verification_email(user, email_change=False):
+    """Send email verification link to user (a new account, or a new address)."""
     token = get_random_string(50)
     VerificationToken.objects.create(
         user=user,
@@ -360,15 +363,27 @@ def send_verification_email(user):
     site_name = settings.SITE_NAME
     name = user.first_name or user.email
     subject = f"Potvrdite vašu {site_name} adresu e-pošte"
+    if email_change:
+        intro = (
+            f"Ova adresa je postavljena kao nova adresa vašeg {site_name} naloga. "
+            "Potvrdite je klikom na link ispod; do tada prijava nije moguća:"
+        )
+        ignore = "Ako niste vi promenili adresu, zanemarite ovu poruku."
+    else:
+        intro = (
+            f"Dobrodošli na {site_name}! Potvrdite vašu adresu e-pošte "
+            "klikom na link ispod:"
+        )
+        ignore = "Ako niste kreirali nalog, zanemarite ovu poruku."
     message = f"""Zdravo {name},
 
-Dobrodošli na {site_name}! Potvrdite vašu adresu e-pošte klikom na link ispod:
+{intro}
 
 {verification_url}
 
 Link ističe za 24 sata.
 
-Ako niste kreirali nalog, zanemarite ovu poruku.
+{ignore}
 
 Srdačan pozdrav,
 Tim {site_name}
