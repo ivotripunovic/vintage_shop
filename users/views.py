@@ -23,6 +23,7 @@ from datetime import timedelta
 
 from django.utils import timezone
 
+from .email_sync import sync_primary_email
 from .forms import (
     UserLoginForm,
     UserPasswordChangeForm,
@@ -48,6 +49,7 @@ def register_view(request):
             # Set email as not verified initially
             user.email_verified = False
             user.save()
+            sync_primary_email(user)
 
             # Send verification email
             send_verification_email(user)
