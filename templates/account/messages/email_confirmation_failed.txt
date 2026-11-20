@@ -1,0 +1,1 @@
+{% autoescape off %}Adresu {{ email }} nije moguće potvrditi jer je već potvrđena za drugi nalog.{% endautoescape %}

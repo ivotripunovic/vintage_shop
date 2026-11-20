@@ -303,3 +303,67 @@ class TestStartSelling:
         client.force_login(make_user(is_seller=True))
         body = client.get(reverse("seller_settings")).content.decode()
         assert reverse("account_email") in body
+
+
+@pytest.mark.django_db
+class TestReviewFixes:
+    """Review of #86."""
+
+    def test_email_change_errors_are_serbian(self, client):
+        client.force_login(make_user())
+        response = client.post(
+            reverse("account_email"), {"action_add": "", "email": ""}
+        )
+        body = response.content.decode()
+        assert "Ovo polje je obavezno." in body
+        assert "This field is required." not in body
+        assert 'placeholder="Email address"' not in body
+
+    def test_reauthenticate_errors_are_serbian(self, client):
+        client.force_login(make_user())
+        response = client.post(reverse("account_reauthenticate"), {"password": "wrong"})
+        body = response.content.decode()
+        assert "Incorrect password" not in body
+        assert "Pogrešna lozinka." in body
+
+    def test_flash_messages_are_serbian(self, client):
+        make_user()
+        response = client.post(
+            reverse("account_login"),
+            {"login": "a@example.com", "password": PASSWORD},
+            follow=True,
+        )
+        body = response.content.decode()
+        assert "Prijavljeni ste kao a@example.com." in body
+        assert "Successfully signed in" not in body
+        response = client.post(reverse("account_logout"), follow=True)
+        assert "Odjavili ste se." in response.content.decode()
+
+    def test_rate_limited_page_is_styled_and_serbian(self, client):
+        make_user()
+        for _ in range(5):
+            client.post(reverse("account_reset_password"), {"email": "a@example.com"})
+        response = client.post(
+            reverse("account_reset_password"), {"email": "a@example.com"}
+        )
+        assert response.status_code == 429
+        body = response.content.decode()
+        assert "Previše pokušaja" in body
+        assert "Too Many Requests" not in body
+        assert "cdn.tailwindcss.com" in body
+
+    def test_behind_nginx_the_client_ip_comes_from_x_real_ip(self, client, settings):
+        """Gunicorn on a Unix socket: REMOTE_ADDR is not the visitor's."""
+        make_user()
+        data = {"login": "a@example.com", "password": PASSWORD}
+        without_header = client.post(reverse("account_login"), data, REMOTE_ADDR="")
+        assert without_header.status_code == 403  # what production would do
+
+        settings.ALLAUTH_TRUSTED_CLIENT_IP_HEADER = "X-Real-IP"
+        response = client.post(
+            reverse("account_login"),
+            data,
+            REMOTE_ADDR="",
+            HTTP_X_REAL_IP="203.0.113.7",
+        )
+        assert response.status_code == 302

@@ -25,6 +25,7 @@ print(json.dumps({
     "csrf_secure": getattr(s, "CSRF_COOKIE_SECURE", False),
     "hsts": getattr(s, "SECURE_HSTS_SECONDS", 0),
     "allauth_protocol": getattr(s, "ACCOUNT_DEFAULT_HTTP_PROTOCOL", "http"),
+    "client_ip_header": getattr(s, "ALLAUTH_TRUSTED_CLIENT_IP_HEADER", None),
 }))
 """
 
@@ -56,6 +57,7 @@ def test_production_trusts_nginx_https_header_and_secures_cookies():
     assert s["csrf_secure"] is True
     assert s["hsts"] == 0
     assert s["allauth_protocol"] == "https"
+    assert s["client_ip_header"] == "X-Real-IP"
 
 
 @pytest.mark.slow

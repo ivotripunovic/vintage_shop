@@ -90,5 +90,9 @@ class SetPasswordForm(SerbianErrorsMixin, allauth_forms.SetPasswordForm):
     pass
 
 
-class ChangeEmailForm(SerbianErrorsMixin, allauth_forms.ChangeEmailForm):
+class AddEmailForm(SerbianErrorsMixin, allauth_forms.AddEmailForm):
+    pass
+
+
+class ReauthenticateForm(SerbianErrorsMixin, allauth_forms.ReauthenticateForm):
     pass
