@@ -124,8 +124,8 @@ class AnonymousLinkCrawlTest(TestCase):
             reverse("home"),
             reverse("products_browse"),
             reverse("shops_browse"),
-            reverse("register"),
-            reverse("login"),
+            reverse("account_signup"),
+            reverse("account_login"),
         ]
         for url in expected:
             self.assertIn(url, visited, msg=f"Page not reached by crawler: {url}")

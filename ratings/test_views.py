@@ -180,7 +180,7 @@ class SummaryAndPendingTests(RatingTestCase):
     def test_my_ratings_requires_login(self):
         response = self.client.get(reverse("my_ratings"))
         self.assertEqual(response.status_code, 302)
-        self.assertIn(reverse("login"), response.url)
+        self.assertIn(reverse("account_login"), response.url)
 
     def test_menu_links_and_pending_badge(self):
         self.client.force_login(self.buyer)

@@ -245,7 +245,7 @@ class TestPreSocialLogin(TestCase):
             self.adapter.pre_social_login(request, sociallogin)
         response = ctx.exception.response
         self.assertEqual(response.status_code, 302)
-        self.assertIn("/auth/register/", response["Location"])
+        self.assertIn("/auth/signup/", response["Location"])
 
     def test_blocks_login_when_provider_returns_no_email(self):
         """Login is blocked when the provider gives no email."""

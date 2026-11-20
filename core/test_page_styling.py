@@ -19,16 +19,33 @@ SITE_CSS = "cdn.tailwindcss.com"
 ALLAUTH_BARE_MENU = "Menu:"
 
 ALLAUTH_PAGES = [
-    "/auth/accounts/confirm-email/",
-    "/auth/accounts/confirm-email/invalid-key/",
-    "/auth/accounts/inactive/",
-    "/auth/accounts/login/",
-    "/auth/accounts/signup/",
-    "/auth/accounts/password/reset/",
-    "/auth/accounts/password/reset/done/",
-    "/auth/accounts/password/reset/key/1-invalid/",
-    "/auth/accounts/password/reset/key/done/",
+    "/auth/confirm-email/",
+    "/auth/confirm-email/invalid-key/",
+    "/auth/inactive/",
+    "/auth/login/",
+    "/auth/signup/",
+    "/auth/password/reset/",
+    "/auth/password/reset/done/",
+    "/auth/password/reset/key/1-invalid/",
+    "/auth/password/reset/key/done/",
     "/auth/social/login/cancelled/",
+]
+
+
+# allauth's own (English) page text; our templates/account/* replace it
+ENGLISH = [
+    "Sign In",
+    "Sign Up",
+    "Sign Out",
+    "Password Reset",
+    "Verify Your Email",
+    "Confirm Email Address",
+    "Change Password",
+    "Email Address",
+    "Account Inactive",
+    "Login Cancelled",
+    "Third-Party Login Failure",
+    "Forgot your password",
 ]
 
 
@@ -38,12 +55,19 @@ def assert_styled(response):
     assert ALLAUTH_BARE_MENU not in body
 
 
+def assert_serbian(response):
+    body = response.content.decode()
+    found = [phrase for phrase in ENGLISH if phrase in body]
+    assert not found, f"English allauth text on {response.request['PATH_INFO']}"
+
+
 @pytest.mark.django_db
 @pytest.mark.parametrize("path", ALLAUTH_PAGES)
 def test_allauth_pages_use_site_layout(client, path):
     response = client.get(path)
     assert response.status_code == 200
     assert_styled(response)
+    assert_serbian(response)
 
 
 @pytest.mark.django_db
@@ -55,10 +79,17 @@ def test_allauth_logged_in_pages_use_site_layout(client):
         email_verified=True,
     )
     client.force_login(user)
-    for path in ("/auth/accounts/email/", "/auth/accounts/logout/"):
+    for path in (
+        "/auth/email/",
+        "/auth/logout/",
+        "/auth/password/change/",
+        "/auth/reauthenticate/",
+        "/auth/social/",
+    ):
         response = client.get(path)
         assert response.status_code == 200, path
         assert_styled(response)
+        assert_serbian(response)
 
 
 @pytest.mark.django_db
