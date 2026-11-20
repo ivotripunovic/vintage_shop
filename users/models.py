@@ -5,8 +5,12 @@ Signup, login, email verification and password flows are django-allauth's;
 whether an email is verified lives in allauth's EmailAddress (#79).
 """
 
+import logging
+
 from django.contrib.auth.models import AbstractUser
 from django.db import models
+
+logger = logging.getLogger(__name__)
 
 
 class User(AbstractUser):
@@ -50,7 +54,33 @@ class User(AbstractUser):
         """Record the login email as verified and primary in allauth.
 
         For code that proves ownership outside allauth's own confirmation
-        flow (a social provider vouching for it, seeding, tests).
+        flow (a social provider vouching for it, seeding, tests). Returns
+        False, and changes nothing, if another account already holds the
+        address verified (allauth allows one verified owner per address).
+        """
+        from allauth.account.models import EmailAddress
+
+        email = self.email.lower()
+        if (
+            EmailAddress.objects.filter(email__iexact=email, verified=True)
+            .exclude(user=self)
+            .exists()
+        ):
+            logger.warning(
+                "User %s: %s is verified for another account; not marking it",
+                self.pk,
+                email,
+            )
+            return False
+        self.set_primary_email(verified=True)
+        return True
+
+    def set_primary_email(self, verified=False):
+        """Make allauth's primary address match the login email.
+
+        Called when User.email is changed outside allauth (the admin); the
+        new address is unverified unless ``verified``. allauth's own email
+        change flow (/auth/email/) does this itself.
         """
         from allauth.account.models import EmailAddress
 
@@ -61,11 +91,11 @@ class User(AbstractUser):
         address = EmailAddress.objects.filter(user=self, email__iexact=email).first()
         if address is None:
             EmailAddress.objects.create(
-                user=self, email=email, primary=True, verified=True
+                user=self, email=email, primary=True, verified=verified
             )
-        elif not (address.verified and address.primary):
-            address.verified = True
+        elif not address.primary or (verified and not address.verified):
             address.primary = True
+            address.verified = address.verified or verified
             address.save(update_fields=["verified", "primary"])
 
     def has_complete_seller_profile(self):

@@ -453,3 +453,78 @@ class TestSocialSignupFromLoginPage:
             user=other, email="new@gmail.com"
         ).exists()
         assert mail.outbox == []
+
+
+@pytest.mark.django_db
+class TestVerificationRecordIsAllauthOnly:
+    """#79 and its review."""
+
+    def test_old_verify_email_links_redirect_to_login(self, client):
+        response = client.get("/auth/verify-email/sometoken/")
+        assert response.status_code == 302
+        assert response["Location"] == "/auth/login/"
+
+    def test_users_created_outside_allauth_can_verify_on_first_login(self, client):
+        User.objects.create_superuser(
+            email="admin@example.com", username="admin", password=PASSWORD
+        )
+        response = client.post(
+            reverse("account_login"),
+            {"login": "admin@example.com", "password": PASSWORD},
+        )
+        assert response["Location"] == reverse("account_email_verification_sent")
+        client.post(link_in(mail.outbox[0], "/auth/confirm-email/"))
+        assert User.objects.get(email="admin@example.com").email_verified
+
+    def test_mark_email_verified_refuses_an_address_another_account_holds(self):
+        other = make_user("a@example.com")
+        EmailAddress.objects.create(
+            user=other, email="shared@example.com", verified=True
+        )
+        user = make_user("shared@example.com", verified=False)
+        assert user.mark_email_verified() is False
+        assert not user.email_verified
+
+    def test_admin_email_change_replaces_the_allauth_address(self, client):
+        admin = User.objects.create_superuser(
+            email="root@example.com", username="root", password=PASSWORD
+        )
+        user = make_user("old@example.com")
+        client.force_login(admin)
+        page = client.get(f"/admin/users/user/{user.pk}/change/")
+        data = {
+            k: v
+            for k, v in page.context["adminform"].form.initial.items()
+            if v is not None and k not in ("password", "groups", "user_permissions")
+        }
+        data.update(
+            {
+                "email": "new@example.com",
+                "date_joined_0": user.date_joined.strftime("%Y-%m-%d"),
+                "date_joined_1": user.date_joined.strftime("%H:%M:%S"),
+            }
+        )
+        data.pop("date_joined", None)
+        data.pop("last_login", None)
+        response = client.post(f"/admin/users/user/{user.pk}/change/", data)
+        assert response.status_code == 302, response.context["adminform"].form.errors
+        user.refresh_from_db()
+        assert user.email == "new@example.com"
+        assert list(
+            EmailAddress.objects.filter(user=user).values_list(
+                "email", "primary", "verified"
+            )
+        ) == [("new@example.com", True, False)]
+
+    def test_admin_user_list_has_no_query_per_row(
+        self, client, django_assert_max_num_queries
+    ):
+        admin = User.objects.create_superuser(
+            email="root@example.com", username="root", password=PASSWORD
+        )
+        for i in range(10):
+            make_user(f"u{i}@example.com")
+        client.force_login(admin)
+        with django_assert_max_num_queries(12):
+            response = client.get("/admin/users/user/")
+        assert response.status_code == 200

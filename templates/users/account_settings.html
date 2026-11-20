@@ -24,8 +24,8 @@
             </div>
             <div>
                 <p class="text-xs uppercase tracking-widest text-stone-400 mb-1">Email potvrđen</p>
-                <p class="text-sm {% if user.email_verified %}text-emerald-700{% else %}text-red-500{% endif %}">
-                    {% if user.email_verified %}Da{% else %}Ne{% endif %}
+                <p class="text-sm {% if email_verified %}text-emerald-700{% else %}text-red-500{% endif %}">
+                    {% if email_verified %}Da{% else %}Ne{% endif %}
                 </p>
             </div>
         </div>
@@ -179,7 +179,7 @@
                 <p class="text-xs text-stone-400 mb-2">Prijava preko društvenih mreža</p>
                 <a href="{% url 'socialaccount_connections' %}" class="text-xs uppercase tracking-widest border border-stone-900 text-stone-900 px-5 py-2.5 hover:bg-neutral-50 transition-colors inline-block">Povezani nalozi</a>
             </div>
-            {% if not user.email_verified %}
+            {% if not email_verified %}
             <div>
                 <p class="text-xs text-stone-400 mb-2">Email još nije potvrđen</p>
                 <a href="{% url 'account_email' %}" class="text-xs uppercase tracking-widest border border-stone-900 text-stone-900 px-5 py-2.5 hover:bg-neutral-50 transition-colors inline-block">Potvrdi email</a>

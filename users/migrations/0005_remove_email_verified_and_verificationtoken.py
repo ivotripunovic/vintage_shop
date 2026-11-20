@@ -22,6 +22,12 @@ def reconcile(apps, schema_editor):
             .exists()
         )
         if taken:
+            # Left unverified; listed in the deploy output for a manual check
+            print(
+                f"\n  users.0005: user {user.pk} stays unverified, {email} is "
+                "verified for another account",
+                end="",
+            )
             continue
         EmailAddress.objects.filter(user=user, primary=True).exclude(
             email__iexact=email
@@ -37,6 +43,17 @@ def reconcile(apps, schema_editor):
             address.save(update_fields=["verified", "primary"])
 
 
+def restore_flag(apps, schema_editor):
+    """Reverse: rebuild email_verified from allauth's rows."""
+    User = apps.get_model("users", "User")
+    EmailAddress = apps.get_model("account", "EmailAddress")
+    for user in User.objects.exclude(email="").iterator():
+        if EmailAddress.objects.filter(
+            user=user, email__iexact=user.email, verified=True
+        ).exists():
+            User.objects.filter(pk=user.pk).update(email_verified=True)
+
+
 class Migration(migrations.Migration):
 
     dependencies = [
@@ -45,7 +62,7 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.RunPython(reconcile, migrations.RunPython.noop),
+        migrations.RunPython(reconcile, restore_flag),
         migrations.RemoveField(
             model_name="user",
             name="email_verified",

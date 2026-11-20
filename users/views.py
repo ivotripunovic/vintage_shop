@@ -40,6 +40,7 @@ def account_settings_view(request):
     context = {
         "page_title": "Account Settings",
         "profile_form": profile_form,
+        "email_verified": request.user.email_verified,  # one query
         "favourite_sellers": favourite_sellers,
         "wishlist_items": wishlist_items,
     }
