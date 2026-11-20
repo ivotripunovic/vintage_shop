@@ -24,7 +24,6 @@ def buyer(db):
         username="buyer",
         password="pass",
         is_buyer=True,
-        email_verified=True,
     )
 
 
@@ -35,7 +34,6 @@ def seller_user(db):
         username="seller",
         password="pass",
         is_seller=True,
-        email_verified=True,
     )
 
 

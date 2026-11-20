@@ -21,7 +21,6 @@ def seller_user(db):
         username="seller",
         password="pass",
         is_seller=True,
-        email_verified=True,
     )
 
 

@@ -28,9 +28,10 @@ urlpatterns = [
     ),
     path("password-change/", _to("account_change_password")),
     path("verify-email-resend/", _to("account_email")),
-    # Links in verification emails sent before the switch (valid 24 h);
-    # removed with VerificationToken in #79
-    path("verify-email/<str:token>/", views.verify_email_view, name="verify-email"),
+    # Links from the old custom verification emails (all expired, #79)
+    path(
+        "verify-email/<str:token>/", RedirectView.as_view(pattern_name="account_login")
+    ),
     # Account Management
     path("settings/", views.account_settings_view, name="account-settings"),
     # Social signup confirmation

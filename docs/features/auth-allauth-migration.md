@@ -1,6 +1,6 @@
 # Authentication — Move Email Auth onto allauth
 
-Status: **decided, option B**, 2026-11-19. Written 2026-11-19.
+Status: **done**. Option B was decided on 2026-11-19, and all four steps were finished on 2026-11-20 (#76–#79).
 
 Email/password auth (register, login, verification, password reset) was built
 first as custom code in `users/`. django-allauth was added later for Google,
@@ -129,8 +129,8 @@ Each step gets its own issue, branch and PR.
    - Migration `users/0004` gives every user a primary `EmailAddress` for
      their current email. It is stored lowercased, as allauth looks
      addresses up, and is verified if either side was.
-   - Until step 2, `users/email_sync.py` and `users/signals.py` keep the
-     two in step:
+   - Until step 4, `users/email_sync.py` and `users/signals.py` kept the
+     two in step (both removed in #79):
      - Saving a User raises allauth's `verified`, but never quietly lowers
        it, so a stale instance cannot undo a confirmation.
      - allauth's `email_confirmed` sets `User.email_verified`.
@@ -206,13 +206,24 @@ Each step gets its own issue, branch and PR.
      `pre_social_login` checks that the provider verified that particular
      address. It also does not lock out the password of a never-verified
      local account when linking (PR #72).
-4. **Clean up** (#79).
-   - Delete `VerificationToken`, `verify_email_view` and its URL, after
-     every custom verification link has expired (24 h after #77 deploys).
-   - Decide whether `User.email_verified` / `email_verified_at` and
-     `users/email_sync.py` stay. allauth's `EmailAddress` is now the source
-     of truth, and the custom login that read the flag is gone.
-   - Decide how long the old-URL redirects stay.
+4. **Clean up** (#79). *Done.*
+   - `VerificationToken`, `verify_email_view` and the custom verification
+     links are gone. Nobody signed up between the #86 deploy and this
+     change, so no link was still open. `/auth/verify-email/<token>/`
+     redirects to the login page.
+   - `User.email_verified` and `email_verified_at` are dropped, together
+     with `users/email_sync.py` and `users/signals.py`. allauth's
+     `EmailAddress` is the only record of verification:
+     - `User.email_verified` is a read-only property over it, for templates
+       and the admin.
+     - `User.mark_email_verified()` records a verified primary address. It
+       is used for provider-proven links, the seed command and tests.
+   - Migration `users/0005` first gives every user still flagged verified a
+     verified primary `EmailAddress`, then drops the columns.
+   - Un-verifying a user is done in the admin under Accounts › Email
+     addresses.
+   - The old-URL redirects stay. They cost nothing, and bookmarks and old
+     emails may still point at them.
 
 ### Do Now, Whichever Option Wins
 

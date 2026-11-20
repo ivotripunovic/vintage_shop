@@ -23,8 +23,7 @@ def make_user(email="a@example.com", verified=True, **extra):
         email=email, username=email, password=PASSWORD, **extra
     )
     if verified:
-        user.email_verified = True
-        user.save()
+        user.mark_email_verified()
     return user
 
 

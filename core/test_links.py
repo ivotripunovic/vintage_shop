@@ -81,8 +81,8 @@ class AnonymousLinkCrawlTest(TestCase):
             password="testpass123",
             is_seller=True,
             is_buyer=True,
-            email_verified=True,
         )
+        user.mark_email_verified()
         seller, _ = Seller.objects.get_or_create(
             user=user,
             defaults={"shop_name": "Link Test Shop", "shop_slug": "link-test-shop"},
@@ -143,8 +143,8 @@ class AuthenticatedLinkCrawlTest(TestCase):
             password="testpass123",
             is_seller=True,
             is_buyer=True,
-            email_verified=True,
         )
+        cls.user.mark_email_verified()
         seller, _ = Seller.objects.get_or_create(
             user=cls.user,
             defaults={"shop_name": "Auth Link Shop", "shop_slug": "auth-link-shop"},

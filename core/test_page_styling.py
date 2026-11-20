@@ -76,8 +76,8 @@ def test_allauth_logged_in_pages_use_site_layout(client):
         email="styled@example.com",
         username="styled@example.com",
         password="pw-12345678",
-        email_verified=True,
     )
+    user.mark_email_verified()
     client.force_login(user)
     for path in (
         "/auth/email/",
@@ -108,8 +108,8 @@ def test_permission_denied_uses_site_layout(client):
         username="buyer@example.com",
         password="pw-12345678",
         is_buyer=True,
-        email_verified=True,
     )
+    buyer.mark_email_verified()
     client.force_login(buyer)
     response = client.get("/products/1/edit/")
     assert response.status_code == 403
@@ -169,8 +169,8 @@ def test_staff_keep_site_nav_on_error_pages_while_coming_soon(client):
         username="staff@example.com",
         password="pw-12345678",
         is_staff=True,
-        email_verified=True,
     )
+    staff.mark_email_verified()
     client.force_login(staff)
     response = client.get("/no-such-page/")
     assert response.status_code == 404

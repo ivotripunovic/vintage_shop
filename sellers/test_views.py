@@ -19,8 +19,8 @@ def _make_social_seller(email="google@example.com"):
         username=email.split("@")[0],
         password=None,  # social users have no password
         is_buyer=True,
-        email_verified=True,
     )
+    user.mark_email_verified()
     # Simulate what social_become_seller_view does
     user.is_seller = True
     user.save(update_fields=["is_seller"])

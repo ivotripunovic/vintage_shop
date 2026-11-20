@@ -23,7 +23,6 @@ def admin_user(db):
         password="pass",
         is_staff=True,
         is_superuser=True,
-        email_verified=True,
     )
 
 
@@ -34,8 +33,8 @@ def seller(db):
         username="seller",
         password="pass",
         is_seller=True,
-        email_verified=True,
     )
+    user.mark_email_verified()
     return user.seller_profile
 
 
