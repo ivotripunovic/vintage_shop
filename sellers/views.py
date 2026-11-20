@@ -3,62 +3,40 @@ Views for seller onboarding, dashboard, and account management.
 """
 
 from django.contrib import messages
-from django.contrib.auth import authenticate, login
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
 from django.db import models, transaction
 from django.db.models import Count, Q
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.views.decorators.http import require_http_methods
 
 from orders.models import SELLABLE_STATUSES
 from products.models import Product, ProductCondition
 from ratings.models import Rating
 from ratings.services import rating_summary
-from users.models import User
 
 from .forms import (
     BankDetailsForm,
     SellerAccountSettingsForm,
-    SellerRegistrationForm,
     ShopSetupForm,
 )
 from .models import Seller
 
 
-@require_http_methods(["GET", "POST"])
 def seller_register_view(request):
     """
-    Step 1: Seller registration.
-    Creates user account and redirects to shop setup.
+    "Start selling" links land here.
+
+    Visitors sign up through allauth first (email verified, no roles set),
+    then open a shop from the welcome page; signed-in users go straight there.
     """
-    if request.method == "POST":
-        form = SellerRegistrationForm(request.POST)
-        if form.is_valid():
-            # Create user; the post_save sync adds its allauth EmailAddress
-            with transaction.atomic():
-                user = User.objects.create_user(
-                    email=form.cleaned_data["email"],
-                    username=form.cleaned_data["email"],
-                    password=form.cleaned_data["password1"],
-                    is_seller=True,
-                    is_buyer=False,
-                )
-
-            # Authenticate and log in
-            user = authenticate(
-                username=form.cleaned_data["email"],
-                password=form.cleaned_data["password1"],
-            )
-            login(request, user)
-
-            # Redirect to shop setup
-            messages.success(request, "Account created! Now set up your shop.")
-            return redirect("seller_shop_setup")
-    else:
-        form = SellerRegistrationForm()
-
-    return render(request, "sellers/register.html", {"form": form})
+    if not request.user.is_authenticated:
+        welcome = reverse("social-signup-complete")
+        return redirect(f"{reverse('account_signup')}?next={welcome}")
+    if request.user.is_seller:
+        return redirect("seller_dashboard")
+    return redirect("social-signup-complete")
 
 
 @login_required
@@ -99,7 +77,7 @@ def seller_bank_details_view(request):
     """
     if not request.user.is_authenticated or not request.user.is_seller:
         messages.error(request, "You must be a seller to access this page.")
-        return redirect("login")
+        return redirect("account_login")
 
     try:
         seller = request.user.seller_profile
@@ -204,12 +182,6 @@ def seller_settings_view(request):
         if form.is_valid():
             seller = form.save()
             messages.success(request, "Account settings updated successfully.")
-            if form.email_changed:
-                messages.info(
-                    request,
-                    f"Poslali smo link za potvrdu na {seller.user.email}. "
-                    "Potvrdite novu adresu pre sledeće prijave.",
-                )
             return redirect("seller_settings")
     else:
         form = SellerAccountSettingsForm(instance=seller, user=request.user)

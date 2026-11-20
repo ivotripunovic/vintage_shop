@@ -3,11 +3,8 @@ Tests for seller forms.
 """
 
 from datetime import timedelta
-from unittest import mock
 
-import pytest
 from django.core.files.uploadedfile import SimpleUploadedFile
-from django.db import IntegrityError
 from django.test import TestCase
 from django.utils import timezone
 from django.utils.datastructures import MultiValueDict
@@ -47,14 +44,17 @@ class SellerAccountSettingsFormTests(TestCase):
                 "shop_name": "Updated Shop",
                 "shop_description": "Updated description",
                 "location": "Updated location",
-                "email": "updated@example.com",
             },
             instance=self.seller,
             user=self.user,
         )
 
         self.assertTrue(form.is_valid(), str(form.errors))
-        self.assertEqual(form.cleaned_data["email"], "updated@example.com")
+
+    def test_form_has_no_email_field(self):
+        """The account email is changed through allauth (/auth/email/), #77."""
+        form = SellerAccountSettingsForm(instance=self.seller, user=self.user)
+        self.assertNotIn("email", form.fields)
 
     def test_form_with_files_and_user(self):
         """Test that form accepts files and user as keyword argument."""
@@ -80,71 +80,6 @@ class SellerAccountSettingsFormTests(TestCase):
             is_valid = form.is_valid()
         except TypeError as e:
             self.fail(f"Form raised TypeError: {e}")
-
-    def test_email_field_initialized_with_user_email(self):
-        """Test that email field is initialized with user's current email."""
-        form = SellerAccountSettingsForm(instance=self.seller, user=self.user)
-        self.assertEqual(form.fields["email"].initial, self.user.email)
-
-    def test_email_validation_allows_same_email(self):
-        """Test that form allows keeping the same email."""
-        form = SellerAccountSettingsForm(
-            data={
-                "shop_name": "Updated Shop",
-                "shop_description": "Updated description",
-                "location": "Updated location",
-                "email": self.user.email,  # Same email
-            },
-            instance=self.seller,
-            user=self.user,
-        )
-
-        self.assertTrue(form.is_valid())
-
-    def test_email_validation_rejects_duplicate_email(self):
-        """Test that form rejects email already in use by another user."""
-        # Create another user with different email
-        other_user = User.objects.create_user(
-            email="other@example.com",
-            username="other@example.com",
-            password="testpass123",
-            is_seller=True,
-        )
-
-        form = SellerAccountSettingsForm(
-            data={
-                "shop_name": "Updated Shop",
-                "shop_description": "Updated description",
-                "location": "Updated location",
-                "email": "other@example.com",  # Email of another user
-            },
-            instance=self.seller,
-            user=self.user,
-        )
-
-        self.assertFalse(form.is_valid())
-        self.assertIn("email", form.errors)
-
-    def test_save_updates_user_email(self):
-        """Test that saving form updates the user's email."""
-        form = SellerAccountSettingsForm(
-            data={
-                "shop_name": "Updated Shop",
-                "shop_description": "Updated description",
-                "location": "Updated location",
-                "email": "newemail@example.com",
-            },
-            instance=self.seller,
-            user=self.user,
-        )
-
-        self.assertTrue(form.is_valid())
-        form.save()
-
-        # Refresh user from database
-        self.user.refresh_from_db()
-        self.assertEqual(self.user.email, "newemail@example.com")
-        self.assertEqual(self.user.username, "newemail@example.com")
 
     def test_form_no_typeerror_with_post_and_user_kwarg(self):
         """
@@ -200,7 +135,7 @@ class SellerAccountSettingsFormCommitTests(TestCase):
 
     def _form(self):
         form = SellerAccountSettingsForm(
-            data={"shop_name": "Renamed Shop", "email": "new@example.com"},
+            data={"shop_name": "Renamed Shop"},
             instance=self.seller,
             user=self.user,
         )
@@ -209,28 +144,16 @@ class SellerAccountSettingsFormCommitTests(TestCase):
 
     def test_commit_false_writes_nothing(self):
         self._form().save(commit=False)
-        self.assertEqual(self.user.email, "commit@example.com")
-        self.user.refresh_from_db()
-        self.assertEqual(self.user.email, "commit@example.com")
         self.seller.refresh_from_db()
         self.assertEqual(self.seller.shop_name, self.original_name)
 
-    def test_save_m2m_after_commit_false_saves_email(self):
+    def test_save_m2m_after_commit_false_saves_the_seller(self):
         form = self._form()
         seller = form.save(commit=False)
         seller.save()
         form.save_m2m()
-        self.user.refresh_from_db()
-        self.assertEqual(self.user.email, "new@example.com")
-        self.assertEqual(self.user.username, "new@example.com")
-
-    def test_failed_user_save_rolls_back_seller(self):
-        form = self._form()
-        with mock.patch.object(User, "save", side_effect=IntegrityError):
-            with self.assertRaises(IntegrityError):
-                form.save()
         self.seller.refresh_from_db()
-        self.assertEqual(self.seller.shop_name, self.original_name)
+        self.assertEqual(self.seller.shop_name, "Renamed Shop")
 
 
 class SellerTraderConfirmationFormTests(TestCase):

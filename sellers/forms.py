@@ -4,58 +4,9 @@ Forms for seller onboarding and account management.
 
 from django import forms
 from django.core.exceptions import ValidationError
-from django.db import transaction
 
-from users.models import User
 
 from .models import TRADER_STATEMENT, Seller, SellerSubscription
-
-
-class SellerRegistrationForm(forms.Form):
-    """Form for seller registration during onboarding."""
-
-    email = forms.EmailField(
-        required=True,
-        widget=forms.EmailInput(
-            attrs={
-                "class": "w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500",
-                "placeholder": "your@email.com",
-            }
-        ),
-    )
-    password1 = forms.CharField(
-        label="Password",
-        widget=forms.PasswordInput(
-            attrs={
-                "class": "w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500",
-                "placeholder": "Password",
-            }
-        ),
-    )
-    password2 = forms.CharField(
-        label="Confirm Password",
-        widget=forms.PasswordInput(
-            attrs={
-                "class": "w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500",
-                "placeholder": "Confirm password",
-            }
-        ),
-    )
-
-    def clean_email(self):
-        """Validate that email is unique."""
-        email = self.cleaned_data.get("email")
-        if User.objects.filter(email=email).exists():
-            raise ValidationError("This email is already registered.")
-        return email
-
-    def clean_password2(self):
-        """Validate that passwords match."""
-        password1 = self.cleaned_data.get("password1")
-        password2 = self.cleaned_data.get("password2")
-        if password1 and password2 and password1 != password2:
-            raise ValidationError("Passwords do not match.")
-        return password2
 
 
 class ShopSetupForm(forms.ModelForm):
@@ -167,14 +118,6 @@ class BankDetailsForm(forms.ModelForm):
 class SellerAccountSettingsForm(forms.ModelForm):
     """Form for seller to update their account settings."""
 
-    email = forms.EmailField(
-        widget=forms.EmailInput(
-            attrs={
-                "class": "w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500",
-                "placeholder": "your@email.com",
-            }
-        )
-    )
     is_trader = forms.BooleanField(
         required=False,
         label=TRADER_STATEMENT,
@@ -215,30 +158,14 @@ class SellerAccountSettingsForm(forms.ModelForm):
     def __init__(self, *args, user=None, **kwargs):
         """Initialize form with user instance."""
         self.user = user
-        self.email_changed = False  # set by _save_related
         super().__init__(*args, **kwargs)
-        if user:
-            self.fields["email"].initial = user.email
         # An outdated confirmation starts unticked so the seller re-confirms
         self.fields["is_trader"].initial = (
             self.instance.is_trader and not self.instance.trader_statement_outdated
         )
 
-    def clean_email(self):
-        """Validate that new email is unique if changed."""
-        email = self.cleaned_data.get("email")
-        if email != self.user.email:
-            if User.objects.filter(email=email).exists():
-                raise ValidationError("This email is already in use.")
-        return email
-
     def save(self, commit=True):
-        """
-        Save seller and update user email.
-
-        With commit=False nothing is written; call save_m2m() after saving
-        the seller to also save the email change.
-        """
+        """Save the seller; the account email is changed at /auth/email/."""
         seller = super().save(commit=False)
 
         # Keep the original confirmation while the statement is unchanged
@@ -248,28 +175,8 @@ class SellerAccountSettingsForm(forms.ModelForm):
             seller.confirm_trader()
 
         if commit:
-            with transaction.atomic():
-                seller.save()
-                self._save_related()
+            seller.save()
+            self._save_m2m()
         else:
-            self.save_m2m = self._save_related
+            self.save_m2m = self._save_m2m
         return seller
-
-    def _save_related(self):
-        """Save the user's email change and any many-to-many data."""
-        email = self.cleaned_data.get("email")
-        if email != self.user.email:
-            from users.views import send_verification_email
-
-            # Same address in other case: allauth treats it as unchanged
-            self.email_changed = email.lower() != self.user.email.lower()
-            # The post_save sync makes a new address unverified (also on the
-            # User) and voids links sent to the old one
-            self.user.email = email
-            self.user.username = email
-            self.user.save()
-            if self.email_changed:
-                transaction.on_commit(
-                    lambda: send_verification_email(self.user, email_change=True)
-                )
-        self._save_m2m()
