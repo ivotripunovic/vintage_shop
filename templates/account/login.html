@@ -1,0 +1,27 @@
+{% extends "account/_page.html" %}
+{% block page_title %}Prijava{% endblock %}
+{% block heading %}Prijava{% endblock %}
+{% block intro_wrap %}<div class="mb-10"></div>{% endblock %}
+{% block body %}
+{% include "account/_social_buttons.html" with process="login" verb="Nastavi sa" %}
+
+<form method="post" action="{% url 'account_login' %}" class="space-y-5">
+    {% csrf_token %}
+    {{ redirect_field }}
+    {% include "account/_form_errors.html" %}
+    {% include "account/_field.html" with field=form.login label="Email" %}
+    {% include "account/_field.html" with field=form.password label="Lozinka" %}
+    {% if form.remember %}
+    <div class="flex items-center gap-2">
+        {{ form.remember }}
+        <label for="{{ form.remember.id_for_label }}" class="text-xs text-stone-400">Zapamti me</label>
+    </div>
+    {% endif %}
+    <button type="submit" class="w-full bg-stone-900 text-white text-xs uppercase tracking-widest py-3.5 hover:bg-stone-700 transition-colors">Prijava</button>
+</form>
+
+<div class="mt-8 space-y-3 text-center">
+    <a href="{% url 'account_reset_password' %}" class="block text-xs uppercase tracking-widest text-stone-400 hover:text-stone-900 transition-colors">Zaboravili ste lozinku</a>
+    <p class="text-xs text-stone-400">Nemate nalog? <a href="{{ signup_url }}" class="text-stone-900 hover:text-stone-600 transition-colors">Registrujte se</a></p>
+</div>
+{% endblock %}

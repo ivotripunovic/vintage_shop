@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% comment %}
+Narrow centered column shared by the allauth account pages. Children fill
+page_title, heading, intro (optional) and body.
+{% endcomment %}
+{% block title %}{% block page_title %}{% endblock %} — {{ SITE_NAME }}{% endblock %}
+{% block content %}
+<div class="max-w-sm mx-auto py-12">
+    <h1 class="font-serif text-4xl font-light text-center mb-3">{% block heading %}{% endblock %}</h1>
+    {% block intro_wrap %}<p class="text-sm text-stone-500 text-center leading-relaxed mb-10">{% block intro %}{% endblock %}</p>{% endblock %}
+    {% block body %}{% endblock %}
+</div>
+{% endblock %}

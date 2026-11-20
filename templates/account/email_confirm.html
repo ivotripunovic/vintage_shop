@@ -1,0 +1,21 @@
+{% extends "account/_page.html" %}
+{% block page_title %}Potvrda email adrese{% endblock %}
+{% block heading %}Potvrda email adrese{% endblock %}
+{% block intro_wrap %}{% endblock %}
+{% block body %}
+{% if confirmation %}
+    {% if can_confirm %}
+    <p class="text-sm text-stone-500 text-center leading-relaxed mb-10">Potvrdite da je <span class="text-stone-900">{{ confirmation.email_address.email }}</span> vaša email adresa.</p>
+    <form method="post" action="{% url 'account_confirm_email' confirmation.key %}">
+        {% csrf_token %}
+        {{ redirect_field }}
+        <button type="submit" class="w-full bg-stone-900 text-white text-xs uppercase tracking-widest py-3.5 hover:bg-stone-700 transition-colors">Potvrdi</button>
+    </form>
+    {% else %}
+    <p class="text-sm text-stone-500 text-center leading-relaxed">Adresu {{ confirmation.email_address.email }} je već potvrdio drugi nalog.</p>
+    {% endif %}
+{% else %}
+    <p class="text-sm text-stone-500 text-center leading-relaxed mb-10">Link za potvrdu je istekao ili nije ispravan.</p>
+    <p class="text-center text-xs text-stone-400"><a href="{% url 'account_email' %}" class="hover:text-stone-900 transition-colors">Pošaljite novi link</a> · <a href="{% url 'account_login' %}" class="hover:text-stone-900 transition-colors">Prijava</a></p>
+{% endif %}
+{% endblock %}

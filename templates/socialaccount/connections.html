@@ -1,0 +1,26 @@
+{% extends "account/_page.html" %}
+{% block page_title %}Povezani nalozi{% endblock %}
+{% block heading %}Povezani nalozi{% endblock %}
+{% block intro %}Prijavljujte se brže preko naloga na društvenim mrežama.{% endblock %}
+{% block body %}
+{% if form.accounts %}
+<form method="post" action="{% url 'socialaccount_connections' %}" class="space-y-4 mb-10">
+    {% csrf_token %}
+    {% include "account/_form_errors.html" %}
+    {% for acc in form.fields.account.choices %}
+    {% with account=acc.0.instance.get_provider_account %}
+    <div class="flex items-center gap-3 border border-stone-200 p-3">
+        <input type="radio" name="account" value="{{ account.account.pk }}" id="id_account_{{ account.account.pk }}">
+        <label for="id_account_{{ account.account.pk }}" class="text-sm text-stone-700">{{ account.get_brand.name }} — {{ account }}</label>
+    </div>
+    {% endwith %}
+    {% endfor %}
+    <button type="submit" class="text-xs uppercase tracking-widest text-red-700 underline hover:text-red-500">Ukloni izabrani</button>
+</form>
+{% else %}
+<p class="text-sm text-stone-500 text-center mb-10">Nijedan nalog još nije povezan.</p>
+{% endif %}
+<p class="text-xs uppercase tracking-widest text-stone-500 mb-4">Poveži nalog</p>
+{% include "account/_social_buttons.html" with process="connect" verb="Poveži" no_divider=True %}
+<p class="text-center mt-8 text-xs text-stone-400"><a href="{% url 'account-settings' %}" class="hover:text-stone-900 transition-colors">Nazad na podešavanja</a></p>
+{% endblock %}

@@ -1,0 +1,1 @@
+{% autoescape off %}Potvrdite vašu {{ SITE_NAME|default:current_site.name }} adresu e-pošte{% endautoescape %}

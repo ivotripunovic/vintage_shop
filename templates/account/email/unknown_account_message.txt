@@ -1,0 +1,8 @@
+{% extends "account/email/base_message.txt" %}
+{% block content %}{% autoescape off %}Neko (verovatno vi) je zatražio pristup nalogu sa adresom {{ email }}, ali takav nalog ne postoji.
+
+Ako želite da napravite nalog, registrujte se ovde:
+
+{{ signup_url }}
+
+Ako niste vi, zanemarite ovu poruku.{% endautoescape %}{% endblock content %}

@@ -1,0 +1,8 @@
+{% extends "account/email/base_message.txt" %}
+{% block content %}{% autoescape off %}Neko (verovatno vi) je pokušao da napravi nalog sa adresom {{ email }}, ali nalog sa tom adresom već postoji.
+
+Ako ste zaboravili lozinku, postavite novu ovde:
+
+{{ password_reset_url }}
+
+Ako niste vi, zanemarite ovu poruku.{% endautoescape %}{% endblock content %}
