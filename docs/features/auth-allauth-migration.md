@@ -221,7 +221,12 @@ Each step gets its own issue, branch and PR.
    - Migration `users/0005` first gives every user still flagged verified a
      verified primary `EmailAddress`, then drops the columns.
    - Un-verifying a user is done in the admin under Accounts › Email
-     addresses.
+     addresses. Changing a user's email in the admin user form deletes the
+     old address (it stops working for login and reset) and adds the new
+     one unverified (`User.set_primary_email`). Users change their own
+     email through allauth (`/auth/email/`).
+   - Migration `users/0005` can be reversed. Rolling it back rebuilds
+     `email_verified` from allauth's rows.
    - The old-URL redirects stay. They cost nothing, and bookmarks and old
      emails may still point at them.
 
