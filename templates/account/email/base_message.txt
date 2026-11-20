@@ -1,0 +1,7 @@
+{% autoescape off %}Zdravo,
+
+{% block content %}{% endblock content %}
+
+Srdačan pozdrav,
+Tim {{ SITE_NAME|default:current_site.name }}
+{% endautoescape %}

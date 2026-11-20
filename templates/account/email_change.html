@@ -1,0 +1,39 @@
+{% extends "account/_page.html" %}
+{% block page_title %}Email adresa{% endblock %}
+{% block heading %}Email adresa{% endblock %}
+{% block intro %}Na novu adresu šaljemo link za potvrdu. Dok je ne potvrdite, prijavljujete se trenutnom adresom.{% endblock %}
+{% block body %}
+<div class="space-y-6">
+    {% if current_emailaddress %}
+    <div>
+        <p class="text-xs uppercase tracking-widest text-stone-500 mb-2">Trenutna adresa</p>
+        <p class="text-sm text-stone-900">{{ current_emailaddress.email }}</p>
+    </div>
+    {% endif %}
+
+    {% if new_emailaddress %}
+    <div class="border border-stone-200 bg-neutral-50 p-4">
+        <p class="text-xs uppercase tracking-widest text-stone-500 mb-2">{% if current_emailaddress %}Menja se u{% else %}Adresa čeka potvrdu{% endif %}</p>
+        <p class="text-sm text-stone-900 mb-2">{{ new_emailaddress.email }}</p>
+        <p class="text-xs text-stone-500 mb-4">Adresa još nije potvrđena. Proverite email.</p>
+        <form method="post" action="{% url 'account_email' %}" class="flex gap-4">
+            {% csrf_token %}
+            <input type="hidden" name="email" value="{{ new_emailaddress.email }}">
+            <button type="submit" name="action_send" class="text-xs uppercase tracking-widest text-stone-500 underline hover:text-stone-900">Pošalji ponovo</button>
+            {% if current_emailaddress %}
+            <button type="submit" name="action_remove" class="text-xs uppercase tracking-widest text-red-700 underline hover:text-red-500">Otkaži promenu</button>
+            {% endif %}
+        </form>
+    </div>
+    {% endif %}
+
+    <form method="post" action="{% url 'account_email' %}" class="space-y-5">
+        {% csrf_token %}
+        {% include "account/_form_errors.html" %}
+        {% include "account/_field.html" with field=form.email label="Nova adresa" %}
+        <button type="submit" name="action_add" class="w-full bg-stone-900 text-white text-xs uppercase tracking-widest py-3.5 hover:bg-stone-700 transition-colors">Promeni email</button>
+    </form>
+
+    <p class="text-center text-xs text-stone-400"><a href="{% url 'account-settings' %}" class="hover:text-stone-900 transition-colors">Nazad na podešavanja</a></p>
+</div>
+{% endblock %}

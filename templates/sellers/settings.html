@@ -20,9 +20,8 @@
             {% endif %}
 
             <div>
-                <label for="{{ form.email.id_for_label }}" class="block text-xs uppercase tracking-widest text-stone-500 mb-2">Email adresa</label>
-                {{ form.email }}
-                {% if form.email.errors %}<p class="text-xs text-red-600 mt-1">{{ form.email.errors.0 }}</p>{% endif %}
+                <p class="block text-xs uppercase tracking-widest text-stone-500 mb-2">Email adresa</p>
+                <p class="text-sm text-stone-900">{{ user.email }} <a href="{% url 'account_email' %}" class="ml-3 text-xs uppercase tracking-widest text-stone-500 underline hover:text-stone-900">Promeni</a></p>
             </div>
 
             <div>

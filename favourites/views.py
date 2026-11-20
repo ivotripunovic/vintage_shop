@@ -29,7 +29,7 @@ def _redirect_back(request):
     return redirect("account-settings")
 
 
-@login_required(login_url="login")
+@login_required
 @require_POST
 def favourite_seller_update(request, seller_id):
     """Add the seller to the user's favourites, or remove them."""
@@ -51,7 +51,7 @@ def favourite_seller_update(request, seller_id):
     return _redirect_back(request)
 
 
-@login_required(login_url="login")
+@login_required
 @require_POST
 def wishlist_update(request, product_id):
     """Add the product to the user's wishlist, or remove it."""

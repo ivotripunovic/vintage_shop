@@ -8,7 +8,6 @@ import pytest
 from allauth.account.models import EmailAddress
 from allauth.account.signals import email_confirmed
 from django.apps import apps
-from django.urls import reverse
 
 from users.email_sync import sync_primary_email
 from users.models import User
@@ -248,24 +247,10 @@ def test_allauth_confirmation_sets_user_flag():
 
 
 @pytest.mark.django_db
-def test_custom_register_creates_unverified_address(client):
-    client.post(
-        reverse("register"),
-        {
-            "email": "new@example.com",
-            "password1": PASSWORD,
-            "password2": PASSWORD,
-        },
-    )
-    user = User.objects.get(email="new@example.com")
-    assert addresses(user) == [("new@example.com", True, False)]
-
-
-@pytest.mark.django_db
 def test_allauth_signup_still_creates_its_own_address(client):
     """setup_user_email asserts the new user has no EmailAddress yet."""
     client.post(
-        "/auth/accounts/signup/",
+        "/auth/signup/",
         {"email": "b@example.com", "password1": PASSWORD, "password2": PASSWORD},
     )
     user = User.objects.get(email="b@example.com")
@@ -277,7 +262,7 @@ def test_verified_user_is_not_asked_to_verify_again_by_allauth(client):
     """The original bug: allauth sent verified users to confirm-email."""
     make_user("a@example.com")
     response = client.post(
-        "/auth/accounts/login/", {"login": "a@example.com", "password": PASSWORD}
+        "/auth/login/", {"login": "a@example.com", "password": PASSWORD}
     )
     assert response.status_code == 302
     assert "confirm-email" not in response["Location"]
@@ -288,7 +273,7 @@ def test_verified_mixed_case_user_can_log_in_through_allauth(client):
     """allauth looks addresses up lowercased (review of #85)."""
     make_user("Foo.Bar@Example.com")
     response = client.post(
-        "/auth/accounts/login/",
+        "/auth/login/",
         {"login": "Foo.Bar@Example.com", "password": PASSWORD},
     )
     assert response.status_code == 302
@@ -325,20 +310,6 @@ def test_social_signup_keeps_extra_verified_provider_emails(rf):
     ]
     user.refresh_from_db()
     assert user.email_verified
-
-
-@pytest.mark.django_db
-def test_registration_is_atomic_when_the_sync_fails(client, monkeypatch):
-    def boom(*args, **kwargs):
-        raise RuntimeError("sync failed")
-
-    monkeypatch.setattr("users.signals.sync_primary_email", boom)
-    with pytest.raises(RuntimeError):
-        client.post(
-            reverse("register"),
-            {"email": "new@example.com", "password1": PASSWORD, "password2": PASSWORD},
-        )
-    assert not User.objects.filter(email="new@example.com").exists()
 
 
 @pytest.mark.django_db

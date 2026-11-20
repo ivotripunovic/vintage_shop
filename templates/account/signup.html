@@ -1,0 +1,23 @@
+{% extends "account/_page.html" %}
+{% block page_title %}Registracija{% endblock %}
+{% block heading %}Registracija{% endblock %}
+{% block intro_wrap %}<div class="mb-10"></div>{% endblock %}
+{% block body %}
+{% include "account/_social_buttons.html" with process="signup" verb="Registracija sa" %}
+
+<form method="post" action="{% url 'account_signup' %}" class="space-y-5">
+    {% csrf_token %}
+    {{ redirect_field }}
+    {% include "account/_form_errors.html" %}
+    {% include "account/_field.html" with field=form.email label="Email" %}
+    <div class="grid grid-cols-2 gap-4">
+        {% include "account/_field.html" with field=form.first_name label="Ime" %}
+        {% include "account/_field.html" with field=form.last_name label="Prezime" %}
+    </div>
+    {% include "account/_field.html" with field=form.password1 label="Lozinka" %}
+    {% include "account/_field.html" with field=form.password2 label="Potvrdi lozinku" %}
+    <button type="submit" class="w-full bg-stone-900 text-white text-xs uppercase tracking-widest py-3.5 hover:bg-stone-700 transition-colors">Napravi nalog</button>
+</form>
+
+<p class="text-center mt-8 text-xs text-stone-400">Već imate nalog? <a href="{{ login_url }}" class="text-stone-900 hover:text-stone-600 transition-colors">Prijavite se</a></p>
+{% endblock %}

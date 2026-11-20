@@ -50,7 +50,7 @@ class WishlistUpdateTests(FavouritesTestCase):
         self.client.logout()
         response = self._update_product(self.product)
         self.assertEqual(response.status_code, 302)
-        self.assertIn(reverse("login"), response.url)
+        self.assertIn(reverse("account_login"), response.url)
         self.assertFalse(WishlistItem.objects.exists())
 
     def test_get_is_not_allowed(self):
@@ -203,7 +203,7 @@ class ButtonTests(FavouritesTestCase):
     def test_product_page_sends_anonymous_users_to_login(self):
         self.client.logout()
         response = self.client.get(reverse("product_detail", args=[self.product.id]))
-        self.assertContains(response, f"{reverse('login')}?next=")
+        self.assertContains(response, f"{reverse('account_login')}?next=")
 
     def test_shop_page_shows_favourite_state(self):
         url = reverse("shop_detail", args=[self.seller.shop_slug])

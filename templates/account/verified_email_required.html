@@ -1,0 +1,7 @@
+{% extends "account/_page.html" %}
+{% block page_title %}Potvrdite email{% endblock %}
+{% block heading %}Potvrdite email{% endblock %}
+{% block intro %}Za ovu stranicu potrebna je potvrđena email adresa. Poslali smo vam novi link za potvrdu; kliknite na njega pa pokušajte ponovo.{% endblock %}
+{% block body %}
+<p class="text-center text-xs text-stone-400"><a href="{% url 'account_email' %}" class="hover:text-stone-900 transition-colors">Podešavanja email adrese</a></p>
+{% endblock %}

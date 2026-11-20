@@ -1,0 +1,7 @@
+{% extends "account/_page.html" %}
+{% block page_title %}Prijava nije uspela{% endblock %}
+{% block heading %}Prijava nije uspela{% endblock %}
+{% block intro %}Došlo je do greške pri prijavi preko društvene mreže. Pokušajte ponovo ili se prijavite email adresom.{% endblock %}
+{% block body %}
+<a href="{% url 'account_login' %}" class="block w-full text-center bg-stone-900 text-white text-xs uppercase tracking-widest py-3.5 hover:bg-stone-700 transition-colors">Nazad na prijavu</a>
+{% endblock %}

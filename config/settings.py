@@ -169,7 +169,7 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # Custom User Model
 AUTH_USER_MODEL = "users.User"
-LOGIN_URL = "/auth/login/"
+LOGIN_URL = "account_login"
 LOGIN_REDIRECT_URL = "/"
 
 # Sites framework (required by allauth)
@@ -186,6 +186,36 @@ ACCOUNT_LOGIN_METHODS = {"email"}
 ACCOUNT_SIGNUP_FIELDS = ["email*", "password1*", "password2*"]
 ACCOUNT_EMAIL_VERIFICATION = "mandatory"
 ACCOUNT_ADAPTER = "users.adapters.AccountAdapter"
+# Serbian error messages and the optional name fields on signup
+ACCOUNT_FORMS = {
+    "signup": "users.allauth_forms.SignupForm",
+    "login": "users.allauth_forms.LoginForm",
+    "reset_password": "users.allauth_forms.ResetPasswordForm",
+    "reset_password_from_key": "users.allauth_forms.ResetPasswordKeyForm",
+    "change_password": "users.allauth_forms.ChangePasswordForm",
+    "set_password": "users.allauth_forms.SetPasswordForm",
+    # /auth/email/ (EmailView) reads "add_email", also with ACCOUNT_CHANGE_EMAIL
+    "add_email": "users.allauth_forms.AddEmailForm",
+    "reauthenticate": "users.allauth_forms.ReauthenticateForm",
+}
+# One address per account, changed through a re-verifying flow (/auth/email/)
+ACCOUNT_CHANGE_EMAIL = True
+ACCOUNT_LOGIN_ON_EMAIL_CONFIRMATION = True
+# Subjects are written out in the email templates
+ACCOUNT_EMAIL_SUBJECT_PREFIX = ""
+# Shared between gunicorn workers through the file cache (CACHES above).
+# allauth's defaults, written out so they are reviewed rather than implied.
+ACCOUNT_RATE_LIMITS = {
+    "login": "30/m/ip",
+    "login_failed": "10/m/ip,5/300s/key",
+    "signup": "20/m/ip",
+    "confirm_email": "1/180s/key",
+    "reset_password": "20/m/ip,5/m/key",
+    "reset_password_from_key": "20/m/ip",
+    "change_password": "5/m/user",
+    "manage_email": "10/m/user",
+    "reauthenticate": "10/m/user",
+}
 
 # django-allauth social account settings
 SOCIALACCOUNT_ADAPTER = "users.adapters.SocialAccountAdapter"
@@ -344,6 +374,11 @@ if not DEBUG:
     # no request (and forces it otherwise). The https callback URLs must be
     # registered with each provider (Google Cloud Console, Facebook, Apple).
     ACCOUNT_DEFAULT_HTTP_PROTOCOL = "https"
+    # allauth's per-IP rate limits need the visitor's address. Gunicorn sits
+    # on a Unix socket, so REMOTE_ADDR is not it (allauth then refuses the
+    # request with 403); nginx overwrites X-Real-IP with $remote_addr on every
+    # proxied request, as core.views reads it for the waitlist.
+    ALLAUTH_TRUSTED_CLIENT_IP_HEADER = "X-Real-IP"
     # Opt-in: browsers cache HSTS for this long and refuse plain HTTP until it
     # expires, so raise it in steps (3600, then 86400, then 31536000).
     SECURE_HSTS_SECONDS = config("SECURE_HSTS_SECONDS", default=0, cast=int)

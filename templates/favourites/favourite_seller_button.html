@@ -8,5 +8,5 @@
     </button>
 </form>
 {% else %}
-<a href="{% url 'login' %}?next={{ request.get_full_path|urlencode }}" class="inline-block border border-stone-900 text-stone-900 text-xs uppercase tracking-widest px-5 py-2.5 hover:bg-neutral-50 transition-colors">♡ Dodaj u omiljene</a>
+<a href="{% url 'account_login' %}?next={{ request.get_full_path|urlencode }}" class="inline-block border border-stone-900 text-stone-900 text-xs uppercase tracking-widest px-5 py-2.5 hover:bg-neutral-50 transition-colors">♡ Dodaj u omiljene</a>
 {% endif %}

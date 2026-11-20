@@ -1,0 +1,1 @@
+{% autoescape off %}Nalog na {{ SITE_NAME|default:current_site.name }} već postoji{% endautoescape %}

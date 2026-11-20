@@ -1,0 +1,13 @@
+{% extends "account/_page.html" %}
+{% block page_title %}Registracija{% endblock %}
+{% block heading %}Još jedan korak{% endblock %}
+{% block intro %}Prijavljujete se preko {{ account.get_provider.name }}. Potvrdite email adresu za vaš nalog.{% endblock %}
+{% block body %}
+<form method="post" action="{% url 'socialaccount_signup' %}" class="space-y-5">
+    {% csrf_token %}
+    {{ redirect_field }}
+    {% include "account/_form_errors.html" %}
+    {% include "account/_field.html" with field=form.email label="Email" %}
+    <button type="submit" class="w-full bg-stone-900 text-white text-xs uppercase tracking-widest py-3.5 hover:bg-stone-700 transition-colors">Nastavi</button>
+</form>
+{% endblock %}

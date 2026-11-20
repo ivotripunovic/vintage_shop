@@ -1,0 +1,6 @@
+{% comment %}One form field: label, widget, first error. Pass field and label.{% endcomment %}
+<div>
+    <label for="{{ field.id_for_label }}" class="block text-xs uppercase tracking-widest text-stone-500 mb-2">{{ label }}</label>
+    {{ field }}
+    {% for error in field.errors %}<p class="text-xs text-red-600 mt-1">{{ error }}</p>{% endfor %}
+</div>

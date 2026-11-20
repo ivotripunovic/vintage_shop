@@ -1,0 +1,14 @@
+{% extends "account/_page.html" %}
+{% block page_title %}Potvrda pristupa{% endblock %}
+{% block heading %}Potvrda pristupa{% endblock %}
+{% block intro %}Radi zaštite naloga, unesite lozinku pre nastavka.{% endblock %}
+{% block body %}
+<form method="post" action="{% url 'account_reauthenticate' %}" class="space-y-5">
+    {% csrf_token %}
+    {{ redirect_field }}
+    {% include "account/_form_errors.html" %}
+    {% include "account/_field.html" with field=form.password label="Lozinka" %}
+    <button type="submit" class="w-full bg-stone-900 text-white text-xs uppercase tracking-widest py-3.5 hover:bg-stone-700 transition-colors">Potvrdi</button>
+</form>
+<p class="text-center mt-6 text-xs text-stone-400"><a href="{% url 'account_reset_password' %}" class="hover:text-stone-900 transition-colors">Zaboravili ste lozinku</a></p>
+{% endblock %}

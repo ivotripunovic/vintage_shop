@@ -3,7 +3,6 @@ Tests for email verification and password reset token flows.
 """
 
 from datetime import timedelta
-from unittest.mock import patch
 
 import pytest
 from django.contrib.auth import get_user_model
@@ -109,35 +108,12 @@ class TestVerificationTokenModel(TestCase):
 
 @pytest.mark.django_db
 class TestEmailVerificationFlow(TestCase):
-    """Test email verification workflow."""
+    """Links from verification emails sent before the switch to allauth (#77)."""
 
     def setUp(self):
         """Set up test fixtures."""
         self.client = Client()
         self.verify_url_name = "verify-email"
-        self.resend_url = reverse("verify-email-resend")
-
-    @patch("users.views.send_mail")
-    def test_registration_creates_verification_token(self, mock_send_mail):
-        """Test registration creates a verification token."""
-        response = self.client.post(
-            reverse("register"),
-            {
-                "email": "newuser@example.com",
-                "password1": "SecurePass123!",
-                "password2": "SecurePass123!",
-                "user_type": "buyer",
-            },
-        )
-
-        user = User.objects.get(email="newuser@example.com")
-        token = VerificationToken.objects.filter(
-            user=user, token_type=VerificationToken.TOKEN_TYPE_EMAIL
-        ).first()
-
-        self.assertIsNotNone(token)
-        self.assertTrue(token.is_valid())
-        self.assertFalse(user.email_verified)
 
     def test_verify_email_with_valid_token(self):
         """Test email verification with valid token."""
@@ -241,218 +217,7 @@ class TestEmailVerificationFlow(TestCase):
         user.refresh_from_db()
         self.assertFalse(user.email_verified)
 
-    def test_resend_verification_email_page_loads(self):
-        """Test resend verification email page loads."""
-        response = self.client.get(self.resend_url)
-        self.assertEqual(response.status_code, 200)
-        self.assertTemplateUsed(response, "users/verify_email_resend.html")
 
-    @patch("users.views.send_mail")
-    def test_resend_verification_email_creates_new_token(self, mock_send_mail):
-        """Test resending verification email creates a new token."""
-        user = User.objects.create_user(
-            email="test@example.com",
-            username="test@example.com",
-            password="TestPass123!",
-        )
-
-        response = self.client.post(self.resend_url, {"email": "test@example.com"})
-
-        tokens = VerificationToken.objects.filter(
-            user=user, token_type=VerificationToken.TOKEN_TYPE_EMAIL
-        )
-
-        self.assertEqual(tokens.count(), 1)
-        self.assertTrue(tokens.first().is_valid())
-
-    @patch("users.views.send_mail")
-    def test_resend_verification_email_for_verified_user(self, mock_send_mail):
-        """Test resending verification email for already verified user."""
-        user = User.objects.create_user(
-            email="test@example.com",
-            username="test@example.com",
-            password="TestPass123!",
-        )
-        user.email_verified = True
-        user.save()
-
-        response = self.client.post(self.resend_url, {"email": "test@example.com"})
-
-        # Should show message about already verified
-        self.assertEqual(response.status_code, 200)
-
-    def test_resend_verification_email_invalid_email(self):
-        """Test resending verification email with non-existent email."""
-        response = self.client.post(
-            self.resend_url, {"email": "nonexistent@example.com"}
-        )
-
-        self.assertEqual(response.status_code, 200)
-
-    def test_login_requires_email_verification(self):
-        """Test login redirects to verification if email not verified."""
-        user = User.objects.create_user(
-            email="unverified@example.com",
-            username="unverified@example.com",
-            password="TestPass123!",
-        )
-        user.email_verified = False
-        user.save()
-
-        response = self.client.post(
-            reverse("login"),
-            {
-                "email": "unverified@example.com",
-                "password": "TestPass123!",
-                "remember_me": False,
-            },
-            follow=True,
-        )
-
-        self.assertFalse(response.wsgi_request.user.is_authenticated)
-
-
-@pytest.mark.django_db
-class TestPasswordResetFlow(TestCase):
-    """Test password reset workflow."""
-
-    def setUp(self):
-        """Set up test fixtures."""
-        self.client = Client()
-        self.user = User.objects.create_user(
-            email="test@example.com",
-            username="test@example.com",
-            password="OldPass123!",
-        )
-        self.reset_request_url = reverse("password-reset-request")
-        self.reset_confirm_url_name = "password-reset-confirm"
-
-    @patch("users.views.send_mail")
-    def test_password_reset_creates_token(self, mock_send_mail):
-        """Test password reset creates a token."""
-        response = self.client.post(
-            self.reset_request_url, {"email": "test@example.com"}
-        )
-
-        token = VerificationToken.objects.filter(
-            user=self.user, token_type=VerificationToken.TOKEN_TYPE_PASSWORD
-        ).first()
-
-        self.assertIsNotNone(token)
-        self.assertTrue(token.is_valid())
-
-    def test_password_reset_confirm_with_valid_token(self):
-        """Test password reset confirmation with valid token."""
-        token = VerificationToken.objects.create(
-            user=self.user,
-            token="reset-token",
-            token_type=VerificationToken.TOKEN_TYPE_PASSWORD,
-            expires_at=timezone.now() + timedelta(hours=1),
-        )
-
-        response = self.client.post(
-            reverse(self.reset_confirm_url_name, kwargs={"token": "reset-token"}),
-            {
-                "new_password1": "NewPass123!",
-                "new_password2": "NewPass123!",
-            },
-        )
-
-        self.user.refresh_from_db()
-        self.assertTrue(self.user.check_password("NewPass123!"))
-
-    def test_password_reset_confirm_invalid_token(self):
-        """Test password reset fails with invalid token."""
-        response = self.client.get(
-            reverse(self.reset_confirm_url_name, kwargs={"token": "invalid-token"})
-        )
-
-        self.user.refresh_from_db()
-        self.assertTrue(self.user.check_password("OldPass123!"))
-
-    def test_password_reset_confirm_expired_token(self):
-        """Test password reset fails with expired token."""
-        token = VerificationToken.objects.create(
-            user=self.user,
-            token="expired-reset",
-            token_type=VerificationToken.TOKEN_TYPE_PASSWORD,
-            expires_at=timezone.now() - timedelta(hours=1),
-        )
-
-        response = self.client.get(
-            reverse(self.reset_confirm_url_name, kwargs={"token": "expired-reset"})
-        )
-
-        self.user.refresh_from_db()
-        self.assertTrue(self.user.check_password("OldPass123!"))
-
-    def test_password_reset_cannot_reuse_token(self):
-        """Test password reset token cannot be reused."""
-        token = VerificationToken.objects.create(
-            user=self.user,
-            token="reset-token",
-            token_type=VerificationToken.TOKEN_TYPE_PASSWORD,
-            expires_at=timezone.now() + timedelta(hours=1),
-        )
-
-        # First use
-        response1 = self.client.post(
-            reverse(self.reset_confirm_url_name, kwargs={"token": "reset-token"}),
-            {
-                "new_password1": "FirstNewPass123!",
-                "new_password2": "FirstNewPass123!",
-            },
-        )
-
-        self.user.refresh_from_db()
-        self.assertTrue(self.user.check_password("FirstNewPass123!"))
-
-        # Try to reuse same token
-        response2 = self.client.post(
-            reverse(self.reset_confirm_url_name, kwargs={"token": "reset-token"}),
-            {
-                "new_password1": "SecondNewPass123!",
-                "new_password2": "SecondNewPass123!",
-            },
-        )
-
-        self.user.refresh_from_db()
-        # Should still be the first password
-        self.assertTrue(self.user.check_password("FirstNewPass123!"))
-
-    @patch("users.views.send_mail")
-    def test_password_reset_flow_end_to_end(self, mock_send_mail):
-        """Test complete password reset flow."""
-        # 1. Request password reset
-        response = self.client.post(
-            self.reset_request_url, {"email": "test@example.com"}
-        )
-
-        # 2. Get the token
-        token = VerificationToken.objects.get(
-            user=self.user, token_type=VerificationToken.TOKEN_TYPE_PASSWORD
-        )
-
-        # 3. Confirm password reset
-        response = self.client.post(
-            reverse(self.reset_confirm_url_name, kwargs={"token": token.token}),
-            {
-                "new_password1": "CompletelyNewPass123!",
-                "new_password2": "CompletelyNewPass123!",
-            },
-        )
-
-        # 4. Verify old password no longer works
-        self.user.refresh_from_db()
-        self.assertFalse(self.user.check_password("OldPass123!"))
-        self.assertTrue(self.user.check_password("CompletelyNewPass123!"))
-
-        # 5. Verify token is marked as used
-        token.refresh_from_db()
-        self.assertTrue(token.is_used)
-
-
-@pytest.mark.django_db
 class TestTokenExpiration(TestCase):
     """Test token expiration handling."""
 

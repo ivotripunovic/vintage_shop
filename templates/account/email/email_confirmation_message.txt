@@ -1,0 +1,6 @@
+{% extends "account/email/base_message.txt" %}
+{% block content %}{% autoescape off %}Potvrdite ovu adresu e-pošte za vaš {{ SITE_NAME|default:current_site.name }} nalog klikom na link ispod:
+
+{{ activate_url }}
+
+Ako niste vi zatražili, zanemarite ovu poruku.{% endautoescape %}{% endblock content %}
