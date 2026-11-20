@@ -3,7 +3,7 @@ Tests for social auth adapters.
 """
 
 from datetime import timedelta
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 from allauth.account.models import EmailAddress
@@ -237,23 +237,17 @@ class TestPreSocialLogin(TestCase):
             ).exists()
         )
 
-    def test_blocks_login_for_unknown_email(self):
-        """Login is blocked and redirects to register when email is not registered."""
+    def test_allows_signup_from_login_page_for_unknown_email(self):
+        """#78: a new Google account signs up from the login page too."""
         request = _make_request(self.factory)
-        sociallogin = _make_sociallogin(email="nobody@example.com")
-        with self.assertRaises(ImmediateHttpResponse) as ctx:
-            self.adapter.pre_social_login(request, sociallogin)
-        response = ctx.exception.response
-        self.assertEqual(response.status_code, 302)
-        self.assertIn("/auth/signup/", response["Location"])
+        sociallogin = _make_sociallogin(email="nobody@example.com", process="login")
+        self.assertIsNone(self.adapter.pre_social_login(request, sociallogin))
 
-    def test_blocks_login_when_provider_returns_no_email(self):
-        """Login is blocked when the provider gives no email."""
+    def test_allows_provider_without_email(self):
+        """allauth then asks for an email and confirms it."""
         request = _make_request(self.factory)
         sociallogin = _make_sociallogin(email="")
-        with self.assertRaises(ImmediateHttpResponse) as ctx:
-            self.adapter.pre_social_login(request, sociallogin)
-        self.assertEqual(ctx.exception.response.status_code, 302)
+        self.assertIsNone(self.adapter.pre_social_login(request, sociallogin))
 
 
 # ---------------------------------------------------------------------------
@@ -268,22 +262,37 @@ class TestSaveUser(TestCase):
         self.factory = RequestFactory()
         self.adapter = SocialAccountAdapter()
 
-    def test_save_user_marks_buyer_and_verified_email(self):
-        """Social signup sets is_buyer=True and email_verified=True."""
-        user = User.objects.create(email="social@example.com", username="social")
+    def _save(self, email, verified):
+        from django.contrib.sessions.backends.db import SessionStore
+
         request = _make_request(self.factory)
-        sociallogin = _make_sociallogin()
+        request.session = SessionStore()
+        sociallogin = SocialLogin(
+            user=User(email=email),
+            account=SocialAccount(provider="google", uid=email),
+            email_addresses=[
+                EmailAddress(email=email, verified=verified, primary=True)
+            ],
+        )
+        return self.adapter.save_user(request, sociallogin)
 
-        with patch(
-            "allauth.socialaccount.adapter.DefaultSocialAccountAdapter.save_user",
-            return_value=user,
-        ):
-            self.adapter.save_user(request, sociallogin)
-
+    def test_provider_verified_email_is_verified(self):
+        user = self._save("social@example.com", verified=True)
         user.refresh_from_db()
-        self.assertTrue(user.is_buyer)
         self.assertTrue(user.email_verified)
         self.assertIsNotNone(user.email_verified_at)
+        self.assertTrue(EmailAddress.objects.get(user=user).verified)
+
+    def test_unverified_provider_email_stays_unverified(self):
+        """#78: it used to be marked verified regardless."""
+        user = self._save("fb@example.com", verified=False)
+        user.refresh_from_db()
+        self.assertFalse(user.email_verified)
+        self.assertFalse(EmailAddress.objects.get(user=user).verified)
+
+    def test_sets_no_seller_role(self):
+        user = self._save("social@example.com", verified=True)
+        self.assertFalse(user.is_seller)
 
 
 # ---------------------------------------------------------------------------

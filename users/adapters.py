@@ -88,8 +88,9 @@ class SocialAccountAdapter(DefaultSocialAccountAdapter):
         - The email matches a user but cannot be linked safely (provider did
           not verify it, ambiguous match, inactive user): send them to the
           login page instead of letting allauth attempt a signup.
-        - No matching user: allowed only from the register page (signup
-          process); otherwise redirect to register.
+        - No matching user: a new account, from the login page as well as the
+          signup page (#78). allauth asks for an email if the provider sent
+          none, and confirms any address the provider did not verify.
         """
         from allauth.core.exceptions import ImmediateHttpResponse
         from django.contrib import messages
@@ -120,16 +121,6 @@ class SocialAccountAdapter(DefaultSocialAccountAdapter):
                 "Prijavite se email adresom i lozinkom.",
             )
             raise ImmediateHttpResponse(redirect("account_login"))
-
-        # Allow registration flow initiated from the register page
-        if sociallogin.state.get("process") == "signup":
-            return
-
-        messages.error(
-            request,
-            "Ne postoji nalog za ovaj Google nalog. Molimo vas da se najpre registrujete.",
-        )
-        raise ImmediateHttpResponse(redirect("account_signup"))
 
     @staticmethod
     def _users_with_email(email):
@@ -179,19 +170,23 @@ class SocialAccountAdapter(DefaultSocialAccountAdapter):
         sociallogin.connect(request, user)
 
     def save_user(self, request, sociallogin, form=None):
-        """Mark social users as buyers with verified email."""
+        """Save a new social signup.
+
+        allauth creates the EmailAddress rows (setup_user_email) during
+        super().save_user, marked verified only where the provider vouched
+        for the address. The sync then mirrors that onto User.email_verified;
+        an address the provider did not verify (or one typed into the social
+        signup form) waits for confirmation (SOCIALACCOUNT_EMAIL_VERIFICATION).
+        Like email signup, no roles are set (#77).
+        """
+        from .email_sync import sync_primary_email
         from .signals import SKIP_SYNC_ATTR
 
-        # allauth creates the EmailAddress rows (setup_user_email) during
-        # super().save_user; the save below then runs the sync on top of them
         previous = getattr(sociallogin.user, SKIP_SYNC_ATTR, False)
         setattr(sociallogin.user, SKIP_SYNC_ATTR, True)
         try:
             user = super().save_user(request, sociallogin, form)
         finally:
             setattr(sociallogin.user, SKIP_SYNC_ATTR, previous)
-        user.is_buyer = True
-        user.email_verified = True
-        user.email_verified_at = timezone.now()
-        user.save(update_fields=["is_buyer", "email_verified", "email_verified_at"])
+        sync_primary_email(user)
         return user

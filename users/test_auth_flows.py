@@ -367,3 +367,59 @@ class TestReviewFixes:
             HTTP_X_REAL_IP="203.0.113.7",
         )
         assert response.status_code == 302
+
+
+@pytest.mark.django_db
+class TestSocialSignupFromLoginPage:
+    """#78, end to end through allauth's complete_social_login."""
+
+    def complete(self, rf, email, verified, process="login"):
+        from allauth.core.context import request_context
+        from allauth.socialaccount.helpers import complete_social_login
+        from allauth.socialaccount.models import SocialAccount, SocialApp, SocialLogin
+        from django.contrib.auth.models import AnonymousUser
+        from django.contrib.messages.storage.fallback import FallbackStorage
+        from django.contrib.sessions.backends.db import SessionStore
+        from django.contrib.sites.models import Site
+
+        app = SocialApp.objects.create(
+            provider="google", name="Google", client_id="id", secret="s"
+        )
+        app.sites.add(Site.objects.get_current())
+        request = rf.get("/auth/social/google/login/callback/")
+        request.session = SessionStore()
+        request.session.create()
+        request._messages = FallbackStorage(request)
+        request.user = AnonymousUser()
+        from allauth.socialaccount.adapter import get_adapter
+
+        provider = get_adapter().get_provider(request, "google")
+        sociallogin = SocialLogin(
+            provider=provider,
+            user=User(email=email),
+            account=SocialAccount(provider="google", uid=f"uid-{email}"),
+            email_addresses=[
+                EmailAddress(email=email, verified=verified, primary=True)
+            ],
+        )
+        sociallogin.state = {"process": process}
+        with request_context(request):
+            return request, complete_social_login(request, sociallogin)
+
+    def test_new_google_account_signs_up_from_the_login_page(self, rf):
+        request, response = self.complete(rf, "new@gmail.com", verified=True)
+        user = User.objects.get(email="new@gmail.com")
+        assert response.status_code == 302
+        assert response["Location"] == reverse("social-signup-complete")
+        assert user.email_verified
+        assert request.user == user  # logged in
+        assert mail.outbox == []  # Google verified it; no extra step
+
+    def test_unverified_provider_email_must_be_confirmed_first(self, rf):
+        request, response = self.complete(rf, "fb@example.com", verified=False)
+        user = User.objects.get(email="fb@example.com")
+        assert not user.email_verified
+        assert response["Location"] == reverse("account_email_verification_sent")
+        assert not request.user.is_authenticated
+        [message] = mail.outbox
+        assert message.to == ["fb@example.com"]
