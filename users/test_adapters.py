@@ -253,7 +253,8 @@ class TestPreSocialLogin(TestCase):
                 with self.assertRaises(ImmediateHttpResponse) as ctx:
                     self.adapter.pre_social_login(request, sociallogin)
                 self.assertIn("/auth/signup/", ctx.exception.response["Location"])
-                self.assertFalse(User.objects.filter(email=email or "x").exists())
+                [message] = list(request._messages)
+                self.assertIn("Registrujte se email adresom", str(message))
 
     def test_linking_revokes_social_logins_on_a_never_verified_account(self):
         """#87 review takeover: someone registered the owner's email first and
@@ -270,6 +271,52 @@ class TestPreSocialLogin(TestCase):
         )
         squatter.refresh_from_db()
         self.assertFalse(squatter.has_usable_password())
+
+    def test_linking_removes_other_addresses_of_a_never_verified_account(self):
+        """A squatter's own verified address must not survive: a password
+        reset sent to it would hand the account back (#87 review)."""
+        squatter = User.objects.create_user(
+            email="owner@example.com", username="owner", password="pw-12345678"
+        )
+        EmailAddress.objects.create(
+            user=squatter, email="squatter@example.com", verified=True
+        )
+        request = _make_request(self.factory)
+        sociallogin = _make_sociallogin(email="owner@example.com", verified=True)
+        self.adapter.pre_social_login(request, sociallogin)
+        self.assertEqual(
+            list(
+                EmailAddress.objects.filter(user=squatter).values_list(
+                    "email", flat=True
+                )
+            ),
+            ["owner@example.com"],
+        )
+
+    def test_failed_link_revokes_nothing(self):
+        squatter = User.objects.create_user(
+            email="owner@example.com", username="owner", password="pw-12345678"
+        )
+        SocialAccount.objects.create(user=squatter, provider="facebook", uid="fb-3")
+        request = _make_request(self.factory)
+        sociallogin = _make_sociallogin(email="owner@example.com", verified=True)
+        sociallogin.connect.side_effect = RuntimeError("connect failed")
+        with self.assertRaises(RuntimeError):
+            self.adapter.pre_social_login(request, sociallogin)
+        squatter.refresh_from_db()
+        self.assertTrue(squatter.has_usable_password())
+        self.assertTrue(SocialAccount.objects.filter(uid="fb-3").exists())
+
+    def test_new_signup_for_another_users_verified_address_goes_to_login(self):
+        other = User.objects.create_user(
+            email="a@example.com", username="a", password="pw-12345678"
+        )
+        EmailAddress.objects.create(user=other, email="bob@gmail.com", verified=True)
+        request = _make_request(self.factory)
+        sociallogin = _make_sociallogin(email="bob@gmail.com", verified=True)
+        with self.assertRaises(ImmediateHttpResponse) as ctx:
+            self.adapter.pre_social_login(request, sociallogin)
+        self.assertIn("/auth/login/", ctx.exception.response["Location"])
 
     def test_linking_keeps_social_logins_on_a_verified_account(self):
         owner = User.objects.create_user(

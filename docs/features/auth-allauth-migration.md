@@ -182,11 +182,16 @@ Each step gets its own issue, branch and PR.
      the user is sent to email signup and can connect the social account
      later. Google emails are provider-verified, so Google signups work in
      one step.
-   - Linking a provider to a never-verified local account (someone may have
-     registered the owner's address first) also removes that account's other
-     social logins, along with the password and unused links (#72). An
-     address already verified for a different account (emails differing
-     only in case) is not linked.
+   - Linking a provider to a local account whose email is not verified
+     (never verified, or made unverified by an admin edit) treats that
+     account as possibly someone else's. Someone may have registered the
+     owner's address first. Everything that person could still use is
+     revoked in one transaction: the password and unused links (#72), other
+     social logins, and other email addresses.
+   - An address already verified for a different account is never used.
+     Linking it, or signing up with it as a new account (for example
+     another user's extra provider email), sends the user to the login page
+     instead.
    - `SOCIALACCOUNT_EMAIL_VERIFICATION` stays `"none"`. New social accounts
      always have a verified email, and `"mandatory"` would also block linked
      users whose email became unverified (for example after an admin edit)

@@ -1,5 +1,6 @@
 from allauth.account.adapter import DefaultAccountAdapter
 from allauth.socialaccount.adapter import DefaultSocialAccountAdapter
+from django.db import transaction
 from django.utils import timezone
 
 
@@ -128,6 +129,17 @@ class SocialAccountAdapter(DefaultSocialAccountAdapter):
             )
             raise ImmediateHttpResponse(redirect("account_login"))
 
+        if email and self._verified_for_another_user(email, None):
+            # Another account holds this address (e.g. its provider's extra
+            # email); allauth would otherwise answer with an "account already
+            # exists" email and no login
+            messages.error(
+                request,
+                "Nalog sa ovom email adresom već postoji. "
+                "Prijavite se email adresom i lozinkom.",
+            )
+            raise ImmediateHttpResponse(redirect("account_login"))
+
         if not (email and self._provider_verified(sociallogin, email)):
             messages.error(
                 request,
@@ -138,7 +150,8 @@ class SocialAccountAdapter(DefaultSocialAccountAdapter):
 
     @staticmethod
     def _verified_for_another_user(email, user):
-        """allauth holds this address verified for a different account."""
+        """allauth holds this address verified for an account other than
+        ``user`` (any account when ``user`` is None)."""
         from allauth.account.models import EmailAddress
 
         return (
@@ -178,28 +191,34 @@ class SocialAccountAdapter(DefaultSocialAccountAdapter):
     def _connect_existing_user(request, sociallogin, user):
         """Link the social account to a user who registered with email/password.
 
-        If that user's email was never verified, the account may belong to
-        whoever registered the address first, not to its owner. The provider
-        has now proven ownership, so everything that stranger could still use
-        is revoked first: the password, unused links, and other social logins.
+        If that user's email is not verified (never verified, or made
+        unverified by an admin edit), the account may belong to whoever
+        registered the address first rather than its owner. The provider has
+        now proven ownership, so everything that stranger could still use is
+        revoked first: the password, unused links, other social logins and
+        other email addresses (a reset could be sent to one of those).
 
-        Without this, allauth treats the login as a new signup, finds the email
-        taken and sends an "account already exists" email instead of logging in.
+        Without linking, allauth treats the login as a new signup, finds the
+        email taken and sends an "account already exists" email instead.
         """
-        if not user.email_verified:
-            # Someone else may have registered this unverified email; the
-            # provider has now proven ownership, so lock out that password
-            # and any reset/verification links issued to it.
-            user.verification_tokens.filter(is_used=False).update(
-                is_used=True, used_at=timezone.now()
-            )
-            # ...and any social login someone attached to it before
-            user.socialaccount_set.all().delete()
-            user.set_unusable_password()
-            user.email_verified = True
-            user.email_verified_at = timezone.now()
-            user.save(update_fields=["password", "email_verified", "email_verified_at"])
-        sociallogin.connect(request, user)
+        from allauth.account.models import EmailAddress
+
+        with transaction.atomic():
+            if not user.email_verified:
+                user.verification_tokens.filter(is_used=False).update(
+                    is_used=True, used_at=timezone.now()
+                )
+                user.socialaccount_set.all().delete()
+                EmailAddress.objects.filter(user=user).exclude(
+                    email__iexact=user.email
+                ).delete()
+                user.set_unusable_password()
+                user.email_verified = True
+                user.email_verified_at = timezone.now()
+                user.save(
+                    update_fields=["password", "email_verified", "email_verified_at"]
+                )
+            sociallogin.connect(request, user)
 
     def save_user(self, request, sociallogin, form=None):
         """Save a new social signup.

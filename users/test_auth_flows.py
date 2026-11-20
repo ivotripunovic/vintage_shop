@@ -416,14 +416,15 @@ class TestSocialSignupFromLoginPage:
         assert mail.outbox == []  # Google verified it; no extra step
 
     def test_unverified_or_missing_provider_email_is_sent_to_email_signup(self, rf):
-        for email, verified in (("fb@example.com", False), ("", True)):
-            from allauth.socialaccount.models import SocialApp
+        from allauth.socialaccount.models import SocialAccount, SocialApp
 
+        for email, verified in (("fb@example.com", False), ("", True)):
             SocialApp.objects.all().delete()
             request, response = self.complete(rf, email, verified=verified)
             assert response["Location"] == reverse("account_signup")
             assert not request.user.is_authenticated
-            assert not User.objects.filter(email="fb@example.com").exists()
+            assert not User.objects.exists()
+            assert not SocialAccount.objects.exists()
             assert mail.outbox == []
 
     def test_linked_user_with_unverified_email_still_logs_in(self, rf):
