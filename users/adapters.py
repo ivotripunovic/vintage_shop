@@ -88,9 +88,14 @@ class SocialAccountAdapter(DefaultSocialAccountAdapter):
         - The email matches a user but cannot be linked safely (provider did
           not verify it, ambiguous match, inactive user): send them to the
           login page instead of letting allauth attempt a signup.
+        - The email is already verified for a *different* account (emails
+          differing only in case): not linked; send them to the login page.
         - No matching user: a new account, from the login page as well as the
-          signup page (#78). allauth asks for an email if the provider sent
-          none, and confirms any address the provider did not verify.
+          signup page (#78), but only for an email the provider verified.
+          Without one (no email, or Facebook with VERIFIED_EMAIL=False) the
+          user signs up by email and connects the social account later;
+          otherwise anyone could claim an address through the social signup
+          form and keep a social login on it.
         """
         from allauth.core.exceptions import ImmediateHttpResponse
         from django.contrib import messages
@@ -112,6 +117,7 @@ class SocialAccountAdapter(DefaultSocialAccountAdapter):
                 user is not None
                 and user.is_active
                 and self._provider_verified(sociallogin, email)
+                and not self._verified_for_another_user(email, user)
             ):
                 self._connect_existing_user(request, sociallogin, user)
                 return
@@ -121,6 +127,25 @@ class SocialAccountAdapter(DefaultSocialAccountAdapter):
                 "Prijavite se email adresom i lozinkom.",
             )
             raise ImmediateHttpResponse(redirect("account_login"))
+
+        if not (email and self._provider_verified(sociallogin, email)):
+            messages.error(
+                request,
+                "Ovaj nalog nije podelio potvrđenu email adresu. Registrujte se "
+                "email adresom, pa ga povežite u podešavanjima naloga.",
+            )
+            raise ImmediateHttpResponse(redirect("account_signup"))
+
+    @staticmethod
+    def _verified_for_another_user(email, user):
+        """allauth holds this address verified for a different account."""
+        from allauth.account.models import EmailAddress
+
+        return (
+            EmailAddress.objects.filter(email__iexact=email, verified=True)
+            .exclude(user=user)
+            .exists()
+        )
 
     @staticmethod
     def _users_with_email(email):
@@ -153,6 +178,11 @@ class SocialAccountAdapter(DefaultSocialAccountAdapter):
     def _connect_existing_user(request, sociallogin, user):
         """Link the social account to a user who registered with email/password.
 
+        If that user's email was never verified, the account may belong to
+        whoever registered the address first, not to its owner. The provider
+        has now proven ownership, so everything that stranger could still use
+        is revoked first: the password, unused links, and other social logins.
+
         Without this, allauth treats the login as a new signup, finds the email
         taken and sends an "account already exists" email instead of logging in.
         """
@@ -163,6 +193,8 @@ class SocialAccountAdapter(DefaultSocialAccountAdapter):
             user.verification_tokens.filter(is_used=False).update(
                 is_used=True, used_at=timezone.now()
             )
+            # ...and any social login someone attached to it before
+            user.socialaccount_set.all().delete()
             user.set_unusable_password()
             user.email_verified = True
             user.email_verified_at = timezone.now()
@@ -172,12 +204,11 @@ class SocialAccountAdapter(DefaultSocialAccountAdapter):
     def save_user(self, request, sociallogin, form=None):
         """Save a new social signup.
 
-        allauth creates the EmailAddress rows (setup_user_email) during
-        super().save_user, marked verified only where the provider vouched
-        for the address. The sync then mirrors that onto User.email_verified;
-        an address the provider did not verify (or one typed into the social
-        signup form) waits for confirmation (SOCIALACCOUNT_EMAIL_VERIFICATION).
-        Like email signup, no roles are set (#77).
+        pre_social_login only lets a signup through for an email the provider
+        verified. allauth creates the EmailAddress rows (setup_user_email)
+        during super().save_user, marked verified where the provider vouched
+        for them, and the sync mirrors that onto User.email_verified (no more
+        forcing it to True). Like email signup, no roles are set (#77).
         """
         from .email_sync import sync_primary_email
         from .signals import SKIP_SYNC_ATTR

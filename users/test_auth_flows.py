@@ -415,11 +415,26 @@ class TestSocialSignupFromLoginPage:
         assert request.user == user  # logged in
         assert mail.outbox == []  # Google verified it; no extra step
 
-    def test_unverified_provider_email_must_be_confirmed_first(self, rf):
-        request, response = self.complete(rf, "fb@example.com", verified=False)
-        user = User.objects.get(email="fb@example.com")
-        assert not user.email_verified
-        assert response["Location"] == reverse("account_email_verification_sent")
-        assert not request.user.is_authenticated
-        [message] = mail.outbox
-        assert message.to == ["fb@example.com"]
+    def test_unverified_or_missing_provider_email_is_sent_to_email_signup(self, rf):
+        for email, verified in (("fb@example.com", False), ("", True)):
+            from allauth.socialaccount.models import SocialApp
+
+            SocialApp.objects.all().delete()
+            request, response = self.complete(rf, email, verified=verified)
+            assert response["Location"] == reverse("account_signup")
+            assert not request.user.is_authenticated
+            assert not User.objects.filter(email="fb@example.com").exists()
+            assert mail.outbox == []
+
+    def test_linked_user_with_unverified_email_still_logs_in(self, rf):
+        """#87 review: SOCIALACCOUNT_EMAIL_VERIFICATION stays "none", so a
+        linked user whose address is unverified (admin edit) is not blocked."""
+        from allauth.socialaccount.models import SocialAccount
+
+        user = make_user("linked@gmail.com", verified=False)
+        SocialAccount.objects.create(
+            user=user, provider="google", uid="uid-linked@gmail.com"
+        )
+        request, response = self.complete(rf, "linked@gmail.com", verified=True)
+        assert request.user == user
+        assert response["Location"] != reverse("account_email_verification_sent")

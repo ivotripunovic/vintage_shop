@@ -243,11 +243,63 @@ class TestPreSocialLogin(TestCase):
         sociallogin = _make_sociallogin(email="nobody@example.com", process="login")
         self.assertIsNone(self.adapter.pre_social_login(request, sociallogin))
 
-    def test_allows_provider_without_email(self):
-        """allauth then asks for an email and confirms it."""
+    def test_new_account_needs_an_email_the_provider_verified(self):
+        """#87 review: otherwise anyone could claim an address through the
+        social signup form and keep a social login on it."""
+        for email, verified in (("", True), ("claimed@example.com", False)):
+            with self.subTest(email=email, verified=verified):
+                request = _make_request(self.factory)
+                sociallogin = _make_sociallogin(email=email, verified=verified)
+                with self.assertRaises(ImmediateHttpResponse) as ctx:
+                    self.adapter.pre_social_login(request, sociallogin)
+                self.assertIn("/auth/signup/", ctx.exception.response["Location"])
+                self.assertFalse(User.objects.filter(email=email or "x").exists())
+
+    def test_linking_revokes_social_logins_on_a_never_verified_account(self):
+        """#87 review takeover: someone registered the owner's email first and
+        attached their own Facebook; the owner's Google link must drop it."""
+        squatter = User.objects.create_user(
+            email="owner@example.com", username="owner", password="pw-12345678"
+        )
+        SocialAccount.objects.create(user=squatter, provider="facebook", uid="fb-1")
         request = _make_request(self.factory)
-        sociallogin = _make_sociallogin(email="")
-        self.assertIsNone(self.adapter.pre_social_login(request, sociallogin))
+        sociallogin = _make_sociallogin(email="owner@example.com", verified=True)
+        self.adapter.pre_social_login(request, sociallogin)
+        self.assertFalse(
+            SocialAccount.objects.filter(provider="facebook", uid="fb-1").exists()
+        )
+        squatter.refresh_from_db()
+        self.assertFalse(squatter.has_usable_password())
+
+    def test_linking_keeps_social_logins_on_a_verified_account(self):
+        owner = User.objects.create_user(
+            email="owner@example.com", username="owner", password="pw-12345678"
+        )
+        owner.email_verified = True
+        owner.save()
+        SocialAccount.objects.create(user=owner, provider="facebook", uid="fb-2")
+        request = _make_request(self.factory)
+        sociallogin = _make_sociallogin(email="owner@example.com", verified=True)
+        self.adapter.pre_social_login(request, sociallogin)
+        self.assertTrue(SocialAccount.objects.filter(uid="fb-2").exists())
+
+    def test_email_verified_for_another_account_is_not_linked(self):
+        """Case-variant duplicates: Foo@ is verified for A; B is foo@."""
+        a = User.objects.create_user(
+            email="Foo@example.com", username="a", password="pw-12345678"
+        )
+        a.email_verified = True
+        a.save()
+        b = User.objects.create_user(
+            email="foo@example.com", username="b", password="pw-12345678"
+        )
+        request = _make_request(self.factory)
+        sociallogin = _make_sociallogin(email="foo@example.com", verified=True)
+        with self.assertRaises(ImmediateHttpResponse) as ctx:
+            self.adapter.pre_social_login(request, sociallogin)
+        self.assertIn("/auth/login/", ctx.exception.response["Location"])
+        b.refresh_from_db()
+        self.assertTrue(b.has_usable_password())
 
 
 # ---------------------------------------------------------------------------

@@ -175,12 +175,22 @@ Each step gets its own issue, branch and PR.
 3. **Google signup from the login page** (#78). *Done, scope narrowed.*
    - `pre_social_login` no longer limits new social accounts to the signup
      page, so "Nastavi sa Google" on the login page creates the account.
-   - Social signups now confirm any address the provider did not verify
-     (`SOCIALACCOUNT_EMAIL_VERIFICATION = "mandatory"`). Before, they were
-     all marked verified, including Facebook's (configured
-     `VERIFIED_EMAIL: False`) and emails typed into the social signup step.
-     Google emails are provider-verified, so Google signups have no extra
-     step.
+   - A new social account needs an email the provider verified. Before,
+     `save_user` marked every social email verified, including Facebook's
+     (configured `VERIFIED_EMAIL: False`) and addresses typed into the social
+     signup step. Without a verified email (no email, or an unverified one)
+     the user is sent to email signup and can connect the social account
+     later. Google emails are provider-verified, so Google signups work in
+     one step.
+   - Linking a provider to a never-verified local account (someone may have
+     registered the owner's address first) also removes that account's other
+     social logins, along with the password and unused links (#72). An
+     address already verified for a different account (emails differing
+     only in case) is not linked.
+   - `SOCIALACCOUNT_EMAIL_VERIFICATION` stays `"none"`. New social accounts
+     always have a verified email, and `"mandatory"` would also block linked
+     users whose email became unverified (for example after an admin edit)
+     from logging in with Google.
    - Social signup sets no roles, like email signup.
    - **Not done, on purpose:** replacing our linking code with allauth's
      `SOCIALACCOUNT_EMAIL_AUTHENTICATION`. It would add nothing, and it is
