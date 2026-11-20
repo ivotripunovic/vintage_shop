@@ -2,7 +2,6 @@
 Tests for social auth adapters.
 """
 
-from datetime import timedelta
 from unittest.mock import MagicMock
 
 import pytest
@@ -13,10 +12,9 @@ from django.contrib.auth.models import AnonymousUser
 from django.contrib.messages.storage.fallback import FallbackStorage
 from django.contrib.sites.models import Site
 from django.test import RequestFactory, TestCase
-from django.utils import timezone
 
 from .adapters import AccountAdapter, SocialAccountAdapter
-from .models import User, VerificationToken
+from .models import User
 
 
 def _make_request(factory):
@@ -70,8 +68,8 @@ class TestPreSocialLogin(TestCase):
             email="registered@example.com",
             username="registered",
             password="pass",
-            email_verified=True,
         )
+        user.mark_email_verified()
         request = _make_request(self.factory)
         sociallogin = _make_sociallogin(email="Registered@example.com")
         self.adapter.pre_social_login(request, sociallogin)  # must not raise
@@ -85,8 +83,8 @@ class TestPreSocialLogin(TestCase):
             email="registered@example.com",
             username="registered",
             password="pass",
-            email_verified=True,
         )
+        user.mark_email_verified()
         request = _make_request(self.factory)
         sociallogin = _make_sociallogin(
             email="registered@example.com", process="signup"
@@ -108,7 +106,6 @@ class TestPreSocialLogin(TestCase):
         user.refresh_from_db()
         self.assertFalse(user.has_usable_password())
         self.assertTrue(user.email_verified)
-        self.assertIsNotNone(user.email_verified_at)
 
     def test_unverified_provider_email_redirects_to_login(self):
         """Without provider verification nothing is linked; user goes to login."""
@@ -124,23 +121,21 @@ class TestPreSocialLogin(TestCase):
         self.assertIn("/auth/login/", ctx.exception.response["Location"])
         sociallogin.connect.assert_not_called()
 
-    def test_connecting_unverified_user_invalidates_tokens(self):
-        """Reset/verification links issued before the takeover stop working."""
+    def test_connecting_unverified_user_invalidates_reset_links(self):
+        """Password reset links issued before the takeover stop working:
+        allauth's tokens are tied to the password hash."""
+        from allauth.account.forms import default_token_generator
+
         user = User.objects.create_user(
             email="registered@example.com", username="registered", password="pass"
         )
-        token = VerificationToken.objects.create(
-            user=user,
-            token="tok",
-            token_type=VerificationToken.TOKEN_TYPE_PASSWORD,
-            expires_at=timezone.now() + timedelta(hours=1),
-        )
+        token = default_token_generator.make_token(user)
         request = _make_request(self.factory)
         self.adapter.pre_social_login(
             request, _make_sociallogin(email="registered@example.com")
         )
-        token.refresh_from_db()
-        self.assertTrue(token.is_used)
+        user.refresh_from_db()
+        self.assertFalse(default_token_generator.check_token(user, token))
 
     def test_ambiguous_case_match_is_not_linked(self):
         """Two accounts differing only in case and no exact match: link neither."""
@@ -161,8 +156,8 @@ class TestPreSocialLogin(TestCase):
             email="foo@example.com",
             username="exact",
             password="pass",
-            email_verified=True,
         )
+        exact.mark_email_verified()
         request = _make_request(self.factory)
         sociallogin = _make_sociallogin(email="foo@example.com")
         self.adapter.pre_social_login(request, sociallogin)
@@ -216,8 +211,8 @@ class TestPreSocialLogin(TestCase):
             email="registered@example.com",
             username="registered",
             password="pass",
-            email_verified=True,
         )
+        user.mark_email_verified()
         SocialApp.objects.create(
             provider="google", name="google", client_id="id", secret="s"
         ).sites.add(Site.objects.get_current())
@@ -324,8 +319,7 @@ class TestPreSocialLogin(TestCase):
         owner = User.objects.create_user(
             email="owner@example.com", username="owner", password="pw-12345678"
         )
-        owner.email_verified = True
-        owner.save()
+        owner.mark_email_verified()
         SocialAccount.objects.create(user=owner, provider="facebook", uid="fb-2")
         request = _make_request(self.factory)
         sociallogin = _make_sociallogin(email="owner@example.com", verified=True)
@@ -337,8 +331,7 @@ class TestPreSocialLogin(TestCase):
         a = User.objects.create_user(
             email="Foo@example.com", username="a", password="pw-12345678"
         )
-        a.email_verified = True
-        a.save()
+        a.mark_email_verified()
         b = User.objects.create_user(
             email="foo@example.com", username="b", password="pw-12345678"
         )
@@ -381,7 +374,6 @@ class TestSaveUser(TestCase):
         user = self._save("social@example.com", verified=True)
         user.refresh_from_db()
         self.assertTrue(user.email_verified)
-        self.assertIsNotNone(user.email_verified_at)
         self.assertTrue(EmailAddress.objects.get(user=user).verified)
 
     def test_unverified_provider_email_stays_unverified(self):

@@ -67,7 +67,32 @@ class TestUserModel(TestCase):
         """Test that email_verified defaults to False."""
         user = User.objects.create_user(**self.user_data)
         self.assertFalse(user.email_verified)
-        self.assertIsNone(user.email_verified_at)
+
+    def test_email_verified_reads_allauths_address_for_the_login_email(self):
+        from allauth.account.models import EmailAddress
+
+        user = User.objects.create_user(**self.user_data)
+        EmailAddress.objects.create(
+            user=user, email="other@example.com", verified=True, primary=False
+        )
+        self.assertFalse(user.email_verified)  # not the login email
+        EmailAddress.objects.create(
+            user=user, email=user.email.upper(), verified=True, primary=True
+        )
+        self.assertTrue(user.email_verified)  # case-insensitive
+
+    def test_mark_email_verified_makes_a_verified_primary_address(self):
+        from allauth.account.models import EmailAddress
+
+        user = User.objects.create_user(**self.user_data)
+        EmailAddress.objects.create(user=user, email="old@example.com", primary=True)
+        user.mark_email_verified()
+        user.mark_email_verified()  # idempotent
+        self.assertTrue(user.email_verified)
+        rows = dict(
+            EmailAddress.objects.filter(user=user).values_list("email", "primary")
+        )
+        self.assertEqual(rows, {"old@example.com": False, user.email.lower(): True})
 
     def test_user_string_representation(self):
         """Test user string representation returns email."""

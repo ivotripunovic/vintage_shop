@@ -1,50 +1,15 @@
 """
 User views that allauth does not cover: account settings, the welcome page
-after signing up, becoming a seller, and links from the old custom
-verification emails. Sign-up, login, logout, verification, password reset
-and change are allauth's (#77).
+after signing up, and becoming a seller. Sign-up, login, logout,
+verification, password reset and change are allauth's (#77).
 """
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import redirect, render
-from django.utils import timezone
 from django.views.decorators.http import require_http_methods
 
 from .forms import UserProfileForm
-from .models import VerificationToken
-
-
-@require_http_methods(["GET", "POST"])
-def verify_email_view(request, token):
-    """Verify email with a token from the old custom flow (#77).
-
-    Verification emails sent before the switch to allauth stay valid for
-    24 hours; this view and VerificationToken go in #79.
-    """
-    try:
-        token_obj = VerificationToken.objects.get(
-            token=token, token_type=VerificationToken.TOKEN_TYPE_EMAIL
-        )
-    except VerificationToken.DoesNotExist:
-        messages.error(request, "Link za verifikaciju je nevažeći ili je istekao.")
-        return redirect("home")
-
-    if not token_obj.is_valid():
-        messages.error(request, "Link za verifikaciju je nevažeći ili je istekao.")
-        return redirect("home")
-
-    # Mark email as verified
-    user = token_obj.user
-    user.email_verified = True
-    user.email_verified_at = timezone.now()
-    user.save()
-
-    # Mark token as used
-    token_obj.mark_used()
-
-    messages.success(request, "E-pošta je verifikovana! Možete se prijaviti.")
-    return redirect("account_login")
 
 
 @login_required
@@ -75,6 +40,7 @@ def account_settings_view(request):
     context = {
         "page_title": "Account Settings",
         "profile_form": profile_form,
+        "email_verified": request.user.email_verified,  # one query
         "favourite_sellers": favourite_sellers,
         "wishlist_items": wishlist_items,
     }

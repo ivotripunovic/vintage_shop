@@ -24,8 +24,8 @@ def _make_seller(email="seller@example.com", tier="garazna"):
         username=email.split("@")[0],
         password="testpass123",
         is_seller=True,
-        email_verified=True,
     )
+    user.mark_email_verified()
     seller = user.seller_profile
     if tier != "garazna":
         seller.tier = tier

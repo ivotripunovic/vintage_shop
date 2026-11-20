@@ -1,7 +1,6 @@
 from allauth.account.adapter import DefaultAccountAdapter
 from allauth.socialaccount.adapter import DefaultSocialAccountAdapter
 from django.db import transaction
-from django.utils import timezone
 
 
 class AccountAdapter(DefaultAccountAdapter):
@@ -53,19 +52,6 @@ class AccountAdapter(DefaultAccountAdapter):
 
         context = {**context, "SITE_NAME": settings.SITE_NAME}
         return super().send_mail(template_prefix, email, context)
-
-    def save_user(self, request, user, form, commit=True):
-        """allauth creates this user's EmailAddress itself; see users.signals."""
-        from .signals import SKIP_SYNC_ATTR
-
-        # Restore, not clear: social signup with a form calls this from
-        # inside SocialAccountAdapter.save_user, which set the flag first
-        previous = getattr(user, SKIP_SYNC_ATTR, False)
-        setattr(user, SKIP_SYNC_ATTR, True)
-        try:
-            return super().save_user(request, user, form, commit=commit)
-        finally:
-            setattr(user, SKIP_SYNC_ATTR, previous)
 
     def get_signup_redirect_url(self, request):
         from django.urls import reverse
@@ -137,7 +123,7 @@ class SocialAccountAdapter(DefaultSocialAccountAdapter):
             # login. No User has this address (matches is empty), so another
             # account's *unverified* row is an unproven claim (e.g. a pending
             # email change); the provider has just proven ownership, so it
-            # goes, as in users.email_sync.
+            # goes.
             EmailAddress.objects.filter(email__iexact=email, verified=False).delete()
             if self._verified_for_another_user(email, None):
                 # A verified extra address of another account (for example
@@ -204,8 +190,9 @@ class SocialAccountAdapter(DefaultSocialAccountAdapter):
         unverified by an admin edit), the account may belong to whoever
         registered the address first rather than its owner. The provider has
         now proven ownership, so everything that stranger could still use is
-        revoked first: the password, unused links, other social logins and
-        other email addresses (a reset could be sent to one of those).
+        revoked first: the password (and with it any reset link), other
+        social logins and other email addresses (a reset could be sent to
+        one of those).
 
         Without linking, allauth treats the login as a new signup, finds the
         email taken and sends an "account already exists" email instead.
@@ -214,38 +201,13 @@ class SocialAccountAdapter(DefaultSocialAccountAdapter):
 
         with transaction.atomic():
             if not user.email_verified:
-                user.verification_tokens.filter(is_used=False).update(
-                    is_used=True, used_at=timezone.now()
-                )
                 user.socialaccount_set.all().delete()
                 EmailAddress.objects.filter(user=user).exclude(
                     email__iexact=user.email
                 ).delete()
+                # Also voids password reset links, which are tied to the
+                # password hash
                 user.set_unusable_password()
-                user.email_verified = True
-                user.email_verified_at = timezone.now()
-                user.save(
-                    update_fields=["password", "email_verified", "email_verified_at"]
-                )
+                user.save(update_fields=["password"])
+                user.mark_email_verified()
             sociallogin.connect(request, user)
-
-    def save_user(self, request, sociallogin, form=None):
-        """Save a new social signup.
-
-        pre_social_login only lets a signup through for an email the provider
-        verified. allauth creates the EmailAddress rows (setup_user_email)
-        during super().save_user, marked verified where the provider vouched
-        for them, and the sync mirrors that onto User.email_verified (no more
-        forcing it to True). Like email signup, no roles are set (#77).
-        """
-        from .email_sync import sync_primary_email
-        from .signals import SKIP_SYNC_ATTR
-
-        previous = getattr(sociallogin.user, SKIP_SYNC_ATTR, False)
-        setattr(sociallogin.user, SKIP_SYNC_ATTR, True)
-        try:
-            user = super().save_user(request, sociallogin, form)
-        finally:
-            setattr(sociallogin.user, SKIP_SYNC_ATTR, previous)
-        sync_primary_email(user)
-        return user

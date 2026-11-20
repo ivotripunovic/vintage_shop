@@ -45,7 +45,7 @@ on `PATH`), so bare `pytest`, `flake8`, `runserver`, etc. work without paths.
 ### Django Apps
 
 - **config/** - Project settings, root URL conf, WSGI/ASGI. Database auto-switches: SQLite when `DEBUG=True`, PostgreSQL otherwise.
-- **users/** - Custom `User` model (`AUTH_USER_MODEL = "users.User"`) with email-based auth through django-allauth (`users/adapters.py`, `users/allauth_forms.py`). `is_buyer`/`is_seller` role flags (signup sets neither; sellers opt in from the welcome page). `User.email_verified` is kept in step with allauth's `EmailAddress` by `users/email_sync.py`. `VerificationToken` only serves links from the old custom flow until #79.
+- **users/** - Custom `User` model (`AUTH_USER_MODEL = "users.User"`) with email-based auth through django-allauth (`users/adapters.py`, `users/allauth_forms.py`). `is_buyer`/`is_seller` role flags (signup sets neither; sellers opt in from the welcome page). Email verification lives only in allauth's `EmailAddress`; `User.email_verified` is a read-only property over it, and `User.mark_email_verified()` records a verified address (seeding, tests, provider-proven emails).
 - **sellers/** - `Seller` (OneToOne with User) for shop profiles. `SellerSubscription` for billing. Post-save signal (`sellers/signals.py`) auto-creates Seller profile + subscription when User with `is_seller=True` is created.
 - **products/** - `Product` (soft-deletable), `ProductImage` (multiple per product, ordered), `ProductCategory`, `ProductCondition`. Products have status workflow: draft → published → sold/archived.
 - **orders/** - `Sale`: there is no cart or checkout. Buyer and seller agree in chat, then the seller marks the product sold to that buyer (stock drops by one; the last unit marks the product sold).

@@ -9,20 +9,23 @@ from users.models import User
 
 @pytest.fixture
 def buyer(db):
-    return User.objects.create_user(
+    user = User.objects.create_user(
         email="buyer@example.com", username="buyer", password="pass", is_buyer=True
     )
+    user.mark_email_verified()
+    return user
 
 
 @pytest.fixture
 def seller_user(db):
-    return User.objects.create_user(
+    user = User.objects.create_user(
         email="seller@example.com",
         username="seller",
         password="pass",
         is_seller=True,
-        email_verified=True,
     )
+    user.mark_email_verified()
+    return user
 
 
 @pytest.fixture

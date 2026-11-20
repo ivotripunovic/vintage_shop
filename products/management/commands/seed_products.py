@@ -87,12 +87,12 @@ class Command(BaseCommand):
                     "first_name": data["shop_name"].split()[0],
                     "last_name": "Seed",
                     "is_seller": True,
-                    "email_verified": True,
                 },
             )
             if user_created:
                 user.set_unusable_password()
                 user.save()
+                user.mark_email_verified()
 
             # Signal auto-creates a Seller — update it with proper shop data.
             seller = Seller.objects.get(user=user)
