@@ -133,14 +133,17 @@ Each step gets its own issue, branch and PR.
      - Saving a User raises allauth's `verified`, but never quietly lowers
        it, so a stale instance cannot undo a confirmation.
      - allauth's `email_confirmed` sets `User.email_verified`.
-     - Changing the email removes only the previous address. A provider's
-       extra emails are kept.
+     - Changing the email (seller settings, admin, shell) makes the new
+       address unverified, voids links sent to the old address, and removes
+       only the previous address. A provider's extra emails are kept.
+     - Another account's verified address is never deleted; it blocks
+       verification of the same address for this user instead.
      - allauth's own signups are skipped (our adapters mark them) because
        `setup_user_email` creates their rows.
      - Emails differing only in case are verified for one user only, with
        a warning logged instead of a crash.
-   - Changing the email in seller settings now resets verification and
-     emails a link to the new address.
+   - Changing the email in seller settings emails a confirmation link (with
+     email-change wording) to the new address.
    - Un-verifying a user by hand needs both records: edit the User and the
      allauth email address in the admin.
 2. **Switch email auth to allauth** (#77).

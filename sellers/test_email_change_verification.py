@@ -32,3 +32,26 @@ def test_seller_email_change_resets_verification_and_sends_link(
         EmailAddress.objects.filter(user=user).values_list("email", "verified")
     ) == [("new@example.com", False)]
     assert [m.to for m in mail.outbox] == [["new@example.com"]]
+    assert "nova adresa" in mail.outbox[0].body
+    assert "niste kreirali nalog" not in mail.outbox[0].body
+
+
+@pytest.mark.django_db
+def test_case_only_change_sends_nothing_and_keeps_verification(
+    client, django_capture_on_commit_callbacks
+):
+    user = User.objects.create_user(
+        email="Old@example.com",
+        username="Old@example.com",
+        password="Pw-strong-123",
+        is_seller=True,
+    )
+    user.email_verified = True
+    user.save()
+    client.force_login(user)
+    data = {"shop_name": user.seller_profile.shop_name, "email": "old@example.com"}
+    with django_capture_on_commit_callbacks(execute=True):
+        client.post(reverse("seller_settings"), data)
+    user.refresh_from_db()
+    assert user.email_verified
+    assert mail.outbox == []

@@ -15,7 +15,6 @@ from orders.models import SELLABLE_STATUSES
 from products.models import Product, ProductCondition
 from ratings.models import Rating
 from ratings.services import rating_summary
-from users.email_sync import sync_primary_email
 from users.models import User
 
 from .forms import (

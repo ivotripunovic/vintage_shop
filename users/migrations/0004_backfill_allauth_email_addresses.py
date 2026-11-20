@@ -10,7 +10,7 @@ migration keeps working with historical models if that module changes:
 addresses are stored lowercased, an address is verified if either side was
 (and the User flag is raised to match), an address is never verified for two
 users (for emails differing only in case, the first user to hold it
-verified keeps it), rows for another
+verified keeps it), unverified rows for another
 user's email are removed, and other rows a user owns are kept as secondaries.
 """
 
@@ -22,10 +22,11 @@ def backfill(apps, schema_editor):
     User = apps.get_model("users", "User")
     EmailAddress = apps.get_model("account", "EmailAddress")
 
-    # Rows for an email that belongs to a different user now. Removing them
-    # first means the rows below cannot collide with a stale verified row.
+    # Unverified rows for an email that belongs to a different user now.
+    # Verified ones stay with their owner (e.g. a social provider's extra
+    # email) and block verification for the other user below.
     for owner in User.objects.exclude(email="").iterator():
-        EmailAddress.objects.filter(email__iexact=owner.email).exclude(
+        EmailAddress.objects.filter(email__iexact=owner.email, verified=False).exclude(
             user=owner
         ).exclude(user__email__iexact=owner.email).delete()
 

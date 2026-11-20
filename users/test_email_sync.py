@@ -66,13 +66,27 @@ class TestBackfill:
         row_only.refresh_from_db()
         assert row_only.email_verified
 
-    def test_stale_rows_are_removed_without_colliding(self):
-        """B now owns an email whose verified row A kept from before."""
+    def test_another_users_verified_row_is_kept_and_blocks_verification(self):
+        """A's verified extra email b@ stays A's; B owns it but stays unverified."""
         a = make_user("a@example.com")
         b = make_user("b@example.com")
         EmailAddress.objects.filter(user=b).delete()
         EmailAddress.objects.create(
             user=a, email="b@example.com", primary=False, verified=True
+        )
+        self.run()
+        assert sorted(addresses(a)) == [
+            ("a@example.com", True, True),
+            ("b@example.com", False, True),
+        ]
+        assert addresses(b) == [("b@example.com", True, False)]
+
+    def test_another_users_unverified_leftover_is_removed(self):
+        a = make_user("a@example.com")
+        b = make_user("b@example.com")
+        EmailAddress.objects.filter(user=b).delete()
+        EmailAddress.objects.create(
+            user=a, email="b@example.com", primary=False, verified=False
         )
         self.run()
         assert addresses(a) == [("a@example.com", True, True)]
@@ -120,12 +134,57 @@ class TestUserSaveMirrorsIntoAllauth:
         )
         assert addresses(admin) == [("admin@example.com", True, False)]
 
-    def test_email_change_moves_the_address(self):
-        """A trusted change (admin) keeps the flag; the old row goes."""
+    def test_email_change_makes_the_new_address_unverified(self):
+        """Admin or shell edits: the old flag must not vouch for b@."""
         user = make_user("old@example.com")
         user.email = "new@example.com"
         user.save()
-        assert addresses(user) == [("new@example.com", True, True)]
+        assert addresses(user) == [("new@example.com", True, False)]
+        user.refresh_from_db()
+        assert not user.email_verified
+        assert user.email_verified_at is None
+
+    def test_email_change_voids_links_sent_to_the_old_address(self):
+        from datetime import timedelta
+
+        from django.utils import timezone
+
+        from users.models import VerificationToken
+
+        user = make_user("old@example.com", verified=False)
+        for kind in (
+            VerificationToken.TOKEN_TYPE_EMAIL,
+            VerificationToken.TOKEN_TYPE_PASSWORD,
+        ):
+            VerificationToken.objects.create(
+                user=user,
+                token=f"t-{kind}",
+                token_type=kind,
+                expires_at=timezone.now() + timedelta(hours=1),
+            )
+        user.email = "new@example.com"
+        user.save()
+        assert not user.verification_tokens.filter(is_used=False).exists()
+
+    def test_case_only_change_is_not_an_email_change(self):
+        user = make_user("Old@example.com")
+        user.email = "old@example.com"
+        user.save()
+        assert addresses(user) == [("old@example.com", True, True)]
+        user.refresh_from_db()
+        assert user.email_verified
+
+    def test_making_a_verified_secondary_primary_keeps_it_verified(self):
+        """allauth's set_as_primary changes User.email to a proven address."""
+        user = make_user("a@example.com")
+        work = EmailAddress.objects.create(
+            user=user, email="work@example.com", primary=False, verified=True
+        )
+        work.set_as_primary()
+        user.refresh_from_db()
+        assert user.email == "work@example.com"
+        assert user.email_verified
+        assert addresses(user) == [("work@example.com", True, True)]
 
     def test_email_change_keeps_other_rows_the_user_owns(self):
         user = make_user("a@example.com")
@@ -135,7 +194,7 @@ class TestUserSaveMirrorsIntoAllauth:
         user.email = "b@example.com"
         user.save()
         assert sorted(addresses(user)) == [
-            ("b@example.com", True, True),
+            ("b@example.com", True, False),
             ("work@example.com", False, True),
         ]
 
@@ -159,14 +218,14 @@ class TestUserSaveMirrorsIntoAllauth:
         ]
         assert writes == []
 
-    def test_new_owner_takes_over_another_users_stale_verified_row(self):
+    def test_another_users_verified_row_is_never_deleted(self):
         a = make_user("a@example.com")
         EmailAddress.objects.create(
             user=a, email="b@example.com", primary=False, verified=True
         )
-        b = make_user("b@example.com")  # must not raise IntegrityError
-        assert addresses(a) == [("a@example.com", True, True)]
-        assert addresses(b) == [("b@example.com", True, True)]
+        b = make_user("b@example.com")  # must not raise or delete A's row
+        assert ("b@example.com", False, True) in addresses(a)
+        assert addresses(b) == [("b@example.com", True, False)]
 
     def test_case_variant_duplicates_do_not_crash_and_first_keeps_verified(self):
         upper = make_user("Foo@example.com")
@@ -280,3 +339,33 @@ def test_registration_is_atomic_when_the_sync_fails(client, monkeypatch):
             {"email": "new@example.com", "password1": PASSWORD, "password2": PASSWORD},
         )
     assert not User.objects.filter(email="new@example.com").exists()
+
+
+@pytest.mark.django_db
+def test_social_signup_through_the_signup_form_does_not_crash(rf):
+    """Nested adapters: AccountAdapter.save_user must not clear the flag that
+    SocialAccountAdapter.save_user set (review of #85)."""
+    from allauth.socialaccount.models import SocialAccount, SocialLogin
+    from django.contrib.auth.models import AnonymousUser
+    from django.contrib.messages.storage.fallback import FallbackStorage
+    from django.contrib.sessions.backends.db import SessionStore
+
+    from users.adapters import SocialAccountAdapter
+
+    class SignupForm:
+        cleaned_data = {"email": "form@example.com"}
+
+    request = rf.get("/")
+    request.session = SessionStore()
+    request._messages = FallbackStorage(request)
+    request.user = AnonymousUser()
+    user = User(email="form@example.com")
+    sociallogin = SocialLogin(
+        user=user,
+        account=SocialAccount(provider="google", uid="456"),
+        email_addresses=[
+            EmailAddress(email="form@example.com", verified=True, primary=True)
+        ],
+    )
+    SocialAccountAdapter().save_user(request, sociallogin, form=SignupForm())
+    assert addresses(user) == [("form@example.com", True, True)]

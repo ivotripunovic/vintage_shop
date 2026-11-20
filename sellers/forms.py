@@ -258,16 +258,18 @@ class SellerAccountSettingsForm(forms.ModelForm):
     def _save_related(self):
         """Save the user's email change and any many-to-many data."""
         email = self.cleaned_data.get("email")
-        self.email_changed = email != self.user.email
-        if self.email_changed:
+        if email != self.user.email:
             from users.views import send_verification_email
 
-            # A new address is unproven until its owner clicks the link; the
-            # post_save sync then creates it unverified in allauth too
+            # Same address in other case: allauth treats it as unchanged
+            self.email_changed = email.lower() != self.user.email.lower()
+            # The post_save sync makes a new address unverified (also on the
+            # User) and voids links sent to the old one
             self.user.email = email
             self.user.username = email
-            self.user.email_verified = False
-            self.user.email_verified_at = None
             self.user.save()
-            transaction.on_commit(lambda: send_verification_email(self.user))
+            if self.email_changed:
+                transaction.on_commit(
+                    lambda: send_verification_email(self.user, email_change=True)
+                )
         self._save_m2m()
