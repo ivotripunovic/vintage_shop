@@ -219,6 +219,10 @@ ACCOUNT_RATE_LIMITS = {
 
 # django-allauth social account settings
 SOCIALACCOUNT_ADAPTER = "users.adapters.SocialAccountAdapter"
+# New social accounts are only created for an email the provider verified
+# (users.adapters.SocialAccountAdapter.pre_social_login), so there is nothing
+# to confirm. "mandatory" would also block linked users whose email is
+# unverified for another reason from logging in with Google (#87 review).
 SOCIALACCOUNT_EMAIL_VERIFICATION = "none"
 SOCIALACCOUNT_AUTO_SIGNUP = True
 SOCIALACCOUNT_LOGIN_ON_GET = True

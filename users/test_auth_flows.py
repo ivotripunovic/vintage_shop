@@ -367,3 +367,90 @@ class TestReviewFixes:
             HTTP_X_REAL_IP="203.0.113.7",
         )
         assert response.status_code == 302
+
+
+@pytest.mark.django_db
+class TestSocialSignupFromLoginPage:
+    """#78, end to end through allauth's complete_social_login."""
+
+    def complete(self, rf, email, verified, process="login"):
+        from allauth.core.context import request_context
+        from allauth.socialaccount.helpers import complete_social_login
+        from allauth.socialaccount.models import SocialAccount, SocialApp, SocialLogin
+        from django.contrib.auth.models import AnonymousUser
+        from django.contrib.messages.storage.fallback import FallbackStorage
+        from django.contrib.sessions.backends.db import SessionStore
+        from django.contrib.sites.models import Site
+
+        app = SocialApp.objects.create(
+            provider="google", name="Google", client_id="id", secret="s"
+        )
+        app.sites.add(Site.objects.get_current())
+        request = rf.get("/auth/social/google/login/callback/")
+        request.session = SessionStore()
+        request.session.create()
+        request._messages = FallbackStorage(request)
+        request.user = AnonymousUser()
+        from allauth.socialaccount.adapter import get_adapter
+
+        provider = get_adapter().get_provider(request, "google")
+        sociallogin = SocialLogin(
+            provider=provider,
+            user=User(email=email),
+            account=SocialAccount(provider="google", uid=f"uid-{email}"),
+            email_addresses=[
+                EmailAddress(email=email, verified=verified, primary=True)
+            ],
+        )
+        sociallogin.state = {"process": process}
+        with request_context(request):
+            return request, complete_social_login(request, sociallogin)
+
+    def test_new_google_account_signs_up_from_the_login_page(self, rf):
+        request, response = self.complete(rf, "new@gmail.com", verified=True)
+        user = User.objects.get(email="new@gmail.com")
+        assert response.status_code == 302
+        assert response["Location"] == reverse("social-signup-complete")
+        assert user.email_verified
+        assert request.user == user  # logged in
+        assert mail.outbox == []  # Google verified it; no extra step
+
+    def test_unverified_or_missing_provider_email_is_sent_to_email_signup(self, rf):
+        from allauth.socialaccount.models import SocialAccount, SocialApp
+
+        for email, verified in (("fb@example.com", False), ("", True)):
+            SocialApp.objects.all().delete()
+            request, response = self.complete(rf, email, verified=verified)
+            assert response["Location"] == reverse("account_signup")
+            assert not request.user.is_authenticated
+            assert not User.objects.exists()
+            assert not SocialAccount.objects.exists()
+            assert mail.outbox == []
+
+    def test_linked_user_with_unverified_email_still_logs_in(self, rf):
+        """#87 review: SOCIALACCOUNT_EMAIL_VERIFICATION stays "none", so a
+        linked user whose address is unverified (admin edit) is not blocked."""
+        from allauth.socialaccount.models import SocialAccount
+
+        user = make_user("linked@gmail.com", verified=False)
+        SocialAccount.objects.create(
+            user=user, provider="google", uid="uid-linked@gmail.com"
+        )
+        request, response = self.complete(rf, "linked@gmail.com", verified=True)
+        assert request.user == user
+        assert response["Location"] != reverse("account_email_verification_sent")
+
+    def test_another_accounts_pending_row_does_not_block_google_signup(self, rf):
+        """#87 third review: allauth counts unverified rows as taken."""
+        other = make_user("a@example.com")
+        EmailAddress.objects.create(
+            user=other, email="new@gmail.com", primary=False, verified=False
+        )  # e.g. a pending email change to an address A never proved
+        request, response = self.complete(rf, "new@gmail.com", verified=True)
+        user = User.objects.get(email="new@gmail.com")
+        assert request.user == user
+        assert response["Location"] == reverse("social-signup-complete")
+        assert not EmailAddress.objects.filter(
+            user=other, email="new@gmail.com"
+        ).exists()
+        assert mail.outbox == []

@@ -105,7 +105,8 @@ What allauth provides for free:
 - **Signed keys for links,** replacing the `VerificationToken` table.
 - **Social linking:** `SOCIALACCOUNT_EMAIL_AUTHENTICATION` and
   `SOCIALACCOUNT_EMAIL_AUTHENTICATION_AUTO_CONNECT` cover most of
-  `pre_social_login`.
+  `pre_social_login`. (Not used in the end: our checks are stricter. See
+  step 3.)
 - **Optional later:** email change with re-verification, sign-in by email code
   (`ACCOUNT_LOGIN_BY_CODE_ENABLED`), re-authentication, MFA.
 
@@ -171,14 +172,40 @@ Each step gets its own issue, branch and PR.
    - The custom register/login/logout/reset/change views, forms, templates
      and tests are deleted. `users/test_auth_flows.py` covers the allauth
      flows instead.
-3. **Simplify social linking** (#78).
-   - Enable `SOCIALACCOUNT_EMAIL_AUTHENTICATION` and `..._AUTO_CONNECT`.
-   - Cut `pre_social_login` down to what allauth does not cover. Drop the
-     "signup only from the register page" rule, so Google creates accounts
-     from the login page too (see Decisions).
-   - Keep the PR #72 hardening (lock out the password of an unverified local
-     account when linking) unless allauth is shown to cover it.
-   - The existing `users/test_adapters.py` cases are the acceptance tests.
+3. **Google signup from the login page** (#78). *Done, scope narrowed.*
+   - `pre_social_login` no longer limits new social accounts to the signup
+     page, so "Nastavi sa Google" on the login page creates the account.
+   - A new social account needs an email the provider verified. Before,
+     `save_user` marked every social email verified, including Facebook's
+     (configured `VERIFIED_EMAIL: False`) and addresses typed into the social
+     signup step. Without a verified email (no email, or an unverified one)
+     the user is sent to email signup and can connect the social account
+     later. Google emails are provider-verified, so Google signups work in
+     one step.
+   - Linking a provider to a local account whose email is not verified
+     (never verified, or made unverified by an admin edit) treats that
+     account as possibly someone else's. Someone may have registered the
+     owner's address first. Everything that person could still use is
+     revoked in one transaction: the password and unused links (#72), other
+     social logins, and other email addresses.
+   - An address already verified for a different account is never used.
+     Linking it, or signing up with it as a new account (for example
+     another user's extra provider email), sends the user to the login page
+     instead. Another account's *unverified* row for the address (an
+     unproven claim, such as a pending email change) is removed when the
+     provider proves ownership. Otherwise allauth's signup would treat the
+     address as taken.
+   - `SOCIALACCOUNT_EMAIL_VERIFICATION` stays `"none"`. New social accounts
+     always have a verified email, and `"mandatory"` would also block linked
+     users whose email became unverified (for example after an admin edit)
+     from logging in with Google.
+   - Social signup sets no roles, like email signup.
+   - **Not done, on purpose:** replacing our linking code with allauth's
+     `SOCIALACCOUNT_EMAIL_AUTHENTICATION`. It would add nothing, and it is
+     weaker. It trusts every configured provider equally, where
+     `pre_social_login` checks that the provider verified that particular
+     address. It also does not lock out the password of a never-verified
+     local account when linking (PR #72).
 4. **Clean up** (#79).
    - Delete `VerificationToken`, `verify_email_view` and its URL, after
      every custom verification link has expired (24 h after #77 deploys).
