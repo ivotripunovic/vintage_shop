@@ -9,7 +9,7 @@ from allauth.urls import build_provider_urlpatterns
 from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
-from django.urls import include, path
+from django.urls import include, path, re_path
 from django.views.generic import RedirectView
 
 from core.views import (
@@ -28,12 +28,16 @@ urlpatterns = [
     # Admin
     path("admin/", admin.site.urls),
     # Authentication
+    # allauth: signup, login, logout, verification, password, email change
+    path("auth/", include("allauth.account.urls")),
     path("auth/", include("users.urls")),
     path("auth/social/", include("allauth.socialaccount.urls")),
     path("auth/social/", include(build_provider_urlpatterns())),
-    # allauth.account.urls is not used directly but must be mounted so allauth's
-    # internal reverse() calls (e.g. account_signup) resolve during the OAuth flow.
-    path("auth/accounts/", include("allauth.account.urls")),
+    # allauth was mounted here before #77
+    re_path(
+        r"^auth/accounts/(?P<rest>.*)$",
+        RedirectView.as_view(url="/auth/%(rest)s", query_string=True),
+    ),
     # Sellers
     path("seller/", include("sellers.urls")),
     # Products

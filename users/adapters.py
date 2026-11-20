@@ -4,6 +4,30 @@ from django.utils import timezone
 
 
 class AccountAdapter(DefaultAccountAdapter):
+    # USE_I18N is off, so allauth's messages would render in English. Only
+    # the keys reachable with email login are overridden; see also
+    # users/allauth_forms.py for messages that bypass the adapter.
+    error_messages = {
+        **DefaultAccountAdapter.error_messages,
+        "account_inactive": "Ovaj nalog trenutno nije aktivan.",
+        "cannot_remove_primary_email": "Ne možete ukloniti glavnu email adresu.",
+        "duplicate_email": "Ova email adresa je već povezana sa vašim nalogom.",
+        "email_password_mismatch": "Email adresa ili lozinka nisu ispravni.",
+        "email_taken": "Nalog sa ovom email adresom već postoji.",
+        "enter_current_password": "Unesite vašu trenutnu lozinku.",
+        "incorrect_password": "Pogrešna lozinka.",
+        "invalid_or_expired_key": "Link je nevažeći ili je istekao.",
+        "invalid_login": "Prijava nije uspela.",
+        "invalid_password_reset": "Link za resetovanje lozinke je nevažeći.",
+        "too_many_login_attempts": (
+            "Previše neuspelih pokušaja prijave. Pokušajte ponovo kasnije."
+        ),
+        "unknown_email": "Nijedan nalog nije povezan sa ovom email adresom.",
+        "unverified_primary_email": ("Vaša glavna email adresa mora biti potvrđena."),
+        "same_as_current": "Nova vrednost mora biti različita od trenutne.",
+        "rate_limited": "Previše zahteva. Sačekajte malo pa pokušajte ponovo.",
+    }
+
     def populate_username(self, request, user):
         """Auto-generate a unique username from email (username field is not used for auth)."""
         from allauth.account.utils import user_email, user_username
@@ -20,6 +44,14 @@ class AccountAdapter(DefaultAccountAdapter):
                 username = f"{base}{i}"
                 i += 1
             user_username(user, username)
+
+    def send_mail(self, template_prefix, email, context):
+        """allauth renders emails without context processors; add SITE_NAME so
+        templates/account/email/* do not fall back to the Sites record."""
+        from django.conf import settings
+
+        context = {**context, "SITE_NAME": settings.SITE_NAME}
+        return super().send_mail(template_prefix, email, context)
 
     def save_user(self, request, user, form, commit=True):
         """allauth creates this user's EmailAddress itself; see users.signals."""
@@ -87,7 +119,7 @@ class SocialAccountAdapter(DefaultSocialAccountAdapter):
                 "Nalog sa ovom email adresom već postoji. "
                 "Prijavite se email adresom i lozinkom.",
             )
-            raise ImmediateHttpResponse(redirect("/auth/login/"))
+            raise ImmediateHttpResponse(redirect("account_login"))
 
         # Allow registration flow initiated from the register page
         if sociallogin.state.get("process") == "signup":
@@ -97,7 +129,7 @@ class SocialAccountAdapter(DefaultSocialAccountAdapter):
             request,
             "Ne postoji nalog za ovaj Google nalog. Molimo vas da se najpre registrujete.",
         )
-        raise ImmediateHttpResponse(redirect("/auth/register/"))
+        raise ImmediateHttpResponse(redirect("account_signup"))
 
     @staticmethod
     def _users_with_email(email):

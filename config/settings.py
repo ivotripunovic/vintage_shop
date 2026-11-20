@@ -169,7 +169,7 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # Custom User Model
 AUTH_USER_MODEL = "users.User"
-LOGIN_URL = "/auth/login/"
+LOGIN_URL = "account_login"
 LOGIN_REDIRECT_URL = "/"
 
 # Sites framework (required by allauth)
@@ -186,6 +186,34 @@ ACCOUNT_LOGIN_METHODS = {"email"}
 ACCOUNT_SIGNUP_FIELDS = ["email*", "password1*", "password2*"]
 ACCOUNT_EMAIL_VERIFICATION = "mandatory"
 ACCOUNT_ADAPTER = "users.adapters.AccountAdapter"
+# Serbian error messages and the optional name fields on signup
+ACCOUNT_FORMS = {
+    "signup": "users.allauth_forms.SignupForm",
+    "login": "users.allauth_forms.LoginForm",
+    "reset_password": "users.allauth_forms.ResetPasswordForm",
+    "reset_password_from_key": "users.allauth_forms.ResetPasswordKeyForm",
+    "change_password": "users.allauth_forms.ChangePasswordForm",
+    "set_password": "users.allauth_forms.SetPasswordForm",
+    "change_email": "users.allauth_forms.ChangeEmailForm",
+}
+# One address per account, changed through a re-verifying flow (/auth/email/)
+ACCOUNT_CHANGE_EMAIL = True
+ACCOUNT_LOGIN_ON_EMAIL_CONFIRMATION = True
+# Subjects are written out in the email templates
+ACCOUNT_EMAIL_SUBJECT_PREFIX = ""
+# Shared between gunicorn workers through the file cache (CACHES below).
+# allauth's defaults, written out so they are reviewed rather than implied.
+ACCOUNT_RATE_LIMITS = {
+    "login": "30/m/ip",
+    "login_failed": "10/m/ip,5/300s/key",
+    "signup": "20/m/ip",
+    "confirm_email": "1/180s/key",
+    "reset_password": "20/m/ip,5/m/key",
+    "reset_password_from_key": "20/m/ip",
+    "change_password": "5/m/user",
+    "manage_email": "10/m/user",
+    "reauthenticate": "10/m/user",
+}
 
 # django-allauth social account settings
 SOCIALACCOUNT_ADAPTER = "users.adapters.SocialAccountAdapter"
