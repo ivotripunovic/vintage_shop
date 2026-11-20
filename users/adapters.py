@@ -129,16 +129,25 @@ class SocialAccountAdapter(DefaultSocialAccountAdapter):
             )
             raise ImmediateHttpResponse(redirect("account_login"))
 
-        if email and self._verified_for_another_user(email, None):
-            # Another account holds this address (e.g. its provider's extra
-            # email); allauth would otherwise answer with an "account already
-            # exists" email and no login
-            messages.error(
-                request,
-                "Nalog sa ovom email adresom već postoji. "
-                "Prijavite se email adresom i lozinkom.",
-            )
-            raise ImmediateHttpResponse(redirect("account_login"))
+        if email:
+            from allauth.account.models import EmailAddress
+
+            # allauth's signup counts any EmailAddress row as "taken" and
+            # would answer with an "account already exists" email and no
+            # login. No User has this address (matches is empty), so another
+            # account's *unverified* row is an unproven claim (e.g. a pending
+            # email change); the provider has just proven ownership, so it
+            # goes, as in users.email_sync.
+            EmailAddress.objects.filter(email__iexact=email, verified=False).delete()
+            if self._verified_for_another_user(email, None):
+                # A verified extra address of another account (for example
+                # from its own provider) stays theirs
+                messages.error(
+                    request,
+                    "Ova email adresa je već povezana sa drugim nalogom. "
+                    "Prijavite se tim nalogom ili koristite drugu adresu.",
+                )
+                raise ImmediateHttpResponse(redirect("account_login"))
 
         if not (email and self._provider_verified(sociallogin, email)):
             messages.error(

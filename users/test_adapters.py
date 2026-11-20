@@ -317,6 +317,8 @@ class TestPreSocialLogin(TestCase):
         with self.assertRaises(ImmediateHttpResponse) as ctx:
             self.adapter.pre_social_login(request, sociallogin)
         self.assertIn("/auth/login/", ctx.exception.response["Location"])
+        [message] = list(request._messages)
+        self.assertIn("povezana sa drugim nalogom", str(message))
 
     def test_linking_keeps_social_logins_on_a_verified_account(self):
         owner = User.objects.create_user(

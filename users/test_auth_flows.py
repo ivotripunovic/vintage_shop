@@ -439,3 +439,18 @@ class TestSocialSignupFromLoginPage:
         request, response = self.complete(rf, "linked@gmail.com", verified=True)
         assert request.user == user
         assert response["Location"] != reverse("account_email_verification_sent")
+
+    def test_another_accounts_pending_row_does_not_block_google_signup(self, rf):
+        """#87 third review: allauth counts unverified rows as taken."""
+        other = make_user("a@example.com")
+        EmailAddress.objects.create(
+            user=other, email="new@gmail.com", primary=False, verified=False
+        )  # e.g. a pending email change to an address A never proved
+        request, response = self.complete(rf, "new@gmail.com", verified=True)
+        user = User.objects.get(email="new@gmail.com")
+        assert request.user == user
+        assert response["Location"] == reverse("social-signup-complete")
+        assert not EmailAddress.objects.filter(
+            user=other, email="new@gmail.com"
+        ).exists()
+        assert mail.outbox == []

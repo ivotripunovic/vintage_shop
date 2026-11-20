@@ -191,7 +191,10 @@ Each step gets its own issue, branch and PR.
    - An address already verified for a different account is never used.
      Linking it, or signing up with it as a new account (for example
      another user's extra provider email), sends the user to the login page
-     instead.
+     instead. Another account's *unverified* row for the address (an
+     unproven claim, such as a pending email change) is removed when the
+     provider proves ownership. Otherwise allauth's signup would treat the
+     address as taken.
    - `SOCIALACCOUNT_EMAIL_VERIFICATION` stays `"none"`. New social accounts
      always have a verified email, and `"mandatory"` would also block linked
      users whose email became unverified (for example after an admin edit)
