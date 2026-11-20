@@ -146,6 +146,38 @@ hand on a server that already exists. Each one is safe to run again. Run the
 sudo -u django bash -c "cd /srv/django/apps/vintage_shop && venv/bin/python manage.py <command>"
 ```
 
+### HTTPS behind nginx (#83, November 2026)
+
+Django now trusts nginx's `X-Forwarded-Proto` header. Requests count as
+HTTPS, session and CSRF cookies are marked Secure, and allauth builds
+`https://` OAuth callback URLs. **Before** deploying:
+
+1. **Register the https callbacks with each social login provider.** Until
+   now production sent `http://` redirect URIs, and providers reject a
+   `redirect_uri` that is not registered exactly.
+   - Google Cloud Console → APIs & Services → Credentials → the OAuth client →
+     Authorized redirect URIs: add
+     `https://www.<domain>/auth/social/google/login/callback/`.
+   - Facebook (if enabled): Valid OAuth Redirect URIs: add
+     `https://www.<domain>/auth/social/facebook/login/callback/`.
+   - Apple (if enabled): Sign in with Apple → Return URLs must include
+     `https://www.<domain>/auth/social/apple/login/callback/`. Apple only
+     accepts https, so this is just a check that it matches.
+   - Keep the old `http://` entries until Google login is confirmed working,
+     then remove them.
+2. Check that `SITE_DOMAIN` in the server `.env` starts with `https://`. The
+   custom verification, reset and chat emails build their links from it.
+   `manage.py check --deploy` warns (`core.W001`) if it does not.
+
+After deploying:
+
+3. Log in with email and with Google. Users stay logged in: existing cookies
+   keep working and are reissued as Secure.
+4. Optional: turn on HSTS in steps by setting `SECURE_HSTS_SECONDS` in `.env`
+   (3600, then 86400 after a day without problems, then 31536000), then
+   restart the service. Browsers cache HSTS, so a mistake cannot be undone
+   quickly; leave it at 0 until the site has run on HTTPS without issues.
+
 ### Product photo processing (#44, November 2026)
 
 New photos are processed on upload: rotated upright, metadata stripped (phone

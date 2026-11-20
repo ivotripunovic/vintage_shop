@@ -29,8 +29,15 @@ class ComingSoonMiddleware:
         secret = getattr(settings, "COMING_SOON_SECRET", "")
         if secret and request.GET.get("preview") == secret:
             response = self.get_response(request)
+            # The cookie's value is the secret itself, so never send it over
+            # plain HTTP (secure is on in production, see SESSION_COOKIE_SECURE)
             response.set_cookie(
-                BYPASS_COOKIE, secret, max_age=60 * 60 * 24 * 7, httponly=True
+                BYPASS_COOKIE,
+                secret,
+                max_age=60 * 60 * 24 * 7,
+                httponly=True,
+                secure=settings.SESSION_COOKIE_SECURE,
+                samesite="Lax",
             )
             return response
 

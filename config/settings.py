@@ -329,3 +329,24 @@ SITE_NAME = config("SITE_NAME", default="Vintage Shop")
 CURRENCY_SYMBOL = config("CURRENCY_SYMBOL", default="RSD")
 INSTAGRAM_URL = config("INSTAGRAM_URL", default="")
 FACEBOOK_URL = config("FACEBOOK_URL", default="")
+
+# HTTPS behind nginx (deploy/nginx.conf)
+# Nginx terminates SSL, proxies only from its HTTPS server block and always
+# sets X-Forwarded-Proto, and gunicorn listens on a Unix socket only nginx can
+# reach, so the header can be trusted. Without it Django sees every request as
+# plain HTTP: request.is_secure() is False, build_absolute_uri() makes http://
+# links, and cookies are sent without the Secure flag.
+if not DEBUG:
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    # allauth builds OAuth redirect_uri and email links from this when there is
+    # no request (and forces it otherwise). The https callback URLs must be
+    # registered with each provider (Google Cloud Console, Facebook, Apple).
+    ACCOUNT_DEFAULT_HTTP_PROTOCOL = "https"
+    # Opt-in: browsers cache HSTS for this long and refuse plain HTTP until it
+    # expires, so raise it in steps (3600, then 86400, then 31536000).
+    SECURE_HSTS_SECONDS = config("SECURE_HSTS_SECONDS", default=0, cast=int)
+    # Nginx already redirects HTTP to HTTPS, so Django's own redirect is off
+    # (security.W008), and plain HTTP never reaches gunicorn.
+    SILENCED_SYSTEM_CHECKS = ["security.W008"]
