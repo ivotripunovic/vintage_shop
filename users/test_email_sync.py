@@ -8,7 +8,6 @@ import pytest
 from allauth.account.models import EmailAddress
 from allauth.account.signals import email_confirmed
 from django.apps import apps
-from django.urls import reverse
 
 from users.email_sync import sync_primary_email
 from users.models import User
