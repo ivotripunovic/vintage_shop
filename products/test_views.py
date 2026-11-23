@@ -41,7 +41,6 @@ class ProductPopularityTests(TestCase):
             email="seller@test.com",
             username="seller@test.com",
             password="testpass123",
-            is_seller=True,
         )
         self.seller, _ = Seller.objects.get_or_create(
             user=self.seller_user,
@@ -164,7 +163,6 @@ class SellerListingFlowTests(TestCase):
             email="flow@test.com",
             username="flow@test.com",
             password="testpass123",
-            is_seller=True,
         )
         self.seller, _ = Seller.objects.get_or_create(
             user=self.user,
@@ -280,7 +278,6 @@ class SellerPhotoPageTests(TestCase):
             email="photos@test.com",
             username="photos@test.com",
             password="testpass123",
-            is_seller=True,
         )
         self.seller, _ = Seller.objects.get_or_create(
             user=self.user,
@@ -374,7 +371,6 @@ class SellerPhotoPageTests(TestCase):
             email="other@test.com",
             username="other@test.com",
             password="testpass123",
-            is_seller=True,
         )
         Seller.objects.get_or_create(
             user=other, defaults={"shop_name": "Other", "shop_slug": "other"}
@@ -400,7 +396,6 @@ class ProductFormPageTests(TestCase):
             email="form@test.com",
             username="form@test.com",
             password="testpass123",
-            is_seller=True,
         )
         self.seller, _ = Seller.objects.get_or_create(
             user=user, defaults={"shop_name": "Form Shop", "shop_slug": "form-shop"}
@@ -443,7 +438,6 @@ class DefaultsAndAutosaveTests(TestCase):
             email="defaults@test.com",
             username="defaults@test.com",
             password="testpass123",
-            is_seller=True,
         )
         self.seller, _ = Seller.objects.get_or_create(
             user=self.user, defaults={"shop_name": "Defaults", "shop_slug": "defaults"}

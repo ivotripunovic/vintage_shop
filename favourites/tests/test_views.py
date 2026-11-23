@@ -7,19 +7,18 @@ from django.urls import reverse
 
 from favourites.models import FavouriteSeller, WishlistItem
 from products.models import Product
+from sellers.testing import make_seller
 from users.models import User
 
 
-def _make_user(email, is_seller=False):
-    return User.objects.create_user(
-        email=email, username=email, password="testpass123", is_seller=is_seller
-    )
+def _make_user(email):
+    return User.objects.create_user(email=email, username=email, password="testpass123")
 
 
 class FavouritesTestCase(TestCase):
     def setUp(self):
-        self.seller_user = _make_user("seller@test.com", is_seller=True)
-        self.seller = self.seller_user.seller_profile
+        self.seller = make_seller("seller@test.com", shop_name="seller")
+        self.seller_user = self.seller.user
         self.buyer = _make_user("buyer@test.com")
         self.product = self._make_product("Lampa")
         self.client.force_login(self.buyer)

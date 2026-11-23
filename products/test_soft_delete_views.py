@@ -19,7 +19,6 @@ class SoftDeleteListingTests(TestCase):
             email="del@test.com",
             username="del@test.com",
             password="testpass123",
-            is_seller=True,
         )
         self.seller, _ = Seller.objects.get_or_create(
             user=self.user, defaults={"shop_name": "Del", "shop_slug": "del"}

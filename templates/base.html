@@ -230,6 +230,8 @@
                                 <a href="{% url 'seller_settings' %}" class="block px-4 py-2.5 text-xs uppercase tracking-widest text-stone-500 hover:bg-neutral-50 hover:text-stone-900">Podešavanja</a>
                             </div>
                         </div>
+                        {% else %}
+                        <a href="{% url 'product_create' %}" class="text-xs uppercase tracking-widest text-stone-500 hover:text-stone-900 transition-colors">Dodaj oglas</a>
                         {% endif %}
                         <div class="relative group">
                             <button class="text-xs uppercase tracking-widest text-stone-500 hover:text-stone-900 transition-colors flex items-center gap-1">
@@ -345,13 +347,15 @@
                         <div class="space-y-1">
                             <a href="{% url 'products_browse' %}" class="block py-1.5 text-xs uppercase tracking-widest text-stone-600 hover:text-stone-900">Svi proizvodi</a>
                             <a href="{% url 'shops_browse' %}" class="block py-1.5 text-xs uppercase tracking-widest text-stone-600 hover:text-stone-900">Prodavci</a>
-                            {% if not user.is_authenticated or not user.is_seller %}
+                            {% if not user.is_authenticated %}
                             <a href="{% url 'seller_register' %}" class="block py-1.5 text-xs uppercase tracking-widest text-stone-600 hover:text-stone-900">Počni da prodaješ</a>
+                            {% elif not user.is_seller %}
+                            <a href="{% url 'product_create' %}" class="block py-1.5 text-xs uppercase tracking-widest text-stone-600 hover:text-stone-900">Dodaj oglas</a>
                             {% endif %}
                         </div>
                     </div>
 
-                    <!-- Prodaj (sellers only) -->
+                    <!-- Prodaj (shop owners) -->
                     {% if user.is_authenticated and user.is_seller %}
                     <div class="border-t border-neutral-100 pt-4 mb-4">
                         <p class="text-xs uppercase tracking-widest text-stone-300 mb-2">Prodaj</p>
@@ -501,10 +505,10 @@
     </a>
 
 
-    {% if user.is_authenticated and user.is_seller %}
+    {% if user.is_authenticated %}
     <a href="{% url 'product_create' %}" class="flex-1 flex flex-col items-center justify-center py-2 gap-0.5 {% if url_name == 'product_create' %}text-stone-900{% else %}text-stone-400 hover:text-stone-700{% endif %} transition-colors">
     {% else %}
-    <a href="{% url 'account_login' %}" class="flex-1 flex flex-col items-center justify-center py-2 gap-0.5 text-stone-400 hover:text-stone-700 transition-colors">
+    <a href="{% url 'seller_register' %}" class="flex-1 flex flex-col items-center justify-center py-2 gap-0.5 text-stone-400 hover:text-stone-700 transition-colors">
     {% endif %}
         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 7h.01M7 3h5l5 5v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4a1 1 0 011-1h2z"/>

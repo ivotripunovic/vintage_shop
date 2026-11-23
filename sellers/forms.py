@@ -5,12 +5,18 @@ Forms for seller onboarding and account management.
 from django import forms
 from django.core.exceptions import ValidationError
 
-
-from .models import TRADER_STATEMENT, Seller, SellerSubscription
+from .models import (
+    TRADER_STATEMENT,
+    Seller,
+    SellerSubscription,
+    free_shop_slug,
+    is_shop_slug_free,
+    shop_slug_from_name,
+)
 
 
 class ShopSetupForm(forms.ModelForm):
-    """Form for seller to set up their shop."""
+    """Open a shop or edit it. Left empty, the URL comes from the shop name."""
 
     class Meta:
         model = Seller
@@ -58,23 +64,32 @@ class ShopSetupForm(forms.ModelForm):
             ),
         }
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["shop_slug"].required = False
+        self.fields["shop_slug"].widget.attrs[
+            "placeholder"
+        ] = "Prazno: pravi se od naziva prodavnice"
+
     def clean_shop_slug(self):
-        """Validate shop slug is unique and properly formatted."""
-        shop_slug = self.cleaned_data.get("shop_slug")
+        """A typed slug must be free; an empty one is filled in clean()."""
+        shop_slug = (self.cleaned_data.get("shop_slug") or "").lower()
         if not shop_slug:
-            raise ValidationError("Shop slug is required.")
+            return ""
+        if not is_shop_slug_free(shop_slug, exclude_pk=self.instance.pk):
+            raise ValidationError("Ova adresa prodavnice je zauzeta.")
+        return shop_slug
 
-        # Check if slug already exists
-        if Seller.objects.filter(shop_slug=shop_slug).exists():
-            raise ValidationError("This shop name is already taken.")
-
-        # Validate slug format (lowercase, no spaces, alphanumeric + hyphens)
-        if not shop_slug.replace("-", "").replace("_", "").isalnum():
-            raise ValidationError(
-                "Shop name can only contain letters, numbers, hyphens, and underscores."
-            )
-
-        return shop_slug.lower()
+    def clean(self):
+        cleaned = super().clean()
+        if not cleaned.get("shop_slug") and "shop_slug" not in self.errors:
+            if self.instance.pk:
+                cleaned["shop_slug"] = self.instance.shop_slug
+            else:
+                cleaned["shop_slug"] = free_shop_slug(
+                    shop_slug_from_name(cleaned.get("shop_name"))
+                )
+        return cleaned
 
 
 class BankDetailsForm(forms.ModelForm):

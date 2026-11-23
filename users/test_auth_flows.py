@@ -13,6 +13,7 @@ from django.core import mail
 from django.core.cache import cache
 from django.urls import reverse
 
+from sellers.testing import make_seller
 from users.models import User
 
 PASSWORD = "Pw-strong-123"
@@ -70,7 +71,8 @@ class TestSignupAndVerification:
         assert "Potvrdi" in page.content.decode()
         response = client.post(confirm_path)
         assert response.status_code == 302
-        assert response["Location"] == reverse("social-signup-complete")
+        assert response["Location"] == "/"
+        assert "Dobrodošli!" in client.get("/").content.decode()
         user = User.objects.get(email="new@example.com")
         assert user.email_verified
         assert EmailAddress.objects.get(user=user).verified
@@ -282,26 +284,67 @@ class TestOldUrls:
 
 @pytest.mark.django_db
 class TestStartSelling:
-    def test_visitors_sign_up_first(self, client):
+    """Every account can sell; the first listing opens the shop (#89)."""
+
+    def test_visitors_sign_up_and_continue_to_their_first_listing(self, client):
         response = client.get(reverse("seller_register"))
         assert response["Location"] == (
-            f"{reverse('account_signup')}?next={reverse('social-signup-complete')}"
+            f"{reverse('account_signup')}?next=%2Fproducts%2Fcreate%2F"
         )
 
-    def test_signed_in_buyers_go_to_the_welcome_page(self, client):
+    def test_signed_in_users_without_a_shop_go_to_the_listing_form(self, client):
         client.force_login(make_user())
         response = client.get(reverse("seller_register"))
-        assert response["Location"] == reverse("social-signup-complete")
+        assert response["Location"] == reverse("product_create")
 
-    def test_sellers_go_to_their_dashboard(self, client):
-        client.force_login(make_user(is_seller=True))
+    def test_shop_owners_go_to_their_dashboard(self, client):
+        client.force_login(make_seller("a@example.com").user)
         response = client.get(reverse("seller_register"))
         assert response["Location"] == reverse("seller_dashboard")
 
     def test_seller_settings_link_to_the_email_change_page(self, client):
-        client.force_login(make_user(is_seller=True))
+        client.force_login(make_seller("a@example.com").user)
         body = client.get(reverse("seller_settings")).content.decode()
         assert reverse("account_email") in body
+
+    def test_new_visitor_goes_from_start_selling_to_their_first_listing(self, client):
+        """ "Počni da prodaješ" → signup → email confirmation → shop setup →
+        product form, with no buyer/seller question on the way."""
+        signup_url = client.get(reverse("seller_register"))["Location"]
+        response = client.post(
+            signup_url,
+            {"email": "new@example.com", "password1": PASSWORD, "password2": PASSWORD},
+        )
+        assert response["Location"] == reverse("account_email_verification_sent")
+
+        response = client.post(link_in(mail.outbox[0], "/auth/confirm-email/"))
+        assert response["Location"] == reverse("product_create")
+
+        response = client.get(reverse("product_create"))
+        setup_url = response["Location"]
+        assert setup_url == (
+            f"{reverse('seller_shop_setup')}?next=%2Fproducts%2Fcreate%2F"
+        )
+        page = client.get(setup_url).content.decode()
+        assert "Otvorite prodavnicu" in page
+        assert "Dobrodošli!" in page
+
+        response = client.post(
+            setup_url, {"shop_name": "Ana's Vintage", "next": "/products/create/"}
+        )
+        assert response["Location"] == reverse("product_create")
+        assert client.get(reverse("product_create")).status_code == 200
+        user = User.objects.get(email="new@example.com")
+        assert user.is_seller
+        assert user.seller_profile.shop_slug == "anas-vintage"
+
+    def test_old_welcome_page_redirects_home(self, client):
+        client.force_login(make_user())
+        response = client.get("/auth/social/welcome/")
+        assert response.status_code == 302
+        assert response["Location"] == "/"
+        assert client.post("/auth/social/become-seller/").status_code == 404
+        assert not User.objects.get(email="a@example.com").is_seller
 
 
 @pytest.mark.django_db
@@ -409,8 +452,9 @@ class TestSocialSignupFromLoginPage:
         request, response = self.complete(rf, "new@gmail.com", verified=True)
         user = User.objects.get(email="new@gmail.com")
         assert response.status_code == 302
-        assert response["Location"] == reverse("social-signup-complete")
+        assert response["Location"] == "/"
         assert user.email_verified
+        assert not user.is_seller
         assert request.user == user  # logged in
         assert mail.outbox == []  # Google verified it; no extra step
 
@@ -448,7 +492,7 @@ class TestSocialSignupFromLoginPage:
         request, response = self.complete(rf, "new@gmail.com", verified=True)
         user = User.objects.get(email="new@gmail.com")
         assert request.user == user
-        assert response["Location"] == reverse("social-signup-complete")
+        assert response["Location"] == "/"
         assert not EmailAddress.objects.filter(
             user=other, email="new@gmail.com"
         ).exists()

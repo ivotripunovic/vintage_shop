@@ -13,19 +13,18 @@ from orders.models import Sale
 from products.models import Product
 from ratings.models import RATING_WINDOW, Rating, RatingReport
 from ratings.services import pending_sales, rating_summary
+from sellers.testing import make_seller
 from users.models import User
 
 
-def _make_user(email, is_seller=False):
-    return User.objects.create_user(
-        email=email, username=email, password="testpass123", is_seller=is_seller
-    )
+def _make_user(email):
+    return User.objects.create_user(email=email, username=email, password="testpass123")
 
 
 class RatingTestCase(TestCase):
     def setUp(self):
-        self.seller_user = _make_user("seller@test.com", is_seller=True)
-        self.seller = self.seller_user.seller_profile
+        self.seller = make_seller("seller@test.com", shop_name="seller")
+        self.seller_user = self.seller.user
         self.buyer = _make_user("buyer@test.com")
         self.product = Product.objects.create(
             seller=self.seller,

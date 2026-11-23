@@ -32,15 +32,6 @@ urlpatterns = [
     path("verify-email/<str:token>/", RedirectView.as_view(url="/auth/login/")),
     # Account Management
     path("settings/", views.account_settings_view, name="account-settings"),
-    # Social signup confirmation
-    path(
-        "social/welcome/",
-        views.social_signup_complete_view,
-        name="social-signup-complete",
-    ),
-    path(
-        "social/become-seller/",
-        views.social_become_seller_view,
-        name="social-become-seller",
-    ),
+    # The old welcome page after signup, with its buyer/seller choice (#89)
+    path("social/welcome/", RedirectView.as_view(url="/")),
 ]

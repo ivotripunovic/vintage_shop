@@ -13,20 +13,14 @@ from django.utils import timezone
 
 from products.forms import ProductForm
 from products.models import Product, ProductCategory, ProductCondition, ProductImage
-from users.models import User
 
 from .models import INVOICE_DUE_DAYS, SellerTier
+from .testing import make_seller
 
 
 def _make_seller(email="seller@example.com", tier="garazna"):
-    user = User.objects.create_user(
-        email=email,
-        username=email.split("@")[0],
-        password="testpass123",
-        is_seller=True,
-    )
-    user.mark_email_verified()
-    seller = user.seller_profile
+    seller = make_seller(email, shop_name=email.split("@")[0])
+    seller.user.mark_email_verified()
     if tier != "garazna":
         seller.tier = tier
         seller.save()

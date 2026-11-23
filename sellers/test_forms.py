@@ -24,7 +24,6 @@ class SellerAccountSettingsFormTests(TestCase):
             email="test@example.com",
             username="test@example.com",
             password="testpass123",
-            is_seller=True,
         )
         self.seller, _ = Seller.objects.get_or_create(
             user=self.user,
@@ -125,7 +124,6 @@ class SellerAccountSettingsFormCommitTests(TestCase):
             email="commit@example.com",
             username="commit@example.com",
             password="testpass123",
-            is_seller=True,
         )
         self.seller, _ = Seller.objects.get_or_create(
             user=self.user,
@@ -164,7 +162,6 @@ class SellerTraderConfirmationFormTests(TestCase):
             email="trader@example.com",
             username="trader@example.com",
             password="testpass123",
-            is_seller=True,
         )
         self.seller, _ = Seller.objects.get_or_create(
             user=self.user,

@@ -61,7 +61,6 @@ class PhotoUploadTestCase(TestCase):
             username=name,
             email=f"{name}@example.com",
             password="pass12345",
-            is_seller=True,
         )
         seller, _ = Seller.objects.get_or_create(
             user=user, defaults={"shop_name": name, "shop_slug": name}

@@ -8,7 +8,7 @@ Keep entries short. Move an item to `DAILY.md` or close its issue when it is don
 
 ## Next
 
-- [ ]
+- [ ] Every user can buy and sell (#89): drop the buyer/seller roles, open a shop at the first listing, remove the welcome-page choice. Full task: [features/everyone-can-sell.md](features/everyone-can-sell.md). PR open.
 
 ## Later
 

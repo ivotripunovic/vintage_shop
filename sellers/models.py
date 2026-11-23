@@ -6,8 +6,9 @@ from datetime import timedelta
 from decimal import Decimal
 
 from django.contrib import admin
-from django.db import models, transaction
+from django.db import IntegrityError, models, transaction
 from django.utils import timezone
+from django.utils.text import slugify
 
 from core.models import TimeStampedModel
 
@@ -48,8 +49,49 @@ TRADER_STATEMENT = (
 )
 
 
+# Used when a shop is opened without a name
+DEFAULT_SHOP_NAME = "Prodavnica"
+
+# Paths under /seller/ that a shop slug would shadow (sellers/urls.py)
+RESERVED_SHOP_SLUGS = frozenset(
+    {"register", "shop-setup", "bank-details", "dashboard", "settings", "products"}
+)
+
+# Serbian Latin letters that slugify would drop instead of transliterating
+_SLUG_TRANSLITERATION = str.maketrans({"đ": "dj", "Đ": "Dj"})
+
+
+def shop_slug_from_name(name):
+    """A URL slug for a shop name; empty if the name has no usable letters."""
+    slug = slugify((name or "").translate(_SLUG_TRANSLITERATION))
+    max_length = Seller._meta.get_field("shop_slug").max_length
+    return slug[:max_length].strip("-")
+
+
+def is_shop_slug_free(slug, exclude_pk=None):
+    """The slug is not reserved and no other shop uses it."""
+    if slug in RESERVED_SHOP_SLUGS:
+        return False
+    taken = Seller.objects.filter(shop_slug=slug)
+    if exclude_pk is not None:
+        taken = taken.exclude(pk=exclude_pk)
+    return not taken.exists()
+
+
+def free_shop_slug(base):
+    """``base``, or ``base-2``, ``base-3``... whichever is free first."""
+    base = base or slugify(DEFAULT_SHOP_NAME)
+    max_length = Seller._meta.get_field("shop_slug").max_length
+    candidate, n = base, 1
+    while not is_shop_slug_free(candidate):
+        n += 1
+        suffix = f"-{n}"
+        candidate = base[: max_length - len(suffix)].rstrip("-") + suffix
+    return candidate
+
+
 class Seller(TimeStampedModel):
-    """Seller profile linked to User."""
+    """A user's shop. A user with a Seller row is a seller (User.is_seller)."""
 
     STATUS_CHOICES = (
         ("active", "Active"),
@@ -88,6 +130,40 @@ class Seller(TimeStampedModel):
 
     def __str__(self):
         return self.shop_name
+
+    @classmethod
+    def open_for(cls, user, shop_name=None, shop_slug=None, **fields):
+        """Open ``user``'s shop with its free starting subscription.
+
+        The only way a shop is created. Idempotent: a user who already has a
+        shop gets it back unchanged. The slug comes from ``shop_slug`` or the
+        shop name, with a numeric suffix if taken, never from the email.
+        """
+        existing = cls.objects.filter(user=user).first()
+        if existing is not None:
+            existing.user = user  # caches user.seller_profile
+            return existing
+        name = (shop_name or "").strip() or DEFAULT_SHOP_NAME
+        base = shop_slug_from_name(shop_slug or name)
+        for _ in range(5):
+            try:
+                with transaction.atomic():
+                    seller = cls.objects.create(
+                        user=user,
+                        shop_name=name,
+                        shop_slug=free_shop_slug(base),
+                        **fields,
+                    )
+                    seller.create_initial_subscription()
+                return seller
+            except IntegrityError:
+                # A concurrent request took the slug, or opened this
+                # user's shop first
+                existing = cls.objects.filter(user=user).first()
+                if existing is not None:
+                    existing.user = user
+                    return existing
+        raise IntegrityError(f"No free shop slug for {base!r}")
 
     @property
     def is_suspended(self):

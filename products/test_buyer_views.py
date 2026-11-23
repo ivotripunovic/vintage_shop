@@ -21,7 +21,6 @@ class ProductBrowseViewTests(TestCase):
             email="seller1@test.com",
             username="seller1@test.com",
             password="testpass123",
-            is_seller=True,
         )
 
         self.seller, _ = Seller.objects.get_or_create(
@@ -142,7 +141,6 @@ class CategoryProductsViewTests(TestCase):
             email="seller2@test.com",
             username="seller2@test.com",
             password="testpass123",
-            is_seller=True,
         )
 
         self.seller, _ = Seller.objects.get_or_create(
@@ -207,7 +205,6 @@ class ProductDetailViewTests(TestCase):
             email="seller3@test.com",
             username="seller3@test.com",
             password="testpass123",
-            is_seller=True,
         )
 
         self.seller, _ = Seller.objects.get_or_create(

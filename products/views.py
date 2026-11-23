@@ -15,6 +15,7 @@ from django.http import (
 )
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
+from django.utils.http import urlencode
 from django.views.decorators.http import require_http_methods
 
 from sellers.models import Seller
@@ -62,14 +63,17 @@ def publish_listing(seller, product):
 
 
 def _get_seller_or_403(request):
-    """Helper to get seller profile or return 403."""
+    """The signed-in user's shop, or None if they have not opened one."""
     if not request.user.is_authenticated or not request.user.is_seller:
         return None
+    return request.user.seller_profile
 
-    try:
-        return request.user.seller_profile
-    except Seller.DoesNotExist:
-        return None
+
+def _open_shop_first(request):
+    """Send a user without a shop to shop setup, then back to this page."""
+    messages.info(request, "Pre prvog oglasa otvorite svoju prodavnicu.")
+    query = urlencode({"next": request.get_full_path()})
+    return redirect(f"{reverse('seller_shop_setup')}?{query}")
 
 
 def _last_used_defaults(seller):
@@ -130,8 +134,7 @@ def product_create_view(request):
     """
     seller = _get_seller_or_403(request)
     if not seller:
-        messages.error(request, "Morate biti prodavac da biste dodavali proizvode.")
-        return redirect("seller_register")
+        return _open_shop_first(request)
 
     uploads, photo_errors = [], []
     if request.method == "POST":

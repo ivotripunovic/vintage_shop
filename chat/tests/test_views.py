@@ -23,7 +23,6 @@ def buyer(db):
         email="buyer@test.com",
         username="buyer",
         password="pass",
-        is_buyer=True,
     )
     user.mark_email_verified()
     return user
@@ -35,7 +34,6 @@ def seller_user(db):
         email="seller@test.com",
         username="seller",
         password="pass",
-        is_seller=True,
     )
     user.mark_email_verified()
     return user
@@ -43,7 +41,7 @@ def seller_user(db):
 
 @pytest.fixture
 def seller(seller_user):
-    return Seller.objects.get(user=seller_user)
+    return Seller.open_for(seller_user, shop_name="seller")
 
 
 @pytest.fixture

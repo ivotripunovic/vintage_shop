@@ -19,7 +19,6 @@ class ListingQueryCountTests(TestCase):
             email="seller@test.com",
             username="seller@test.com",
             password="testpass123",
-            is_seller=True,
         )
         self.seller, _ = Seller.objects.get_or_create(
             user=user, defaults={"shop_name": "Shop", "shop_slug": "shop"}

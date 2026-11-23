@@ -5,10 +5,11 @@ Views for seller onboarding, dashboard, and account management.
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
-from django.db import models, transaction
+from django.db import models
 from django.db.models import Count, Q
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
+from django.utils.http import url_has_allowed_host_and_scheme, urlencode
 from django.views.decorators.http import require_http_methods
 
 from orders.models import SELLABLE_STATUSES
@@ -24,81 +25,102 @@ from .forms import (
 from .models import Seller
 
 
+def _safe_next(request):
+    """The ``next`` parameter if it points to this site, else None."""
+    next_url = request.POST.get("next") or request.GET.get("next")
+    if next_url and url_has_allowed_host_and_scheme(
+        next_url, allowed_hosts={request.get_host()}, require_https=request.is_secure()
+    ):
+        return next_url
+    return None
+
+
+def _shop_or_setup(request):
+    """(seller, None) for a shop owner, else (None, redirect to shop setup).
+
+    Shops are opened only from shop setup (Seller.open_for); pages that need
+    one never make one up.
+    """
+    if request.user.is_seller:
+        return request.user.seller_profile, None
+    messages.info(request, "Prvo otvorite svoju prodavnicu.")
+    return None, redirect("seller_shop_setup")
+
+
 def seller_register_view(request):
     """
     "Start selling" links land here.
 
-    Visitors sign up through allauth first (email verified, no roles set),
-    then open a shop from the welcome page; signed-in users go straight there.
+    Every account can sell (#89): visitors sign up and go on to their first
+    listing, which opens their shop; signed-in users go there directly.
     """
     if not request.user.is_authenticated:
-        welcome = reverse("social-signup-complete")
-        return redirect(f"{reverse('account_signup')}?next={welcome}")
+        query = urlencode({"next": reverse("product_create")})
+        return redirect(f"{reverse('account_signup')}?{query}")
     if request.user.is_seller:
         return redirect("seller_dashboard")
-    return redirect("social-signup-complete")
+    return redirect("product_create")
 
 
 @login_required
 @require_http_methods(["GET", "POST"])
 def seller_shop_setup_view(request):
     """
-    Step 2: Seller shop setup.
-    Collects shop name, description, location, image.
-    """
-    if not request.user.is_seller:
-        messages.error(request, "You must be a seller to access this page.")
-        return redirect("seller_register")
+    Open a shop, or edit an open one: name, URL, description, location, image.
 
-    seller, _ = Seller.objects.get_or_create(user=request.user)
+    A new shop is opened with Seller.open_for, then the user continues to
+    ``next`` (usually their first listing) or to bank details.
+    """
+    seller = request.user.seller_profile if request.user.is_seller else None
+    next_url = _safe_next(request)
 
     if request.method == "POST":
         form = ShopSetupForm(request.POST, request.FILES, instance=seller)
         if form.is_valid():
-            with transaction.atomic():
-                form_instance = form.save(commit=False)
-                form_instance.user = request.user
-                form_instance.save()
-                messages.success(
-                    request, "Shop setup complete! Now add your bank details."
+            if seller is None:
+                data = form.cleaned_data
+                Seller.open_for(
+                    request.user,
+                    shop_name=data["shop_name"],
+                    shop_slug=data["shop_slug"],
+                    shop_description=data["shop_description"],
+                    location=data["location"],
+                    shop_image=data["shop_image"] or None,
                 )
-                return redirect("seller_bank_details")
+                messages.success(request, "Vaša prodavnica je otvorena.")
+            else:
+                form.save()
+                messages.success(request, "Prodavnica je sačuvana.")
+            return redirect(next_url or "seller_bank_details")
     else:
         form = ShopSetupForm(instance=seller)
 
-    return render(request, "sellers/shop_setup.html", {"form": form})
+    return render(
+        request,
+        "sellers/shop_setup.html",
+        {"form": form, "next": next_url, "is_new_shop": seller is None},
+    )
 
 
+@login_required
 @require_http_methods(["GET", "POST"])
 def seller_bank_details_view(request):
     """
-    Step 3: Seller bank details.
+    Seller bank details.
     Collects bank account information for payments.
     """
-    if not request.user.is_authenticated or not request.user.is_seller:
-        messages.error(request, "You must be a seller to access this page.")
-        return redirect("account_login")
-
-    try:
-        seller = request.user.seller_profile
-    except Seller.DoesNotExist:
-        messages.error(request, "Please complete shop setup first.")
-        return redirect("seller_shop_setup")
+    seller, setup = _shop_or_setup(request)
+    if setup:
+        return setup
 
     if request.method == "POST":
         form = BankDetailsForm(request.POST, instance=seller)
         if form.is_valid():
-            with transaction.atomic():
-                seller = form.save()
-
-                # Create initial subscription if doesn't exist
-                if not seller.active_subscription:
-                    seller.create_initial_subscription()
-
-                messages.success(
-                    request, "Bank details saved! Your seller account is ready."
-                )
-                return redirect("seller_dashboard")
+            form.save()
+            messages.success(
+                request, "Bank details saved! Your seller account is ready."
+            )
+            return redirect("seller_dashboard")
     else:
         form = BankDetailsForm(instance=seller)
 
@@ -113,22 +135,9 @@ def seller_dashboard_view(request):
     """
     Seller dashboard showing overview and key metrics.
     """
-    if not request.user.is_seller:
-        messages.error(request, "You are not authorized to access this page.")
-        return redirect("home")
-
-    # Get or create seller profile (should exist via signal, but handle just in case)
-    seller, created = Seller.objects.get_or_create(
-        user=request.user,
-        defaults={
-            "shop_name": request.user.email.split("@")[0],
-            "shop_slug": request.user.email.split("@")[0].replace(".", "-"),
-        },
-    )
-
-    # If newly created, also create subscription
-    if created and not seller.active_subscription:
-        seller.create_initial_subscription()
+    seller, setup = _shop_or_setup(request)
+    if setup:
+        return setup
 
     # Get seller statistics
     total_products = seller.products.count()
@@ -162,18 +171,9 @@ def seller_settings_view(request):
     Seller account settings page.
     Allows editing of shop details and email.
     """
-    if not request.user.is_seller:
-        messages.error(request, "You are not authorized to access this page.")
-        return redirect("home")
-
-    # Get or create seller profile
-    seller, created = Seller.objects.get_or_create(
-        user=request.user,
-        defaults={
-            "shop_name": request.user.email.split("@")[0],
-            "shop_slug": request.user.email.split("@")[0].replace(".", "-"),
-        },
-    )
+    seller, setup = _shop_or_setup(request)
+    if setup:
+        return setup
 
     if request.method == "POST":
         form = SellerAccountSettingsForm(
@@ -204,18 +204,9 @@ def seller_products_list_view(request):
     """
     List all products for the logged-in seller.
     """
-    if not request.user.is_seller:
-        messages.error(request, "You are not authorized to access this page.")
-        return redirect("home")
-
-    # Get or create seller profile
-    seller, created = Seller.objects.get_or_create(
-        user=request.user,
-        defaults={
-            "shop_name": request.user.email.split("@")[0],
-            "shop_slug": request.user.email.split("@")[0].replace(".", "-"),
-        },
-    )
+    seller, setup = _shop_or_setup(request)
+    if setup:
+        return setup
 
     # Get filter parameters
     status_filter = request.GET.get("status")
