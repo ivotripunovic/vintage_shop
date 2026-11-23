@@ -5,10 +5,10 @@ Seller.open_for, the only way a shop is opened (#89).
 from unittest import mock
 
 import pytest
-from django.db import IntegrityError
 
 from users.models import User
 
+from . import models
 from .models import Seller, free_shop_slug, shop_slug_from_name
 
 
@@ -88,23 +88,48 @@ class TestOpenFor:
         assert not Seller.objects.exists()
 
     def test_concurrent_open_returns_the_shop_that_won(self):
-        """If another request opens the same user's shop between the check
-        and the insert, the IntegrityError resolves to that shop."""
+        """Another request opened this user's shop after open_for checked:
+        the insert fails and the shop that won is returned."""
         user = _user()
-        winner = {}
-        real_create = Seller.objects.create
-
-        def create_after_race(**kwargs):
-            if not winner:
-                winner["seller"] = real_create(
+        winner = Seller.objects.bulk_create(
+            [
+                Seller(
                     user=User.objects.get(pk=user.pk),
                     shop_name="Prvi",
                     shop_slug="prvi",
                 )
-                raise IntegrityError("duplicate user_id")
-            return real_create(**kwargs)
+            ]
+        )[0]
+        real_filter = Seller.objects.filter
+        checks = []
 
-        with mock.patch.object(Seller.objects, "create", side_effect=create_after_race):
+        def stale_first_check(*args, **kwargs):
+            checks.append(kwargs)
+            if len(checks) == 1:
+                return Seller.objects.none()  # checked before the winner committed
+            return real_filter(*args, **kwargs)
+
+        with mock.patch.object(Seller.objects, "filter", stale_first_check):
             seller = Seller.open_for(user, shop_name="Drugi")
-        assert seller.pk == winner["seller"].pk
+        assert seller.pk == winner.pk
+        assert seller.shop_name == "Prvi"
+        assert user.seller_profile.pk == winner.pk  # not the unsaved one
         assert Seller.objects.count() == 1
+
+    def test_slug_taken_by_a_concurrent_request_is_retried(self):
+        """The free slug was taken between the check and the insert."""
+        Seller.objects.bulk_create(
+            [Seller(user=_user("other@example.com"), shop_name="R", shop_slug="radnja")]
+        )
+        real_free = models.free_shop_slug
+        picked = []
+
+        def stale_then_real(base):
+            picked.append(real_free(base) if picked else "radnja")
+            return picked[-1]
+
+        with mock.patch.object(models, "free_shop_slug", stale_then_real):
+            seller = Seller.open_for(_user(), shop_name="Radnja")
+        assert picked == ["radnja", "radnja-2"]
+        assert seller.shop_slug == "radnja-2"
+        assert seller.subscriptions.count() == 1

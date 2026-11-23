@@ -7,6 +7,18 @@ Beyond the plan: shop slugs skip the paths under `/seller/` (`dashboard`,
 `settings`, ...), Serbian `đ` becomes `dj` in slugs, and the shop setup form now
 accepts a shop's own slug when editing (it used to reject it as taken).
 
+Code review of PR #90, fixed on the branch: a typed slug is validated in the
+form it is saved in; `open_for` retries only slug collisions; the seller
+product page is a 404 for users without a shop; shops added in the admin get a
+slug and a subscription; migration `sellers/0006` starts a subscription for
+shops that had none. Accepted as is:
+
+- Confirming the email on another device loses `next=/products/create/` (allauth
+  logs in on confirmation only in the same session); the user logs in and
+  lands on `/`, where "Dodaj oglas" is in the nav.
+- Seeded shops get the free Garažna subscription (0 RSD), not the 999 the old
+  seed set; that matches their tier.
+
 ## Goal
 
 Drop the buyer/seller roles. Every account can buy. Anyone can list products;

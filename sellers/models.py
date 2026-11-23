@@ -145,25 +145,26 @@ class Seller(TimeStampedModel):
             return existing
         name = (shop_name or "").strip() or DEFAULT_SHOP_NAME
         base = shop_slug_from_name(shop_slug or name)
-        for _ in range(5):
+        attempts = 5
+        for attempt in range(attempts):
+            slug = free_shop_slug(base)
             try:
                 with transaction.atomic():
-                    seller = cls.objects.create(
-                        user=user,
-                        shop_name=name,
-                        shop_slug=free_shop_slug(base),
-                        **fields,
-                    )
+                    seller = cls(user=user, shop_name=name, shop_slug=slug, **fields)
+                    seller.save()
                     seller.create_initial_subscription()
                 return seller
             except IntegrityError:
-                # A concurrent request took the slug, or opened this
-                # user's shop first
+                # Building the Seller cached it on user.seller_profile
+                user._state.fields_cache.pop("seller_profile", None)
                 existing = cls.objects.filter(user=user).first()
                 if existing is not None:
+                    # A concurrent request opened this user's shop first
                     existing.user = user
                     return existing
-        raise IntegrityError(f"No free shop slug for {base!r}")
+                slug_lost = cls.objects.filter(shop_slug=slug).exists()
+                if not slug_lost or attempt == attempts - 1:
+                    raise
 
     @property
     def is_suspended(self):

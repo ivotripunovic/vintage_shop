@@ -8,7 +8,6 @@ from django.core.exceptions import ValidationError
 from .models import (
     TRADER_STATEMENT,
     Seller,
-    SellerSubscription,
     free_shop_slug,
     is_shop_slug_free,
     shop_slug_from_name,
@@ -73,9 +72,13 @@ class ShopSetupForm(forms.ModelForm):
 
     def clean_shop_slug(self):
         """A typed slug must be free; an empty one is filled in clean()."""
-        shop_slug = (self.cleaned_data.get("shop_slug") or "").lower()
-        if not shop_slug:
+        typed = self.cleaned_data.get("shop_slug") or ""
+        if not typed:
             return ""
+        # Validate what will be saved, e.g. "my_shop_" is saved as "my_shop"
+        shop_slug = shop_slug_from_name(typed)
+        if not shop_slug:
+            raise ValidationError("Unesite slova ili brojeve.")
         if not is_shop_slug_free(shop_slug, exclude_pk=self.instance.pk):
             raise ValidationError("Ova adresa prodavnice je zauzeta.")
         return shop_slug

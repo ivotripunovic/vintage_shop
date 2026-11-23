@@ -3,13 +3,10 @@ The buyer/seller role columns are gone (#89): migration users.0006 and the
 admin's "has a shop" filter.
 """
 
-from unittest import mock
-
 import pytest
-from django.db import connections, router
-from django.db.migrations.executor import MigrationExecutor
 from django.urls import reverse
 
+from conftest import migrate_scratch
 from sellers.testing import make_seller
 from users.models import User
 
@@ -19,48 +16,8 @@ AFTER = [("users", "0006_remove_user_roles")]
 STATE = BEFORE + [("sellers", "0005_seller_trader_confirmation")]
 
 
-@pytest.fixture
-def scratch_db(tmp_path, django_db_blocker):
-    """A throwaway SQLite database for running migrations back and forth.
-
-    A transactional test on the shared test database would flush it
-    afterwards, wiping rows seeded by data migrations (SellerTier) that later
-    tests on the same xdist worker rely on.
-    """
-    alias = "migration_scratch"
-    connections.settings[alias] = {
-        **connections.settings["default"],
-        "NAME": str(tmp_path / "scratch.sqlite3"),
-        "TEST": {"NAME": str(tmp_path / "scratch.sqlite3")},
-    }
-    connection = connections[alias]
-
-    class ToScratch:
-        """Data migrations query without .using(); send them here too."""
-
-        def db_for_read(self, model, **hints):
-            return alias
-
-        db_for_write = db_for_read
-
-        def allow_migrate(self, db, app_label, **hints):
-            return True
-
-    try:
-        with django_db_blocker.unblock(), mock.patch.object(
-            router, "routers", [ToScratch()]
-        ):
-            yield connection
-    finally:
-        connection.close()
-        del connections[alias]
-        del connections.settings[alias]
-
-
 def _migrate(connection, target):
-    executor = MigrationExecutor(connection)
-    executor.migrate(target)
-    return executor.loader.project_state(STATE).apps
+    return migrate_scratch(connection, target, STATE)
 
 
 def test_migration_lists_flagged_sellers_without_a_shop(scratch_db, capsys):

@@ -282,8 +282,7 @@ def product_detail_view(request, product_id):
     """
     seller = _get_seller_or_403(request)
     if not seller:
-        messages.error(request, "Morate biti prodavac da biste videli ovu stranicu.")
-        return redirect("seller_register")
+        raise Http404("No shop")
 
     product = get_object_or_404(Product, id=product_id, seller=seller)
     images = list(product.images.all())
