@@ -17,7 +17,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.views.decorators.http import require_http_methods
 
-from sellers.models import Seller
+from sellers.models import ANONYMOUS_SELLER_NAME, Seller
 
 from .forms import MAX_IMAGE_MB, MAX_PHOTOS, ProductForm
 from .models import PhotoUpload, Product, ProductImage
@@ -69,11 +69,11 @@ def _get_seller_or_403(request):
 
 
 def _seller_for(request):
-    """The signed-in user's seller profile, opened quietly on the first listing.
+    """The signed-in user's seller profile, opened quietly when they first
+    save a listing or upload a photo for one (never just by looking).
 
     Free (Garazna) sellers have no store to set up; a store comes with the
-    paid tiers (Seller.has_store). Photo uploads need the seller, so the
-    listing form makes it on GET too; Seller.open_for is idempotent.
+    paid tiers (Seller.has_store). Seller.open_for is idempotent.
     """
     return _get_seller_or_403(request) or Seller.open_for(request.user)
 
@@ -93,8 +93,15 @@ def _photos_url(product):
     return reverse("product_edit", args=[product.id]) + "#fotografije"
 
 
-def _form_context(seller, form, photos, photo_errors, product=None):
-    """What product_form.html needs, for a new or an existing listing."""
+def _form_context(seller, form, photos, photo_errors, product=None, user=None):
+    """What product_form.html needs, for a new or an existing listing.
+
+    ``seller`` is None on a first listing until it is saved; the form then
+    shows what the new seller will look like (an unsaved Seller of ``user``).
+    """
+    new_seller = seller is None
+    if new_seller:
+        seller = Seller(user=user)
     context = {
         "form": form,
         "product": product,
@@ -103,6 +110,7 @@ def _form_context(seller, form, photos, photo_errors, product=None):
         "max_photos": MAX_PHOTOS,
         "max_image_mb": MAX_IMAGE_MB,
         "shop_name": seller.display_name,
+        "shop_name_is_generic": seller.display_name == ANONYMOUS_SELLER_NAME,
         # For the live tips in the preview (static/js/listing-preview.js)
         "text_tips": TEXT_TIPS,
         "tip_rules": TEXT_RULES,
@@ -111,8 +119,13 @@ def _form_context(seller, form, photos, photo_errors, product=None):
     if product is None:
         context.update(
             page_title="Dodaj proizvod",
-            autosave_key=f"product-form:{seller.id}:new",
-            listings_left=seller.listings_left_this_month(),
+            # By user: the seller may be opened while the form is open
+            autosave_key=f"product-form:u{seller.user_id}:new",
+            listings_left=(
+                seller.monthly_listing_limit
+                if new_seller
+                else seller.listings_left_this_month()
+            ),
             listing_limit_message=seller.listing_limit_message(),
         )
     else:
@@ -134,10 +147,9 @@ def product_create_view(request):
     Photos arrive as PhotoUploads (one request each, see products.photos)
     and are attached in the posted order when the listing is saved.
     """
-    seller = _seller_for(request)
-
     uploads, photo_errors = [], []
     if request.method == "POST":
+        seller = _seller_for(request)
         form = ProductForm(request.POST)
         ids = posted_ids(request.POST.getlist("photos"))
         uploads = pending_uploads(seller, ids)
@@ -192,12 +204,14 @@ def product_create_view(request):
         if missing:
             photo_errors.insert(0, missing_message(missing))
     else:
-        form = ProductForm(initial=_last_used_defaults(seller))
+        seller = _get_seller_or_403(request)
+        initial = _last_used_defaults(seller) if seller else {}
+        form = ProductForm(initial=initial)
 
     return render(
         request,
         "products/product_form.html",
-        _form_context(seller, form, uploads, photo_errors),
+        _form_context(seller, form, uploads, photo_errors, user=request.user),
     )
 
 
@@ -320,19 +334,22 @@ def photo_upload_view(request):
     With a product id the photo is added to that listing; without one it
     is kept as a pending upload until the new listing is saved.
     """
-    seller = _get_seller_or_403(request)
-    if not seller:
-        return JsonResponse({"error": "Morate biti prodavac."}, status=403)
+    file = request.FILES.get("photo")
+    if file is None:
+        return JsonResponse({"error": "Izaberite fotografiju."}, status=400)
 
     product = None
     if "product" in request.POST:
+        seller = _get_seller_or_403(request)
+        if not seller:
+            return JsonResponse({"error": "Morate biti prodavac."}, status=403)
         product_id = request.POST["product"]
         if not product_id.isdigit():
             raise Http404("No such product.")
         product = get_object_or_404(Product, id=int(product_id), seller=seller)
-    file = request.FILES.get("photo")
-    if file is None:
-        return JsonResponse({"error": "Izaberite fotografiju."}, status=400)
+    else:
+        # A photo for a first listing opens the seller
+        seller = _seller_for(request)
 
     try:
         photo = add_photo(seller, file, product)

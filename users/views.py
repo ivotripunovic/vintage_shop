@@ -14,10 +14,12 @@ from .forms import UserProfileForm
 @login_required
 @require_http_methods(["GET", "POST"])
 def account_settings_view(request):
-    """User account settings page; buyers also edit their picture and bio here."""
-    # Sellers edit their shop image and description in seller settings instead
+    """User account settings page; users without a store also edit their
+    name, picture and bio here."""
+    # Store owners (paid tiers) edit the shop image and description instead
+    has_store = request.user.is_seller and request.user.seller_profile.has_store
     profile_form = None
-    if not request.user.is_seller:
+    if not has_store:
         if request.method == "POST":
             profile_form = UserProfileForm(
                 request.POST, request.FILES, instance=request.user

@@ -26,9 +26,9 @@ Decided after review: a free user does not need a store. Only the paid
 tiers, Održivo and Premijum (`sellers.models.STORE_TIERS`), come with a store:
 a shop name, a page at `/seller/<slug>/` and a place in the shops list.
 
-- The first "Dodaj oglas" opens the listing form straight away. It quietly
-  makes a hidden `Seller` row with `Seller.open_for(user)` (named
-  "Prodavnica", slug `prodavnica-N`, a free Garažna subscription), because
+- The first "Dodaj oglas" opens the listing form straight away. Saving the
+  listing quietly makes a hidden `Seller` row with `Seller.open_for(user)`
+  (named "Prodavnica", slug `prodavnica-N`, a free Garažna subscription), because
   products, chat, sales, ratings, favourites and billing all point to `Seller`.
 - `Seller.has_store` is true for the paid tiers. `Seller.display_name` is
   what buyers see: the shop name with a store, otherwise the user's full
@@ -42,6 +42,23 @@ a shop name, a page at `/seller/<slug>/` and a place in the shops list.
 - Seeded shops get mixed tiers (premijum, odrzivo, garazna).
 - Existing Garažna shops lose their public page. Their name and slug are
   kept, and the page comes back if they move up a tier. No migration.
+
+Code review of this change, fixed on the branch:
+
+- Viewing the listing form no longer opens a seller; saving the first
+  listing, or uploading its first photo, does.
+- Users without a store (buyers and free sellers) keep the profile form in
+  account settings, which now also edits first and last name. The listing
+  form asks for a name when the seller would show as "Prodavac".
+- After an upgrade, an empty URL field in shop setup is made from the new
+  store name instead of keeping `prodavnica-N`; "Prodavnica" itself is
+  refused as a store name, so the setup banner can't get stuck.
+- `free_shop_slug` reads the taken slugs in one query.
+- Views that show `display_name` load `seller__user` with the seller.
+
+Accepted as is: existing Garažna shops losing their page (decided above);
+`next` lost when the email is confirmed in another browser (see the first
+review); free sellers shown by full name (the decision for this change).
 
 ## Goal
 

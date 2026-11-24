@@ -469,7 +469,7 @@ class DefaultsAndAutosaveTests(TestCase):
         create = self.client.get(reverse("product_create"))
         edit = self.client.get(reverse("product_edit", args=[self.original.id]))
         self.assertContains(
-            create, f'data-autosave-key="product-form:{self.seller.id}:new"'
+            create, f'data-autosave-key="product-form:u{self.seller.user_id}:new"'
         )
         self.assertContains(
             edit,

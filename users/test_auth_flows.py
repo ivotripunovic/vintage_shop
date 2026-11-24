@@ -324,9 +324,8 @@ class TestStartSelling:
         page = client.get(reverse("product_create"))
         assert page.status_code == 200
         assert "Dobrodošli!" in page.content.decode()
-        seller = User.objects.get(email="new@example.com").seller_profile
-        assert not seller.has_store
-        assert "new" not in seller.shop_slug  # never from the email
+        # Looking at the form makes nobody a seller; saving a listing does
+        assert not User.objects.get(email="new@example.com").is_seller
 
     def test_old_welcome_page_redirects_home(self, client):
         client.force_login(make_user())

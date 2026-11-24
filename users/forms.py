@@ -16,7 +16,7 @@ class UserProfileForm(forms.ModelForm):
 
     class Meta:
         model = User
-        fields = ["profile_picture", "bio"]
+        fields = ["first_name", "last_name", "profile_picture", "bio"]
         widgets = {
             "profile_picture": forms.FileInput(attrs={"accept": "image/*"}),
             "bio": forms.Textarea(

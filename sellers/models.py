@@ -85,12 +85,22 @@ def is_shop_slug_free(slug, exclude_pk=None):
     return not taken.exists()
 
 
-def free_shop_slug(base):
-    """``base``, or ``base-2``, ``base-3``... whichever is free first."""
+def free_shop_slug(base, exclude_pk=None):
+    """``base``, or ``base-2``, ``base-3``... whichever is free first.
+
+    One query, however many are taken: every default-named shop starts
+    from "prodavnica".
+    """
     base = base or slugify(DEFAULT_SHOP_NAME)
     max_length = Seller._meta.get_field("shop_slug").max_length
+    # Suffixed candidates may cut base short, so match on a shorter stem
+    stem = base[: max_length - 8].rstrip("-")
+    taken = Seller.objects.filter(shop_slug__startswith=stem)
+    if exclude_pk is not None:
+        taken = taken.exclude(pk=exclude_pk)
+    taken = set(taken.values_list("shop_slug", flat=True)) | RESERVED_SHOP_SLUGS
     candidate, n = base, 1
-    while not is_shop_slug_free(candidate):
+    while candidate in taken:
         n += 1
         suffix = f"-{n}"
         candidate = base[: max_length - len(suffix)].rstrip("-") + suffix

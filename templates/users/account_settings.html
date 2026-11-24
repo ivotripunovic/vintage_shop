@@ -32,7 +32,7 @@
     </div>
 
     <div class="border border-neutral-200 p-8 mb-6">
-        <p class="text-xs uppercase tracking-widest text-stone-700 mb-6">Profilna slika i opis</p>
+        <p class="text-xs uppercase tracking-widest text-stone-700 mb-6">{% if profile_form %}Ime, slika i opis{% else %}Profilna slika i opis{% endif %}</p>
         {% if profile_form %}
         {% with picture=profile_form.initial.profile_picture %}
         <div class="flex items-start gap-6 mb-6">
@@ -47,6 +47,19 @@
         </div>
         <form method="post" enctype="multipart/form-data" class="space-y-6">
             {% csrf_token %}
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                    <label for="{{ profile_form.first_name.id_for_label }}" class="block text-xs uppercase tracking-widest text-stone-500 mb-2">Ime</label>
+                    {{ profile_form.first_name }}
+                    {% if profile_form.first_name.errors %}<p class="text-xs text-red-600 mt-1">{{ profile_form.first_name.errors.0 }}</p>{% endif %}
+                </div>
+                <div>
+                    <label for="{{ profile_form.last_name.id_for_label }}" class="block text-xs uppercase tracking-widest text-stone-500 mb-2">Prezime</label>
+                    {{ profile_form.last_name }}
+                    {% if profile_form.last_name.errors %}<p class="text-xs text-red-600 mt-1">{{ profile_form.last_name.errors.0 }}</p>{% endif %}
+                </div>
+            </div>
+            {% if user.is_seller %}<p class="text-xs text-stone-400">Kupci vide vaše ime i prezime uz oglase.</p>{% endif %}
             <div>
                 <label for="{{ profile_form.profile_picture.id_for_label }}" class="block text-xs uppercase tracking-widest text-stone-500 mb-2">Nova profilna slika</label>
                 {{ profile_form.profile_picture }}

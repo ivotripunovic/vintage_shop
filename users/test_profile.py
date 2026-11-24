@@ -96,7 +96,8 @@ class BuyerProfileTests(TestCase):
 
 class SellerProfileTests(TestCase):
     def setUp(self):
-        self.seller = make_seller("seller@test.com").user
+        # A store owner; free sellers keep the profile form
+        self.seller = make_seller("seller@test.com", tier="odrzivo").user
         self.client.force_login(self.seller)
         self.url = reverse("account-settings")
 

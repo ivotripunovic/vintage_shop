@@ -61,7 +61,9 @@ def my_ratings_view(request):
 @require_http_methods(["GET", "POST"])
 def rate_sale_view(request, sale_id):
     """Rate the other side of a sale, once, while the window is open."""
-    sale = get_object_or_404(Sale.objects.select_related("seller", "buyer"), pk=sale_id)
+    sale = get_object_or_404(
+        Sale.objects.select_related("seller__user", "buyer"), pk=sale_id
+    )
     direction = rating_direction(sale, request.user)
     if direction is None:
         raise PermissionDenied

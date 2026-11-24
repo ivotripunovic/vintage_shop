@@ -122,12 +122,16 @@ class UploadEndpointTests(PhotoUploadTestCase):
         self.assertEqual(self.upload(product=other).status_code, 404)
         self.assertFalse(ProductImage.objects.exists())
 
-    def test_buyers_and_get_are_refused(self):
+    def test_non_sellers_and_get_are_refused(self):
+        """A user who never listed can't add photos to a listing (a photo for
+        a first listing opens their seller, see sellers.test_store_review_fixes)."""
         buyer = User.objects.create_user(
             username="buyer", email="buyer@example.com", password="pass12345"
         )
         self.client.force_login(buyer)
-        self.assertEqual(self.upload().status_code, 403)
+        product = self.make_product()
+        self.assertEqual(self.upload(product=product).status_code, 403)
+        self.assertFalse(Seller.objects.filter(user=buyer).exists())
         self.client.force_login(self.seller.user)
         self.assertEqual(self.client.get(reverse("photo_upload")).status_code, 405)
 

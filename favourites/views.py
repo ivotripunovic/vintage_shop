@@ -58,7 +58,9 @@ def wishlist_update(request, product_id):
     action = request.POST.get("action")
     if action not in ACTIONS:
         return HttpResponseBadRequest("Unknown action.")
-    product = get_object_or_404(Product.objects.select_related("seller"), pk=product_id)
+    product = get_object_or_404(
+        Product.objects.select_related("seller__user"), pk=product_id
+    )
 
     if action == "remove":
         WishlistItem.objects.filter(user=request.user, product=product).delete()

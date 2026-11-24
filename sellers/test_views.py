@@ -26,6 +26,26 @@ def _make_user(email="ana.petrovic@example.com"):
     return user
 
 
+def _post_first_listing(client, title="Stara drvena stolica"):
+    """Save a listing from the form, the way a user's first one is made."""
+    parent, _ = ProductCategory.objects.get_or_create(name="Kuća", slug="kuca")
+    category, _ = ProductCategory.objects.get_or_create(
+        name="Nameštaj", slug="namestaj", parent=parent
+    )
+    condition, _ = ProductCondition.objects.get_or_create(name="Dobro")
+    return client.post(
+        PRODUCT_CREATE,
+        {
+            "title": title,
+            "description": "Masivno drvo, bez oštećenja.",
+            "price": "1500",
+            "stock": "1",
+            "category": category.id,
+            "condition": condition.id,
+        },
+    )
+
+
 class TestShopSetupForExistingShop(TestCase):
     """Shop setup edits the store of a paid-tier seller."""
 
@@ -106,50 +126,33 @@ class TestFirstListing(TestCase):
         self.user = _make_user()
         self.client.force_login(self.user)
 
-    def test_add_listing_opens_the_form_and_a_hidden_seller(self):
-        response = self.client.get(PRODUCT_CREATE)
-        self.assertEqual(response.status_code, 200)
+    def test_add_listing_opens_the_form(self):
+        self.assertEqual(self.client.get(PRODUCT_CREATE).status_code, 200)
+
+    def test_first_listing_opens_a_hidden_seller(self):
+        response = _post_first_listing(self.client)
+        self.assertEqual(response.status_code, 302)
         seller = Seller.objects.get(user=self.user)
         self.assertFalse(seller.has_store)
         self.assertEqual(seller.tier, "garazna")
         self.assertEqual(seller.shop_slug, "prodavnica")
         [subscription] = seller.subscriptions.all()
         self.assertEqual(subscription.amount, 0)
+        product = Product.objects.get(title="Stara drvena stolica")
+        self.assertEqual(product.seller, seller)
 
-    def test_opening_the_form_twice_makes_one_seller(self):
-        self.client.get(PRODUCT_CREATE)
-        self.client.get(PRODUCT_CREATE)
+    def test_two_listings_make_one_seller(self):
+        _post_first_listing(self.client)
+        _post_first_listing(self.client, title="Druga stolica")
         self.assertEqual(Seller.objects.filter(user=self.user).count(), 1)
         self.assertEqual(SellerSubscription.objects.count(), 1)
 
-    def test_first_listing_is_saved(self):
-        self.client.get(PRODUCT_CREATE)
-        parent = ProductCategory.objects.create(name="Kuća", slug="kuca")
-        category = ProductCategory.objects.create(
-            name="Nameštaj", slug="namestaj", parent=parent
-        )
-        condition = ProductCondition.objects.create(name="Dobro")
-        response = self.client.post(
-            PRODUCT_CREATE,
-            {
-                "title": "Stara drvena stolica",
-                "description": "Masivno drvo, bez oštećenja.",
-                "price": "1500",
-                "stock": "1",
-                "category": category.id,
-                "condition": condition.id,
-            },
-        )
-        self.assertEqual(response.status_code, 302)
-        product = Product.objects.get(title="Stara drvena stolica")
-        self.assertEqual(product.seller.user, self.user)
-
     def test_slug_never_comes_from_the_email(self):
-        self.client.get(PRODUCT_CREATE)
+        _post_first_listing(self.client)
         self.assertNotIn("ana", Seller.objects.get(user=self.user).shop_slug)
 
     def test_free_seller_is_sent_away_from_shop_setup(self):
-        self.client.get(PRODUCT_CREATE)
+        _post_first_listing(self.client)
         response = self.client.get(reverse("seller_shop_setup"))
         self.assertRedirects(response, reverse("seller_dashboard"))
         response = self.client.post(
@@ -219,7 +222,7 @@ class TestStoresComeWithPaidTiers(TestCase):
 
     def test_moving_up_a_tier_asks_for_the_store_name(self):
         self.client.force_login(_make_user())
-        self.client.get(PRODUCT_CREATE)
+        _post_first_listing(self.client)
         seller = Seller.objects.get()
         dashboard = reverse("seller_dashboard")
         self.assertNotContains(self.client.get(dashboard), "Podesi prodavnicu")

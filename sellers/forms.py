@@ -6,6 +6,7 @@ from django import forms
 from django.core.exceptions import ValidationError
 
 from .models import (
+    DEFAULT_SHOP_NAME,
     TRADER_STATEMENT,
     Seller,
     free_shop_slug,
@@ -70,6 +71,13 @@ class ShopSetupForm(forms.ModelForm):
             "placeholder"
         ] = "Prazno: pravi se od naziva prodavnice"
 
+    def clean_shop_name(self):
+        """The default name marks a store that was never set up."""
+        name = (self.cleaned_data.get("shop_name") or "").strip()
+        if name.casefold() == DEFAULT_SHOP_NAME.casefold():
+            raise ValidationError("Izaberite naziv prodavnice.")
+        return name
+
     def clean_shop_slug(self):
         """A typed slug must be free; an empty one is filled in clean()."""
         typed = self.cleaned_data.get("shop_slug") or ""
@@ -86,11 +94,15 @@ class ShopSetupForm(forms.ModelForm):
     def clean(self):
         cleaned = super().clean()
         if not cleaned.get("shop_slug") and "shop_slug" not in self.errors:
-            if self.instance.pk:
+            # The instance still holds the saved name here (_post_clean
+            # comes later); a never set-up store gets its URL from the name
+            never_named = self.instance.shop_name == DEFAULT_SHOP_NAME
+            if self.instance.pk and not never_named:
                 cleaned["shop_slug"] = self.instance.shop_slug
             else:
                 cleaned["shop_slug"] = free_shop_slug(
-                    shop_slug_from_name(cleaned.get("shop_name"))
+                    shop_slug_from_name(cleaned.get("shop_name")),
+                    exclude_pk=self.instance.pk,
                 )
         return cleaned
 
