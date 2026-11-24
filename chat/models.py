@@ -48,7 +48,7 @@ class Conversation(TimeStampedModel):
 
     @property
     def seller_label(self):
-        return self.seller.shop_name
+        return self.seller.display_name
 
     def label_for(self, user):
         """Public name of a participant in this conversation."""

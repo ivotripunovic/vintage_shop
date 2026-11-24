@@ -17,7 +17,7 @@ def _make_user(email):
 
 class FavouritesTestCase(TestCase):
     def setUp(self):
-        self.seller = make_seller("seller@test.com", shop_name="seller")
+        self.seller = make_seller("seller@test.com", shop_name="seller", tier="odrzivo")
         self.seller_user = self.seller.user
         self.buyer = _make_user("buyer@test.com")
         self.product = self._make_product("Lampa")

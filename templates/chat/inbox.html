@@ -14,10 +14,10 @@
 
         <div class="w-10 h-10 bg-neutral-200 flex-shrink-0 flex items-center justify-center mt-0.5">
             {% if request.user == conv.buyer %}
-                {% if conv.seller.shop_image %}
+                {% if conv.seller.has_store and conv.seller.shop_image %}
                     <img src="{{ conv.seller.shop_image.url }}" alt="{{ conv.seller.shop_name }}" class="w-full h-full object-cover">
                 {% else %}
-                    <span class="text-xs text-neutral-400">{{ conv.seller.shop_name|slice:":1"|upper }}</span>
+                    <span class="text-xs text-neutral-400">{{ conv.seller.display_name|slice:":1"|upper }}</span>
                 {% endif %}
             {% else %}
                 <span class="text-xs text-neutral-400">{{ conv.buyer_label|slice:":1"|upper }}</span>
@@ -28,7 +28,7 @@
             <div class="flex justify-between items-baseline mb-1">
                 <span class="text-sm text-stone-900 {% if unread %}font-medium{% endif %}">
                     {% if request.user == conv.buyer %}
-                        {{ conv.seller.shop_name }}
+                        {{ conv.seller.display_name }}
                     {% else %}
                         {{ conv.buyer_label }}
                     {% endif %}

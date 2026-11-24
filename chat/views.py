@@ -161,7 +161,7 @@ def chat_inbox(request):
     )
     conversations = (
         _user_conversations(request.user)
-        .select_related("buyer", "seller", "product")
+        .select_related("buyer", "seller__user", "product")
         .annotate(
             unread=Count(
                 "messages",
@@ -227,7 +227,7 @@ def chat_detail(request, pk):
     sale = None
     if conversation.product_id:
         sale = (
-            Sale.objects.select_related("seller")
+            Sale.objects.select_related("seller__user")
             .filter(product_id=conversation.product_id, buyer=conversation.buyer)
             .first()
         )
@@ -307,7 +307,7 @@ def chat_send(request, pk):
 @login_required
 def chat_poll(request, pk):
     conversation = get_object_or_404(
-        Conversation.objects.select_related("seller"), pk=pk
+        Conversation.objects.select_related("seller__user"), pk=pk
     )
     if not _assert_participant(conversation, request.user):
         return JsonResponse({"error": "Forbidden"}, status=403)

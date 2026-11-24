@@ -442,7 +442,7 @@ class TestNoEmailsShown:
         client.force_login(buyer)
         res = client.get(reverse("chat_detail", args=[conversation.pk]))
         assert seller_user.email not in res.content.decode()
-        assert conversation.seller.shop_name in res.content.decode()
+        assert conversation.seller.display_name in res.content.decode()
 
     def test_seller_does_not_see_buyer_email(
         self, client, buyer, seller_user, conversation
@@ -470,7 +470,7 @@ class TestNoEmailsShown:
         client.post(reverse("chat_send", args=[conversation.pk]), {"body": "Hi"})
         assert mail.outbox[0].to == [buyer.email]
         assert seller_user.email not in mail.outbox[0].body
-        assert conversation.seller.shop_name in mail.outbox[0].body
+        assert conversation.seller.display_name in mail.outbox[0].body
 
 
 # ---------------------------------------------------------------------------

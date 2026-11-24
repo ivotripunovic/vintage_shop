@@ -7,10 +7,17 @@
 <div class="mb-8 flex justify-between items-start">
     <div>
         <h1 class="font-serif text-4xl font-light">Kontrolna tabla</h1>
-        <p class="text-xs uppercase tracking-widest text-stone-400 mt-2">{{ seller.shop_name }}</p>
+        <p class="text-xs uppercase tracking-widest text-stone-400 mt-2">{{ seller.display_name }}</p>
     </div>
     <a href="{% url 'product_create' %}" class="text-xs uppercase tracking-widest bg-stone-900 text-white px-5 py-2.5 hover:bg-stone-700 transition-colors">+ Dodaj proizvod</a>
 </div>
+
+{% if seller.needs_store_setup %}
+<div class="border border-stone-900 p-6 mb-8 flex flex-wrap justify-between items-center gap-4">
+    <p class="text-sm text-stone-700">Vaš paket uključuje prodavnicu. Izaberite njen naziv i adresu.</p>
+    <a href="{% url 'seller_shop_setup' %}" class="text-xs uppercase tracking-widest bg-stone-900 text-white px-5 py-2.5 hover:bg-stone-700 transition-colors">Podesi prodavnicu</a>
+</div>
+{% endif %}
 
 <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
     <div class="border border-neutral-200 p-6">

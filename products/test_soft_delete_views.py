@@ -21,7 +21,9 @@ class SoftDeleteListingTests(TestCase):
             password="testpass123",
         )
         self.seller, _ = Seller.objects.get_or_create(
-            user=self.user, defaults={"shop_name": "Del", "shop_slug": "del"}
+            user=self.user,
+            # Paid tier: the test also checks the shop page
+            defaults={"shop_name": "Del", "shop_slug": "del", "tier": "odrzivo"},
         )
         self.seller.status = "active"
         self.seller.save()

@@ -31,7 +31,7 @@ class TestTypedSlug:
         assert form.errors["shop_slug"] == ["Ova adresa prodavnice je zauzeta."]
 
     def test_typed_slug_is_saved_as_validated(self, client):
-        user = User.objects.create_user(email="b@example.com", username="b")
+        user = make_seller("b@example.com", shop_name="B", tier="odrzivo").user
         client.force_login(user)
         client.post(
             reverse("seller_shop_setup"), {"shop_name": "Y", "shop_slug": "My-Shop-"}

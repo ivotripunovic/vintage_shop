@@ -284,7 +284,7 @@ class TestOldUrls:
 
 @pytest.mark.django_db
 class TestStartSelling:
-    """Every account can sell; the first listing opens the shop (#89)."""
+    """Every account can sell; free sellers list without a store (#89)."""
 
     def test_visitors_sign_up_and_continue_to_their_first_listing(self, client):
         response = client.get(reverse("seller_register"))
@@ -308,8 +308,8 @@ class TestStartSelling:
         assert reverse("account_email") in body
 
     def test_new_visitor_goes_from_start_selling_to_their_first_listing(self, client):
-        """ "Počni da prodaješ" → signup → email confirmation → shop setup →
-        product form, with no buyer/seller question on the way."""
+        """ "Počni da prodaješ" → signup → email confirmation → product form,
+        with no buyer/seller question and no shop to set up on the way."""
         signup_url = client.get(reverse("seller_register"))["Location"]
         response = client.post(
             signup_url,
@@ -320,23 +320,13 @@ class TestStartSelling:
         response = client.post(link_in(mail.outbox[0], "/auth/confirm-email/"))
         assert response["Location"] == reverse("product_create")
 
-        response = client.get(reverse("product_create"))
-        setup_url = response["Location"]
-        assert setup_url == (
-            f"{reverse('seller_shop_setup')}?next=%2Fproducts%2Fcreate%2F"
-        )
-        page = client.get(setup_url).content.decode()
-        assert "Otvorite prodavnicu" in page
-        assert "Dobrodošli!" in page
-
-        response = client.post(
-            setup_url, {"shop_name": "Ana's Vintage", "next": "/products/create/"}
-        )
-        assert response["Location"] == reverse("product_create")
-        assert client.get(reverse("product_create")).status_code == 200
-        user = User.objects.get(email="new@example.com")
-        assert user.is_seller
-        assert user.seller_profile.shop_slug == "anas-vintage"
+        # No shop to set up: the listing form opens straight away
+        page = client.get(reverse("product_create"))
+        assert page.status_code == 200
+        assert "Dobrodošli!" in page.content.decode()
+        seller = User.objects.get(email="new@example.com").seller_profile
+        assert not seller.has_store
+        assert "new" not in seller.shop_slug  # never from the email
 
     def test_old_welcome_page_redirects_home(self, client):
         client.force_login(make_user())

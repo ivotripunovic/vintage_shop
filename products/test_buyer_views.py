@@ -255,7 +255,7 @@ class ProductDetailViewTests(TestCase):
     def test_product_detail_shows_seller_info(self):
         """Test that product detail shows seller information."""
         response = self.client.get(reverse("product_detail", args=[self.product.id]))
-        self.assertContains(response, self.seller.shop_name)
+        self.assertContains(response, self.seller.display_name)
 
     def test_product_detail_shows_related_products(self):
         """Test that related products are shown."""

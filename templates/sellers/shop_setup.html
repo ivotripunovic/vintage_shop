@@ -1,11 +1,11 @@
 {% extends "base.html" %}
-{% block title %}{% if is_new_shop %}Otvorite prodavnicu{% else %}Podesite vašu prodavnicu{% endif %} — {{ SITE_NAME }}{% endblock %}
+{% block title %}Podesite vašu prodavnicu — {{ SITE_NAME }}{% endblock %}
 
 {% block content %}
 
 <div class="max-w-2xl mx-auto">
-    <h1 class="font-serif text-4xl font-light mb-2">{% if is_new_shop %}Otvorite prodavnicu{% else %}Podesite vašu prodavnicu{% endif %}</h1>
-    <p class="text-xs text-stone-400 mb-10">{% if is_new_shop %}Vaši oglasi se prikazuju pod imenom prodavnice. Sve ovo možete kasnije promeniti.{% else %}Recite kupcima o vašoj prodavnici i proizvodima{% endif %}</p>
+    <h1 class="font-serif text-4xl font-light mb-2">Podesite vašu prodavnicu</h1>
+    <p class="text-xs text-stone-400 mb-10">Recite kupcima o vašoj prodavnici i proizvodima</p>
 
     <form method="post" enctype="multipart/form-data" class="space-y-6">
         {% csrf_token %}
@@ -51,7 +51,7 @@
             {% if form.shop_image.errors %}<p class="text-xs text-red-600 mt-1">{{ form.shop_image.errors.0 }}</p>{% endif %}
         </div>
 
-        <button type="submit" class="w-full text-xs uppercase tracking-widest bg-stone-900 text-white py-3 hover:bg-stone-700 transition-colors">{% if next %}{% if is_new_shop %}Otvori prodavnicu i nastavi{% else %}Sačuvaj i nastavi{% endif %}{% else %}Nastavi na bankarske podatke{% endif %}</button>
+        <button type="submit" class="w-full text-xs uppercase tracking-widest bg-stone-900 text-white py-3 hover:bg-stone-700 transition-colors">{% if next %}Sačuvaj i nastavi{% else %}Nastavi na bankarske podatke{% endif %}</button>
     </form>
 </div>
 

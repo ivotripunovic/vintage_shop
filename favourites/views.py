@@ -40,14 +40,14 @@ def favourite_seller_update(request, seller_id):
 
     if action == "remove":
         FavouriteSeller.objects.filter(user=request.user, seller=seller).delete()
-        messages.success(request, f"{seller.shop_name} je uklonjena iz omiljenih.")
+        messages.success(request, f"{seller.display_name} je uklonjena iz omiljenih.")
     elif seller.user_id == request.user.id:
         messages.error(request, "Ne možete dodati svoju prodavnicu u omiljene.")
     elif not seller.is_active_shop:
         messages.error(request, "Ova prodavnica trenutno nije aktivna.")
     else:
         FavouriteSeller.objects.get_or_create(user=request.user, seller=seller)
-        messages.success(request, f"{seller.shop_name} je dodata u omiljene.")
+        messages.success(request, f"{seller.display_name} je dodata u omiljene.")
     return _redirect_back(request)
 
 

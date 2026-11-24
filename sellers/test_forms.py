@@ -127,7 +127,12 @@ class SellerAccountSettingsFormCommitTests(TestCase):
         )
         self.seller, _ = Seller.objects.get_or_create(
             user=self.user,
-            defaults={"shop_name": "Commit Shop", "shop_slug": "commit-shop"},
+            defaults={
+                "shop_name": "Commit Shop",
+                "shop_slug": "commit-shop",
+                # The shop name is a store field (paid tiers)
+                "tier": "odrzivo",
+            },
         )
         self.original_name = self.seller.shop_name
 

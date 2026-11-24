@@ -133,8 +133,11 @@ class BankDetailsForm(forms.ModelForm):
         return account_number
 
 
+STORE_FIELDS = ("shop_name", "shop_description", "shop_image")
+
+
 class SellerAccountSettingsForm(forms.ModelForm):
-    """Form for seller to update their account settings."""
+    """Seller settings. The store fields only for a seller with a store."""
 
     is_trader = forms.BooleanField(
         required=False,
@@ -177,6 +180,9 @@ class SellerAccountSettingsForm(forms.ModelForm):
         """Initialize form with user instance."""
         self.user = user
         super().__init__(*args, **kwargs)
+        if not self.instance.has_store:
+            for name in STORE_FIELDS:
+                del self.fields[name]
         # An outdated confirmation starts unticked so the seller re-confirms
         self.fields["is_trader"].initial = (
             self.instance.is_trader and not self.instance.trader_statement_outdated

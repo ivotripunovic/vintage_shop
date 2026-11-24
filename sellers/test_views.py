@@ -9,7 +9,12 @@ from django.utils.timezone import now
 from products.models import Product, ProductCategory, ProductCondition
 from users.models import User
 
-from .models import Seller, SellerSubscription
+from .models import (
+    ANONYMOUS_SELLER_NAME,
+    DEFAULT_SHOP_NAME,
+    Seller,
+    SellerSubscription,
+)
 from .testing import make_seller
 
 PRODUCT_CREATE = reverse("product_create")
@@ -22,10 +27,12 @@ def _make_user(email="ana.petrovic@example.com"):
 
 
 class TestShopSetupForExistingShop(TestCase):
-    """Shop setup edits an open shop instead of opening a second one."""
+    """Shop setup edits the store of a paid-tier seller."""
 
     def setUp(self):
-        self.seller = make_seller("google@example.com", shop_name="Stara radnja")
+        self.seller = make_seller(
+            "google@example.com", shop_name="Stara radnja", tier="odrzivo"
+        )
         self.user = self.seller.user
         self.client.force_login(self.user)
         self.url = reverse("seller_shop_setup")
@@ -67,48 +74,56 @@ class TestShopSetupForExistingShop(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Stara radnja")
 
+    def test_typed_slug_that_is_taken_is_an_error(self):
+        make_seller("other@example.com", shop_name="Radnja")
+        response = self.client.post(
+            self.url, {"shop_name": "Moja", "shop_slug": "radnja"}
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Ova adresa prodavnice je zauzeta.")
 
-class TestFirstListingOpensTheShop(TestCase):
-    """A signed-in user without a shop clicks "Dodaj oglas" (#89)."""
+    def test_reserved_slug_is_refused(self):
+        response = self.client.post(
+            self.url, {"shop_name": "Moja", "shop_slug": "dashboard"}
+        )
+        self.assertContains(response, "Ova adresa prodavnice je zauzeta.")
+
+    def test_next_is_followed_but_external_next_is_ignored(self):
+        response = self.client.post(
+            self.url, {"shop_name": "Radnja", "next": PRODUCT_CREATE}
+        )
+        self.assertRedirects(response, PRODUCT_CREATE)
+        response = self.client.post(
+            self.url, {"shop_name": "Radnja", "next": "https://evil.example.com/"}
+        )
+        self.assertRedirects(response, reverse("seller_bank_details"))
+
+
+class TestFirstListing(TestCase):
+    """A free user's first "Dodaj oglas" needs no shop setup (#89)."""
 
     def setUp(self):
         self.user = _make_user()
         self.client.force_login(self.user)
-        self.setup_url = f"{reverse('seller_shop_setup')}?next=%2Fproducts%2Fcreate%2F"
 
-    def test_add_listing_goes_to_shop_setup_first(self):
+    def test_add_listing_opens_the_form_and_a_hidden_seller(self):
         response = self.client.get(PRODUCT_CREATE)
-        self.assertRedirects(response, self.setup_url)
-        self.assertFalse(Seller.objects.exists())
-
-    def test_setup_opens_the_shop_and_continues_to_the_listing(self):
-        page = self.client.get(self.setup_url)
-        self.assertContains(page, 'name="next" value="/products/create/"')
-        self.assertContains(page, "Otvori prodavnicu i nastavi")
-
-        response = self.client.post(
-            self.setup_url,
-            {
-                "shop_name": "Đorđeva Radnja",
-                "shop_description": "Stari radio aparati",
-                "location": "Niš",
-                "next": PRODUCT_CREATE,
-            },
-        )
-        self.assertRedirects(response, PRODUCT_CREATE)
+        self.assertEqual(response.status_code, 200)
         seller = Seller.objects.get(user=self.user)
-        self.assertEqual(seller.shop_name, "Đorđeva Radnja")
-        self.assertEqual(seller.shop_slug, "djordjeva-radnja")
-        self.assertEqual(seller.location, "Niš")
+        self.assertFalse(seller.has_store)
         self.assertEqual(seller.tier, "garazna")
+        self.assertEqual(seller.shop_slug, "prodavnica")
         [subscription] = seller.subscriptions.all()
         self.assertEqual(subscription.amount, 0)
 
-    def test_first_listing_works_after_setup(self):
-        self.client.post(
-            self.setup_url, {"shop_name": "Moja radnja", "next": PRODUCT_CREATE}
-        )
-        self.assertEqual(self.client.get(PRODUCT_CREATE).status_code, 200)
+    def test_opening_the_form_twice_makes_one_seller(self):
+        self.client.get(PRODUCT_CREATE)
+        self.client.get(PRODUCT_CREATE)
+        self.assertEqual(Seller.objects.filter(user=self.user).count(), 1)
+        self.assertEqual(SellerSubscription.objects.count(), 1)
+
+    def test_first_listing_is_saved(self):
+        self.client.get(PRODUCT_CREATE)
         parent = ProductCategory.objects.create(name="Kuća", slug="kuca")
         category = ProductCategory.objects.create(
             name="Nameštaj", slug="namestaj", parent=parent
@@ -130,62 +145,126 @@ class TestFirstListingOpensTheShop(TestCase):
         self.assertEqual(product.seller.user, self.user)
 
     def test_slug_never_comes_from_the_email(self):
-        self.client.post(self.setup_url, {"shop_name": "Radnja"})
+        self.client.get(PRODUCT_CREATE)
         self.assertNotIn("ana", Seller.objects.get(user=self.user).shop_slug)
 
-    def test_without_next_setup_continues_to_bank_details(self):
+    def test_free_seller_is_sent_away_from_shop_setup(self):
+        self.client.get(PRODUCT_CREATE)
+        response = self.client.get(reverse("seller_shop_setup"))
+        self.assertRedirects(response, reverse("seller_dashboard"))
         response = self.client.post(
             reverse("seller_shop_setup"), {"shop_name": "Radnja"}
         )
-        self.assertRedirects(response, reverse("seller_bank_details"))
-
-    def test_external_next_is_ignored(self):
-        response = self.client.post(
-            reverse("seller_shop_setup"),
-            {"shop_name": "Radnja", "next": "https://evil.example.com/"},
+        self.assertRedirects(response, reverse("seller_dashboard"))
+        self.assertEqual(
+            Seller.objects.get(user=self.user).shop_name, DEFAULT_SHOP_NAME
         )
-        self.assertRedirects(response, reverse("seller_bank_details"))
 
-    def test_taken_slug_gets_a_suffix(self):
-        make_seller("other@example.com", shop_name="Radnja")
-        self.client.post(self.setup_url, {"shop_name": "Radnja"})
-        self.assertEqual(Seller.objects.get(user=self.user).shop_slug, "radnja-2")
 
-    def test_typed_slug_that_is_taken_is_an_error(self):
-        make_seller("other@example.com", shop_name="Radnja")
-        response = self.client.post(
-            self.setup_url, {"shop_name": "Moja", "shop_slug": "radnja"}
+class TestStoresComeWithPaidTiers(TestCase):
+    """Only Održivo and Premijum sellers have a store page (#89)."""
+
+    def _product(self, seller, title="Lampa"):
+        return Product.objects.create(
+            seller=seller, title=title, price=100, status="published"
         )
-        self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Ova adresa prodavnice je zauzeta.")
-        self.assertFalse(Seller.objects.filter(user=self.user).exists())
 
-    def test_reserved_slug_is_refused(self):
-        response = self.client.post(
-            self.setup_url, {"shop_name": "Moja", "shop_slug": "dashboard"}
+    def test_free_seller_has_no_shop_page_and_is_not_listed(self):
+        seller = make_seller("free@example.com", shop_name="Radnja")
+        self._product(seller)
+        url = reverse("shop_detail", args=[seller.shop_slug])
+        self.assertEqual(self.client.get(url).status_code, 404)
+        shops = self.client.get(reverse("shops_browse"))
+        self.assertNotIn(seller, list(shops.context["sellers"]))
+
+    def test_paid_seller_has_a_shop_page_and_is_listed(self):
+        for tier in ("odrzivo", "premijum"):
+            with self.subTest(tier):
+                seller = make_seller(f"{tier}@example.com", shop_name=tier, tier=tier)
+                self._product(seller)
+                url = reverse("shop_detail", args=[seller.shop_slug])
+                self.assertContains(self.client.get(url), seller.shop_name)
+                shops = self.client.get(reverse("shops_browse"))
+                self.assertIn(seller, list(shops.context["sellers"]))
+
+    def test_free_listing_shows_the_full_name_and_no_shop_link(self):
+        seller = make_seller(
+            "free@example.com",
+            shop_name="Skrivena radnja",
+            user_fields={"first_name": "Ana", "last_name": "Petrović"},
         )
-        self.assertContains(response, "Ova adresa prodavnice je zauzeta.")
-        self.client.post(self.setup_url, {"shop_name": "Dashboard"})
-        self.assertEqual(Seller.objects.get(user=self.user).shop_slug, "dashboard-2")
+        product = self._product(seller)
+        response = self.client.get(reverse("product_detail", args=[product.id]))
+        self.assertContains(response, "Ana Petrović")
+        self.assertNotContains(response, "Skrivena radnja")
+        self.assertNotContains(
+            response, reverse("shop_detail", args=[seller.shop_slug])
+        )
+
+    def test_paid_listing_shows_the_shop(self):
+        seller = make_seller(
+            "paid@example.com",
+            shop_name="Prava radnja",
+            tier="odrzivo",
+            user_fields={"first_name": "Ana", "last_name": "Petrović"},
+        )
+        product = self._product(seller)
+        response = self.client.get(reverse("product_detail", args=[product.id]))
+        self.assertContains(response, "Prava radnja")
+        self.assertContains(response, reverse("shop_detail", args=[seller.shop_slug]))
+
+    def test_seller_without_a_name_shows_a_generic_label(self):
+        seller = make_seller("noname@example.com")
+        self.assertEqual(seller.display_name, ANONYMOUS_SELLER_NAME)
+
+    def test_moving_up_a_tier_asks_for_the_store_name(self):
+        self.client.force_login(_make_user())
+        self.client.get(PRODUCT_CREATE)
+        seller = Seller.objects.get()
+        dashboard = reverse("seller_dashboard")
+        self.assertNotContains(self.client.get(dashboard), "Podesi prodavnicu")
+
+        seller.change_tier("odrzivo")
+        self.assertContains(self.client.get(dashboard), "Podesi prodavnicu")
+        self.client.post(reverse("seller_shop_setup"), {"shop_name": "Moja radnja"})
+        seller.refresh_from_db()
+        self.assertFalse(seller.needs_store_setup)
+        self.assertNotContains(self.client.get(dashboard), "Podesi prodavnicu")
+
+    def test_settings_have_no_store_fields_for_a_free_seller(self):
+        free = make_seller("free@example.com")
+        self.client.force_login(free.user)
+        body = self.client.get(reverse("seller_settings")).content.decode()
+        self.assertNotIn('name="shop_name"', body)
+        self.assertNotIn('name="shop_image"', body)
+
+        paid = make_seller("paid@example.com", tier="odrzivo")
+        self.client.force_login(paid.user)
+        body = self.client.get(reverse("seller_settings")).content.decode()
+        self.assertIn('name="shop_name"', body)
 
 
-class TestPagesNeedAShop(TestCase):
-    """Seller pages send a user without a shop to setup and never make one."""
+class TestPagesNeedASeller(TestCase):
+    """Seller pages send a user who never listed to the listing form."""
 
     def setUp(self):
         self.user = _make_user()
         self.client.force_login(self.user)
 
-    def test_seller_pages_redirect_to_shop_setup(self):
+    def test_seller_pages_redirect_to_the_listing_form(self):
         for name in (
             "seller_dashboard",
             "seller_settings",
             "seller_products_list",
             "seller_bank_details",
+            "seller_shop_setup",
         ):
             with self.subTest(name):
                 response = self.client.get(reverse(name))
-                self.assertRedirects(response, reverse("seller_shop_setup"))
+                # Not followed: the listing form opens the seller
+                self.assertRedirects(
+                    response, PRODUCT_CREATE, fetch_redirect_response=False
+                )
         self.assertFalse(Seller.objects.exists())
         self.assertFalse(SellerSubscription.objects.exists())
 
@@ -208,26 +287,35 @@ class TestNavigation(TestCase):
         self.assertIn(reverse("seller_dashboard"), body)
         self.assertIn(reverse("seller_products_list"), body)
 
-    def test_account_settings_offer_a_shop(self):
+    def test_account_settings_offer_a_listing(self):
         self.client.force_login(_make_user())
         response = self.client.get(reverse("account-settings"))
-        self.assertContains(response, "Otvori prodavnicu")
-        self.assertContains(response, reverse("seller_shop_setup"))
+        self.assertContains(response, "Dodaj oglas")
+        self.assertNotContains(response, reverse("seller_shop_setup"))
         self.assertNotContains(response, "Tip naloga")
 
-    def test_account_settings_link_the_dashboard_for_shop_owners(self):
+    def test_account_settings_for_a_free_seller(self):
         self.client.force_login(make_seller("s@example.com", "Moja radnja").user)
+        response = self.client.get(reverse("account-settings"))
+        self.assertContains(response, reverse("seller_dashboard"))
+        self.assertContains(response, "pakete Održivo i Premijum")
+        self.assertNotContains(response, "Moja radnja")
+
+    def test_account_settings_name_the_store_of_a_paid_seller(self):
+        seller = make_seller("s@example.com", "Moja radnja", tier="premijum")
+        self.client.force_login(seller.user)
         response = self.client.get(reverse("account-settings"))
         self.assertContains(response, "Moja radnja")
         self.assertContains(response, reverse("seller_dashboard"))
-        self.assertNotContains(response, "Otvori prodavnicu")
 
 
 class TestTraderConfirmation(TestCase):
     """Sellers confirm trader status in settings; buyers see a badge."""
 
     def setUp(self):
-        self.seller = make_seller("trader@example.com", shop_name="Trader")
+        self.seller = make_seller(
+            "trader@example.com", shop_name="Trader", tier="odrzivo"
+        )
         self.user = self.seller.user
         self.client.force_login(self.user)
 

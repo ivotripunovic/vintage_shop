@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% block title %}
-    {% if conversation.seller.shop_name %}{{ conversation.seller.shop_name }}{% else %}Razgovor{% endif %} — {{ SITE_NAME }}
+    {% if conversation.seller %}{{ conversation.seller.display_name }}{% else %}Razgovor{% endif %} — {{ SITE_NAME }}
 {% endblock %}
 
 {% block content %}

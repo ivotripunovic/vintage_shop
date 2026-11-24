@@ -15,7 +15,6 @@ from django.http import (
 )
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
-from django.utils.http import urlencode
 from django.views.decorators.http import require_http_methods
 
 from sellers.models import Seller
@@ -69,11 +68,14 @@ def _get_seller_or_403(request):
     return request.user.seller_profile
 
 
-def _open_shop_first(request):
-    """Send a user without a shop to shop setup, then back to this page."""
-    messages.info(request, "Pre prvog oglasa otvorite svoju prodavnicu.")
-    query = urlencode({"next": request.get_full_path()})
-    return redirect(f"{reverse('seller_shop_setup')}?{query}")
+def _seller_for(request):
+    """The signed-in user's seller profile, opened quietly on the first listing.
+
+    Free (Garazna) sellers have no store to set up; a store comes with the
+    paid tiers (Seller.has_store). Photo uploads need the seller, so the
+    listing form makes it on GET too; Seller.open_for is idempotent.
+    """
+    return _get_seller_or_403(request) or Seller.open_for(request.user)
 
 
 def _last_used_defaults(seller):
@@ -100,7 +102,7 @@ def _form_context(seller, form, photos, photo_errors, product=None):
         "photo_errors": photo_errors,
         "max_photos": MAX_PHOTOS,
         "max_image_mb": MAX_IMAGE_MB,
-        "shop_name": seller.shop_name,
+        "shop_name": seller.display_name,
         # For the live tips in the preview (static/js/listing-preview.js)
         "text_tips": TEXT_TIPS,
         "tip_rules": TEXT_RULES,
@@ -132,9 +134,7 @@ def product_create_view(request):
     Photos arrive as PhotoUploads (one request each, see products.photos)
     and are attached in the posted order when the listing is saved.
     """
-    seller = _get_seller_or_403(request)
-    if not seller:
-        return _open_shop_first(request)
+    seller = _seller_for(request)
 
     uploads, photo_errors = [], []
     if request.method == "POST":
@@ -511,7 +511,7 @@ def product_public_detail_view(request, product_id):
     Shows product images, description, price, seller info, and related products.
     """
     product = get_object_or_404(
-        Product.objects.select_related("seller").annotate(
+        Product.objects.select_related("seller__user").annotate(
             wishlist_count=Count("wishlisted_by")
         ),
         id=product_id,
@@ -572,7 +572,7 @@ def category_products_view(request, category_id):
         Product.objects.filter(
             status="published", category_id__in=category.get_all_ids()
         )
-        .select_related("condition", "seller")
+        .select_related("condition", "seller__user")
         .prefetch_related("images")
     )
 
@@ -636,7 +636,7 @@ def products_browse_view(request):
     # Start with published products
     products = (
         Product.objects.filter(status="published")
-        .select_related("category", "seller")
+        .select_related("category", "seller__user")
         .prefetch_related("images")
     )
 

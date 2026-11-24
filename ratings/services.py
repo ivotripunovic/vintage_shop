@@ -38,7 +38,7 @@ def pending_sales(user):
             Q(buyer=user) & ~Q(ratings__direction=Rating.BUYER_TO_SELLER)
             | Q(seller__user=user) & ~Q(ratings__direction=Rating.SELLER_TO_BUYER)
         )
-        .select_related("seller", "buyer")
+        .select_related("seller__user", "buyer")
         .distinct()
     )
 

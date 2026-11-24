@@ -14,6 +14,9 @@ from users.models import User
 SEED_IMAGES_DIR = Path(settings.BASE_DIR) / "seed_data" / "product_images"
 
 
+SEED_TIERS = ("premijum", "odrzivo", "garazna")
+
+
 class Command(BaseCommand):
     help = "Seed conditions, sellers and products. Run seed_categories first."
 
@@ -98,6 +101,8 @@ class Command(BaseCommand):
                 shop_name=data["shop_name"],
                 shop_description="Pažljivo odabrani vintage predmeti sa garancijom autentičnosti.",
                 location=data["location"],
+                # Mixed tiers: only the paid ones have a store page (#89)
+                tier=SEED_TIERS[i % len(SEED_TIERS)],
                 bank_account_holder=data["shop_name"],
                 bank_name="Banka",
                 bank_account_number=f"RS35000000000000000{i:02d}",

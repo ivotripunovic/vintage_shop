@@ -1,6 +1,7 @@
 # Task: Every User Can Buy and Sell
 
-Status: **done in #89** (2026-11-23), with the decisions below as proposed.
+Status: **done in #89** (2026-11-23), with the decisions below as proposed;
+stores later limited to the paid tiers (see "Change" below).
 Written 2026-11-20 at the end of the allauth work (#73–#88).
 
 Beyond the plan: shop slugs skip the paths under `/seller/` (`dashboard`,
@@ -18,6 +19,29 @@ shops that had none. Accepted as is:
   lands on `/`, where "Dodaj oglas" is in the nav.
 - Seeded shops get the free Garažna subscription (0 RSD), not the 999 the old
   seed set; that matches their tier.
+
+## Change: stores only for paid tiers (2026-11-24)
+
+Decided after review: a free user does not need a store. Only the paid
+tiers, Održivo and Premijum (`sellers.models.STORE_TIERS`), come with a store:
+a shop name, a page at `/seller/<slug>/` and a place in the shops list.
+
+- The first "Dodaj oglas" opens the listing form straight away. It quietly
+  makes a hidden `Seller` row with `Seller.open_for(user)` (named
+  "Prodavnica", slug `prodavnica-N`, a free Garažna subscription), because
+  products, chat, sales, ratings, favourites and billing all point to `Seller`.
+- `Seller.has_store` is true for the paid tiers. `Seller.display_name` is
+  what buyers see: the shop name with a store, otherwise the user's full
+  name, or "Prodavac" if the user has no name.
+- A free seller's shop page is a 404 and the seller is not in the shops
+  list. Product pages, chat, ratings and favourites show the full name with
+  no shop link. Seller settings hide the shop name, description and image.
+- Shop setup is only for sellers with a store. When an admin moves a seller
+  up to a paid tier, the dashboard shows "Podesi prodavnicu" until the store
+  has a name (`Seller.needs_store_setup`).
+- Seeded shops get mixed tiers (premijum, odrzivo, garazna).
+- Existing Garažna shops lose their public page. Their name and slug are
+  kept, and the page comes back if they move up a tier. No migration.
 
 ## Goal
 

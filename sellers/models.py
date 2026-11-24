@@ -52,6 +52,13 @@ TRADER_STATEMENT = (
 # Used when a shop is opened without a name
 DEFAULT_SHOP_NAME = "Prodavnica"
 
+# Tiers that come with a store: a shop name, a public page and a place in the
+# shops list. Garazna sellers just list, under their own name.
+STORE_TIERS = frozenset({"odrzivo", "premijum"})
+
+# Shown for a seller without a store whose user has no name
+ANONYMOUS_SELLER_NAME = "Prodavac"
+
 # Paths under /seller/ that a shop slug would shadow (sellers/urls.py)
 RESERVED_SHOP_SLUGS = frozenset(
     {"register", "shop-setup", "bank-details", "dashboard", "settings", "products"}
@@ -130,6 +137,23 @@ class Seller(TimeStampedModel):
 
     def __str__(self):
         return self.shop_name
+
+    @property
+    def has_store(self):
+        """The seller's tier comes with a store (STORE_TIERS)."""
+        return self.tier in STORE_TIERS
+
+    @property
+    def display_name(self):
+        """What buyers see: the shop name, or the user's name without a store."""
+        if self.has_store:
+            return self.shop_name
+        return self.user.get_full_name() or ANONYMOUS_SELLER_NAME
+
+    @property
+    def needs_store_setup(self):
+        """Moved up to a store tier but the store has no name yet."""
+        return self.has_store and self.shop_name == DEFAULT_SHOP_NAME
 
     @classmethod
     def open_for(cls, user, shop_name=None, shop_slug=None, **fields):

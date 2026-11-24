@@ -29,10 +29,10 @@ def account_settings_view(request):
         else:
             profile_form = UserProfileForm(instance=request.user)
 
-    favourite_sellers = request.user.favourite_sellers.select_related("seller")
+    favourite_sellers = request.user.favourite_sellers.select_related("seller__user")
     wishlist_items = (
         request.user.wishlist_items.filter(product__is_deleted=False)
-        .select_related("product__seller")
+        .select_related("product__seller__user")
         .prefetch_related("product__images")
     )
 

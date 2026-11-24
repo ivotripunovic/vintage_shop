@@ -22,7 +22,9 @@ from .forms import (
     SellerAccountSettingsForm,
     ShopSetupForm,
 )
-from .models import Seller
+from .models import STORE_TIERS, Seller
+
+STORE_TIERS_MESSAGE = "Naziv i stranica prodavnice dolaze uz pakete Održivo i Premijum."
 
 
 def _safe_next(request):
@@ -36,15 +38,15 @@ def _safe_next(request):
 
 
 def _shop_or_setup(request):
-    """(seller, None) for a shop owner, else (None, redirect to shop setup).
+    """(seller, None) for a seller, else (None, redirect to a first listing).
 
-    Shops are opened only from shop setup (Seller.open_for); pages that need
-    one never make one up.
+    A seller profile is opened quietly on the first listing
+    (products.views._seller_for); pages that need one never make one up.
     """
     if request.user.is_seller:
         return request.user.seller_profile, None
-    messages.info(request, "Prvo otvorite svoju prodavnicu.")
-    return None, redirect("seller_shop_setup")
+    messages.info(request, "Dodajte svoj prvi oglas.")
+    return None, redirect("product_create")
 
 
 def seller_register_view(request):
@@ -66,39 +68,31 @@ def seller_register_view(request):
 @require_http_methods(["GET", "POST"])
 def seller_shop_setup_view(request):
     """
-    Open a shop, or edit an open one: name, URL, description, location, image.
+    Set up the store: name, URL, description, location, image.
 
-    A new shop is opened with Seller.open_for, then the user continues to
-    ``next`` (usually their first listing) or to bank details.
+    Only the paid tiers come with a store (Seller.has_store); free sellers
+    list under their own name and are sent to the dashboard.
     """
-    seller = request.user.seller_profile if request.user.is_seller else None
-    next_url = _safe_next(request)
+    seller, setup = _shop_or_setup(request)
+    if setup:
+        return setup
+    if not seller.has_store:
+        messages.info(request, STORE_TIERS_MESSAGE)
+        return redirect("seller_dashboard")
 
     if request.method == "POST":
         form = ShopSetupForm(request.POST, request.FILES, instance=seller)
         if form.is_valid():
-            if seller is None:
-                data = form.cleaned_data
-                Seller.open_for(
-                    request.user,
-                    shop_name=data["shop_name"],
-                    shop_slug=data["shop_slug"],
-                    shop_description=data["shop_description"],
-                    location=data["location"],
-                    shop_image=data["shop_image"] or None,
-                )
-                messages.success(request, "Vaša prodavnica je otvorena.")
-            else:
-                form.save()
-                messages.success(request, "Prodavnica je sačuvana.")
-            return redirect(next_url or "seller_bank_details")
+            form.save()
+            messages.success(request, "Prodavnica je sačuvana.")
+            return redirect(_safe_next(request) or "seller_bank_details")
     else:
         form = ShopSetupForm(instance=seller)
 
     return render(
         request,
         "sellers/shop_setup.html",
-        {"form": form, "next": next_url, "is_new_shop": seller is None},
+        {"form": form, "next": _safe_next(request)},
     )
 
 
@@ -254,7 +248,10 @@ def shops_browse_view(request):
     # Get sellers with at least one published product
     sellers = (
         Seller.objects.filter(
-            status="active", products__status="published", products__is_deleted=False
+            status="active",
+            tier__in=STORE_TIERS,
+            products__status="published",
+            products__is_deleted=False,
         )
         .distinct()
         .annotate(
@@ -315,6 +312,7 @@ def shop_detail_view(request, shop_slug):
         ),
         shop_slug=shop_slug,
         status="active",
+        tier__in=STORE_TIERS,
     )
 
     # Get published products for this shop

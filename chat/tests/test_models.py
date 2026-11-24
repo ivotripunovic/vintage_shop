@@ -68,7 +68,7 @@ class TestConversation:
 
     def test_label_for_each_side(self, conversation, buyer, seller_user, seller):
         assert conversation.label_for(buyer) == "Kupac"
-        assert conversation.label_for(seller_user) == seller.shop_name
+        assert conversation.label_for(seller_user) == seller.display_name
 
     def test_str(self, conversation, buyer, seller, product):
         assert str(buyer.email) in str(conversation)
