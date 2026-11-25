@@ -77,7 +77,7 @@ Pre-launch gate in `core.middleware.ComingSoonMiddleware`, toggled by `COMING_SO
 
 - pytest with pytest-django. Config in `pytest.ini`, test settings in `config/settings_test.py`.
 - View tests (`test_views.py` files) are auto-marked as `slow` by `conftest.py`.
-- Tests run in parallel (`-n auto`) with `--reuse-db` for speed.
+- Tests run in parallel (`-n auto`) with `--reuse-db` for speed. The SQLite test databases are files (`.test_db.sqlite3_gw<n>`, gitignored) so they are kept between runs; run `pytest --create-db` after editing an existing migration or switching to a branch with different migrations.
 - Test settings use MD5 password hasher (~100x faster), in-memory cache, logging disabled.
 
 ### Local Tooling Hooks

@@ -50,8 +50,16 @@ LOGGING = {
     "loggers": {},
 }
 
-# Skip migrations for faster test setup (if using pytest)
-# For manage.py test, Django handles this automatically
+# A file-backed test database, so --reuse-db (pytest.ini) keeps it between
+# runs instead of migrating from scratch in every xdist worker. An in-memory
+# SQLite database is never reused. pytest-django adds a _gw<n> suffix per
+# worker. New migrations are applied to the kept database; run
+# `pytest --create-db` after editing an existing migration or switching to
+# a branch with different migrations.
+if DATABASES["default"]["ENGINE"] == "django.db.backends.sqlite3":  # noqa: F405
+    DATABASES["default"]["TEST"] = {  # noqa: F405
+        "NAME": str(BASE_DIR / ".test_db.sqlite3")  # noqa: F405
+    }
 
 # Disable social providers in tests (no OAuth credentials available)
 SOCIALACCOUNT_PROVIDERS = {}

@@ -7,6 +7,8 @@ import tempfile
 
 from asgiref.sync import iscoroutinefunction
 from django.core.handlers.wsgi import WSGIHandler
+from django.core.signals import request_finished, request_started
+from django.db import close_old_connections
 from django.http import (
     FileResponse,
     HttpResponse,
@@ -36,11 +38,19 @@ def wsgi_request(method, url):
     def start_response(line, headers):
         started["line"], started["headers"] = line, dict(headers)
 
-    result = WSGIHandler()(environ, start_response)
+    # Like django.test.Client: the request must not close the test's
+    # database connection (that would end the test's transaction)
+    request_started.disconnect(close_old_connections)
+    request_finished.disconnect(close_old_connections)
     try:
-        body = b"".join(result)
+        result = WSGIHandler()(environ, start_response)
+        try:
+            body = b"".join(result)
+        finally:
+            result.close()
     finally:
-        result.close()
+        request_started.connect(close_old_connections)
+        request_finished.connect(close_old_connections)
     return started["line"], started["headers"], body
 
 

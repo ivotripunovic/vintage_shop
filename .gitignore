@@ -31,6 +31,8 @@ MANIFEST
 local_settings.py
 db.sqlite3
 db.sqlite3-journal
+# Test databases kept by --reuse-db (config/settings_test.py)
+.test_db.sqlite3*
 /media
 /staticfiles
 .env
