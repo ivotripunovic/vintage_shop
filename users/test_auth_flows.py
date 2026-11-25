@@ -13,6 +13,9 @@ from django.core import mail
 from django.core.cache import cache
 from django.urls import reverse
 
+from products.models import ProductCategory, ProductCondition
+from products.test_photo_uploads import photo
+from sellers.models import Seller
 from sellers.testing import make_seller
 from users.models import User
 
@@ -307,13 +310,23 @@ class TestStartSelling:
         body = client.get(reverse("seller_settings")).content.decode()
         assert reverse("account_email") in body
 
-    def test_new_visitor_goes_from_start_selling_to_their_first_listing(self, client):
-        """ "Počni da prodaješ" → signup → email confirmation → product form,
-        with no buyer/seller question and no shop to set up on the way."""
+    def test_new_visitor_goes_from_start_selling_to_their_first_listing(
+        self, client, settings, tmp_path
+    ):
+        """ "Počni da prodaješ" → signup → email confirmation → product form →
+        first photo → published listing, with no buyer/seller question and no
+        shop to set up on the way."""
+        settings.MEDIA_ROOT = tmp_path
         signup_url = client.get(reverse("seller_register"))["Location"]
         response = client.post(
             signup_url,
-            {"email": "new@example.com", "password1": PASSWORD, "password2": PASSWORD},
+            {
+                "email": "new@example.com",
+                "first_name": "Ana",
+                "last_name": "Petrović",
+                "password1": PASSWORD,
+                "password2": PASSWORD,
+            },
         )
         assert response["Location"] == reverse("account_email_verification_sent")
 
@@ -326,6 +339,52 @@ class TestStartSelling:
         assert "Dobrodošli!" in page.content.decode()
         # Looking at the form makes nobody a seller; saving a listing does
         assert not User.objects.get(email="new@example.com").is_seller
+
+        # The first photo, uploaded from the form, opens the hidden seller
+        response = client.post(reverse("photo_upload"), {"photo": photo()})
+        assert response.status_code == 201
+        upload_id = response.json()["id"]
+        user = User.objects.get(email="new@example.com")
+        assert user.is_seller
+        seller = user.seller_profile
+        assert not seller.has_store
+
+        parent = ProductCategory.objects.create(name="Kuća", slug="kuca")
+        category = ProductCategory.objects.create(
+            name="Nameštaj", slug="namestaj", parent=parent
+        )
+        condition = ProductCondition.objects.create(name="Dobro")
+        response = client.post(
+            reverse("product_create"),
+            {
+                "title": "Stara drvena stolica",
+                "description": "Masivno drvo, bez oštećenja, iz bakine kuće.",
+                "price": "1500",
+                "stock": "1",
+                "category": category.id,
+                "condition": condition.id,
+                "photos": [upload_id],
+                "action": "publish",
+            },
+        )
+        product = seller.products.get()
+        assert response["Location"] == reverse(
+            "product_seller_detail", kwargs={"product_id": product.id}
+        )
+        product.refresh_from_db()
+        assert product.status == "published"
+        assert product.images.count() == 1
+        assert Seller.objects.filter(user=user).count() == 1
+
+        # Buyers see the listing under the seller's name, with no shop page
+        client.logout()
+        page = client.get(reverse("product_detail", args=[product.id]))
+        assert "Ana Petrović" in page.content.decode()
+        assert reverse("shop_detail", args=[seller.shop_slug]) not in (
+            page.content.decode()
+        )
+        shop = client.get(reverse("shop_detail", args=[seller.shop_slug]))
+        assert shop.status_code == 404
 
     def test_old_welcome_page_redirects_home(self, client):
         client.force_login(make_user())
