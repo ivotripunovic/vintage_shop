@@ -8,20 +8,14 @@ from unittest import mock
 from django.test import TestCase
 from django.utils import timezone
 
-from users.models import User
+from sellers.testing import make_seller
 
 from .models import Invoice
 
 
 class TestInvoiceNumber(TestCase):
     def setUp(self):
-        user = User.objects.create_user(
-            email="billing@example.com",
-            username="billing@example.com",
-            password="testpass123",
-            is_seller=True,
-        )
-        self.seller = user.seller_profile
+        self.seller = make_seller("billing@example.com", shop_name="billing")
 
     def _make_invoice(self):
         return Invoice.objects.create(

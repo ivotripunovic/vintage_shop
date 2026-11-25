@@ -40,14 +40,14 @@ def favourite_seller_update(request, seller_id):
 
     if action == "remove":
         FavouriteSeller.objects.filter(user=request.user, seller=seller).delete()
-        messages.success(request, f"{seller.shop_name} je uklonjena iz omiljenih.")
+        messages.success(request, f"{seller.display_name} je uklonjena iz omiljenih.")
     elif seller.user_id == request.user.id:
         messages.error(request, "Ne možete dodati svoju prodavnicu u omiljene.")
     elif not seller.is_active_shop:
         messages.error(request, "Ova prodavnica trenutno nije aktivna.")
     else:
         FavouriteSeller.objects.get_or_create(user=request.user, seller=seller)
-        messages.success(request, f"{seller.shop_name} je dodata u omiljene.")
+        messages.success(request, f"{seller.display_name} je dodata u omiljene.")
     return _redirect_back(request)
 
 
@@ -58,7 +58,9 @@ def wishlist_update(request, product_id):
     action = request.POST.get("action")
     if action not in ACTIONS:
         return HttpResponseBadRequest("Unknown action.")
-    product = get_object_or_404(Product.objects.select_related("seller"), pk=product_id)
+    product = get_object_or_404(
+        Product.objects.select_related("seller__user"), pk=product_id
+    )
 
     if action == "remove":
         WishlistItem.objects.filter(user=request.user, product=product).delete()

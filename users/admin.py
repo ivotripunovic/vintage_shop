@@ -14,28 +14,50 @@ from django.db.models import Exists, OuterRef
 from .models import User
 
 
+class HasShopFilter(admin.SimpleListFilter):
+    """Sellers are users with a shop (#89)."""
+
+    title = "has a shop"
+    parameter_name = "has_shop"
+
+    def lookups(self, request, model_admin):
+        return [("yes", "Yes"), ("no", "No")]
+
+    def queryset(self, request, queryset):
+        if self.value() == "yes":
+            return queryset.filter(seller_profile__isnull=False)
+        if self.value() == "no":
+            return queryset.filter(seller_profile__isnull=True)
+        return queryset
+
+
 @admin.register(User)
 class UserAdmin(BaseUserAdmin):
     list_display = [
         "email",
         "first_name",
         "last_name",
-        "is_seller",
-        "is_buyer",
+        "has_shop",
         "email_is_verified",
         "date_joined",
     ]
-    list_filter = ["is_seller", "is_buyer", "date_joined"]
+    list_filter = [HasShopFilter, "date_joined"]
     search_fields = ["email", "first_name", "last_name"]
-    fieldsets = BaseUserAdmin.fieldsets + (
-        ("Custom Fields", {"fields": ("is_seller", "is_buyer")}),
-    )
 
     def get_queryset(self, request):
         verified = EmailAddress.objects.filter(
             user=OuterRef("pk"), email__iexact=OuterRef("email"), verified=True
         )
-        return super().get_queryset(request).annotate(_email_verified=Exists(verified))
+        return (
+            super()
+            .get_queryset(request)
+            .annotate(_email_verified=Exists(verified))
+            .select_related("seller_profile")
+        )
+
+    @admin.display(boolean=True, description="Has a shop")
+    def has_shop(self, user):
+        return user.is_seller
 
     @admin.display(
         boolean=True, description="Email verified", ordering="_email_verified"

@@ -10,7 +10,7 @@ from users.models import User
 @pytest.fixture
 def buyer(db):
     user = User.objects.create_user(
-        email="buyer@example.com", username="buyer", password="pass", is_buyer=True
+        email="buyer@example.com", username="buyer", password="pass"
     )
     user.mark_email_verified()
     return user
@@ -22,7 +22,6 @@ def seller_user(db):
         email="seller@example.com",
         username="seller",
         password="pass",
-        is_seller=True,
     )
     user.mark_email_verified()
     return user
@@ -30,7 +29,7 @@ def seller_user(db):
 
 @pytest.fixture
 def seller(seller_user):
-    return Seller.objects.get(user=seller_user)
+    return Seller.open_for(seller_user, shop_name="seller")
 
 
 @pytest.fixture
@@ -69,7 +68,7 @@ class TestConversation:
 
     def test_label_for_each_side(self, conversation, buyer, seller_user, seller):
         assert conversation.label_for(buyer) == "Kupac"
-        assert conversation.label_for(seller_user) == seller.shop_name
+        assert conversation.label_for(seller_user) == seller.display_name
 
     def test_str(self, conversation, buyer, seller, product):
         assert str(buyer.email) in str(conversation)

@@ -6,6 +6,8 @@ import pytest
 from django.contrib.auth import authenticate
 from django.test import TestCase
 
+from sellers.models import Seller
+
 from .models import User
 
 
@@ -48,20 +50,23 @@ class TestUserModel(TestCase):
         self.assertTrue(user.is_staff)
         self.assertTrue(user.is_superuser)
 
-    def test_user_is_buyer_by_default(self):
-        """Test that new users are buyers by default."""
+    def test_new_user_is_not_a_seller(self):
         user = User.objects.create_user(**self.user_data)
-        self.assertTrue(user.is_buyer)
         self.assertFalse(user.is_seller)
+        self.assertFalse(Seller.objects.filter(user=user).exists())
 
-    def test_user_can_be_seller(self):
-        """Test setting user as seller."""
+    def test_a_user_with_a_shop_is_a_seller(self):
+        """is_seller means "has a Seller row", also on a fresh instance."""
         user = User.objects.create_user(**self.user_data)
-        user.is_seller = True
-        user.save()
-
+        self.assertFalse(user.is_seller)  # caches the missing shop
+        Seller.open_for(user, shop_name="Moja radnja")
         self.assertTrue(user.is_seller)
-        self.assertTrue(user.is_buyer)
+        self.assertTrue(User.objects.get(pk=user.pk).is_seller)
+
+    def test_is_seller_cannot_be_set(self):
+        user = User.objects.create_user(**self.user_data)
+        with self.assertRaises(AttributeError):
+            user.is_seller = True
 
     def test_email_verified_defaults_to_false(self):
         """Test that email_verified defaults to False."""
@@ -140,19 +145,6 @@ class TestUserModel(TestCase):
         auth_user = authenticate(username="test@example.com", password="testpass123")
         self.assertIsNone(auth_user)
 
-    def test_has_complete_seller_profile_without_profile(self):
-        """Test has_complete_seller_profile returns False without profile."""
-        user = User.objects.create_user(**self.user_data)
-        user.is_seller = True
-        user.save()
-
-        self.assertFalse(user.has_complete_seller_profile())
-
-    def test_has_complete_seller_profile_non_seller(self):
-        """Test has_complete_seller_profile returns False for non-seller."""
-        user = User.objects.create_user(**self.user_data)
-        self.assertFalse(user.has_complete_seller_profile())
-
     def test_user_ordering(self):
         """Test users are ordered by date_joined descending."""
         user1 = User.objects.create_user(
@@ -171,12 +163,3 @@ class TestUserModel(TestCase):
         user = User.objects.create_user(**self.user_data)
         self.assertEqual(user.first_name, "Test")
         self.assertEqual(user.last_name, "User")
-
-    def test_user_can_be_both_buyer_and_seller(self):
-        """Test user can be both buyer and seller."""
-        user = User.objects.create_user(**self.user_data)
-        user.is_seller = True
-        user.save()
-
-        self.assertTrue(user.is_buyer)
-        self.assertTrue(user.is_seller)

@@ -11,6 +11,7 @@ from django.test import TestCase, override_settings
 from django.urls import reverse
 from PIL import Image
 
+from sellers.testing import make_seller
 from users.forms import UserProfileForm
 from users.models import User
 
@@ -95,12 +96,8 @@ class BuyerProfileTests(TestCase):
 
 class SellerProfileTests(TestCase):
     def setUp(self):
-        self.seller = User.objects.create_user(
-            email="seller@test.com",
-            username="seller",
-            password="testpass123",
-            is_seller=True,
-        )
+        # A store owner; free sellers keep the profile form
+        self.seller = make_seller("seller@test.com", tier="odrzivo").user
         self.client.force_login(self.seller)
         self.url = reverse("account-settings")
 

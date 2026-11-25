@@ -1,5 +1,6 @@
 """
-User model for authentication (buyers and sellers use same User model).
+User model for authentication. Every account can buy and sell; a seller is
+a user who has opened a shop (a sellers.Seller row, #89).
 
 Signup, login, email verification and password flows are django-allauth's;
 whether an email is verified lives in allauth's EmailAddress (#79).
@@ -16,12 +17,10 @@ logger = logging.getLogger(__name__)
 class User(AbstractUser):
     """
     Custom User model with email as unique identifier.
-    Can be either a buyer or seller (or both).
+    Every user can buy; a user with a shop can also sell.
     """
 
     email = models.EmailField(unique=True)
-    is_seller = models.BooleanField(default=False)
-    is_buyer = models.BooleanField(default=True)
     # Buyer profile; sellers use their shop image and description instead
     profile_picture = models.ImageField(
         upload_to="profile_pictures/", blank=True, null=True
@@ -38,6 +37,18 @@ class User(AbstractUser):
 
     def __str__(self):
         return self.email
+
+    @property
+    def is_seller(self):
+        """The user has opened a shop (Seller.open_for)."""
+        from sellers.models import Seller
+
+        if not self.pk:
+            return False
+        try:
+            return self.seller_profile is not None
+        except Seller.DoesNotExist:
+            return False
 
     @property
     def email_verified(self):
@@ -97,9 +108,3 @@ class User(AbstractUser):
             address.primary = True
             address.verified = address.verified or verified
             address.save(update_fields=["verified", "primary"])
-
-    def has_complete_seller_profile(self):
-        """Check if user has a complete seller profile."""
-        if not self.is_seller:
-            return False
-        return hasattr(self, "seller_profile") and self.seller_profile is not None

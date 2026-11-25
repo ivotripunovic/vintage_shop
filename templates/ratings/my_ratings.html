@@ -14,7 +14,7 @@
             <p class="text-xs uppercase tracking-widest text-stone-400 mb-2">Kao prodavac</p>
             {% if as_seller.count %}
             <p class="text-3xl font-light text-stone-900">{{ as_seller.average|floatformat:1 }} <span class="text-lg text-amber-600">★</span></p>
-            <p class="text-xs text-stone-400 mt-1">{{ as_seller.count }} ocena · <a href="{% url 'shop_detail' seller_profile.shop_slug %}#ocene" class="hover:text-stone-900 underline">na stranici prodavnice</a></p>
+            <p class="text-xs text-stone-400 mt-1">{{ as_seller.count }} ocena{% if seller_profile.has_store %} · <a href="{% url 'shop_detail' seller_profile.shop_slug %}#ocene" class="hover:text-stone-900 underline">na stranici prodavnice</a>{% endif %}</p>
             {% else %}
             <p class="text-sm text-stone-400">Još nema ocena</p>
             {% endif %}
@@ -40,7 +40,7 @@
                 <div class="min-w-0">
                     <p class="text-sm text-stone-900 truncate">{{ sale.product_title }}</p>
                     <p class="text-xs text-stone-500">
-                        {% if sale.buyer_id == user.pk %}Prodavac: {{ sale.seller.shop_name }}{% else %}Kupac: {{ sale.buyer.email }}{% endif %} · {{ sale.created_at|date:"d.m.Y" }}
+                        {% if sale.buyer_id == user.pk %}Prodavac: {{ sale.seller.display_name }}{% else %}Kupac: {{ sale.buyer.email }}{% endif %} · {{ sale.created_at|date:"d.m.Y" }}
                     </p>
                 </div>
                 <a href="{% url 'rate_sale' sale.pk %}" class="flex-shrink-0 text-xs uppercase tracking-widest bg-stone-900 text-white px-4 py-2 hover:bg-stone-700 transition-colors">Oceni</a>

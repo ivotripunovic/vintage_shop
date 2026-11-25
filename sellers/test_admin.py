@@ -9,6 +9,7 @@ from users.models import User
 
 from .admin import SellerAdmin
 from .models import Seller
+from .testing import make_seller
 
 
 class TestSellerAdminTraderFields(TestCase):
@@ -19,7 +20,6 @@ class TestSellerAdminTraderFields(TestCase):
             email="trader@example.com",
             username="trader@example.com",
             password="testpass123",
-            is_seller=True,
         )
         self.seller, _ = Seller.objects.get_or_create(
             user=user,
@@ -51,13 +51,7 @@ class TestSellerAdminTierActions(TestCase):
     """Staff change tiers through actions so billing follows."""
 
     def setUp(self):
-        user = User.objects.create_user(
-            email="tiers@example.com",
-            username="tiers@example.com",
-            password="testpass123",
-            is_seller=True,
-        )
-        self.seller = user.seller_profile
+        self.seller = make_seller("tiers@example.com", shop_name="tiers")
         self.model_admin = SellerAdmin(Seller, admin.site)
         self.model_admin.message_user = lambda request, message: None
         self.request = RequestFactory().get("/")

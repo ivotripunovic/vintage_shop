@@ -11,15 +11,11 @@ from django.utils import timezone
 
 from config.views import HOME_SECTION_SIZE
 from products.models import Product
-from sellers.models import Seller
-from users.models import User
+from sellers.testing import make_seller
 
 
 def _make_seller(email, tier):
-    user = User.objects.create_user(
-        email=email, username=email, password="testpass123", is_seller=True
-    )
-    seller = Seller.objects.get(user=user)
+    seller = make_seller(email, shop_name=email.split("@")[0])
     seller.tier = tier
     seller.save()
     return seller

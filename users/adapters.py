@@ -54,12 +54,22 @@ class AccountAdapter(DefaultAccountAdapter):
         return super().send_mail(template_prefix, email, context)
 
     def get_signup_redirect_url(self, request):
-        from django.urls import reverse
-
-        return reverse("social-signup-complete")
+        """A new account lands on the home page unless ``next`` says otherwise
+        (e.g. their first listing, from "Počni da prodaješ")."""
+        return "/"
 
     def get_login_redirect_url(self, request):
         return "/"
+
+    def post_login(self, request, user, *, signup, **kwargs):
+        """Greet a new account on its first login (email confirmation or a
+        social signup), wherever it lands."""
+        response = super().post_login(request, user, signup=signup, **kwargs)
+        if signup:
+            from django.contrib import messages
+
+            messages.success(request, "Dobrodošli!")
+        return response
 
 
 class SocialAccountAdapter(DefaultSocialAccountAdapter):

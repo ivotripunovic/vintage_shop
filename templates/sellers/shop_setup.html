@@ -9,6 +9,7 @@
 
     <form method="post" enctype="multipart/form-data" class="space-y-6">
         {% csrf_token %}
+        {% if next %}<input type="hidden" name="next" value="{{ next }}">{% endif %}
 
         {% if form.non_field_errors %}
         <div class="border border-red-200 p-4">
@@ -27,7 +28,7 @@
             <label for="{{ form.shop_slug.id_for_label }}" class="block text-xs uppercase tracking-widest text-stone-500 mb-2">URL adresa prodavnice</label>
             {{ form.shop_slug }}
             {% if form.shop_slug.errors %}<p class="text-xs text-red-600 mt-1">{{ form.shop_slug.errors.0 }}</p>{% endif %}
-            <p class="text-xs text-stone-400 mt-1">npr. moja-prodavnica (malo slova, bez razmaka)</p>
+            <p class="text-xs text-stone-400 mt-1">npr. moja-prodavnica (malo slova, bez razmaka). Ostavite prazno da se napravi od naziva.</p>
         </div>
 
         <div>
@@ -50,7 +51,7 @@
             {% if form.shop_image.errors %}<p class="text-xs text-red-600 mt-1">{{ form.shop_image.errors.0 }}</p>{% endif %}
         </div>
 
-        <button type="submit" class="w-full text-xs uppercase tracking-widest bg-stone-900 text-white py-3 hover:bg-stone-700 transition-colors">Nastavi na bankarske podatke</button>
+        <button type="submit" class="w-full text-xs uppercase tracking-widest bg-stone-900 text-white py-3 hover:bg-stone-700 transition-colors">{% if next %}Sačuvaj i nastavi{% else %}Nastavi na bankarske podatke{% endif %}</button>
     </form>
 </div>
 

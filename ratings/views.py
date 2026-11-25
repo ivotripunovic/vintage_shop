@@ -34,10 +34,12 @@ def my_ratings_view(request):
     """Sales waiting for the user's rating, ratings received and given."""
     user = request.user
     received = (
-        Rating.objects.visible().filter(subject=user).select_related("sale__seller")
+        Rating.objects.visible()
+        .filter(subject=user)
+        .select_related("sale__seller__user")
     )
     page_obj = Paginator(received, 20).get_page(request.GET.get("page", 1))
-    given = Rating.objects.filter(author=user).select_related("sale__seller")[:20]
+    given = Rating.objects.filter(author=user).select_related("sale__seller__user")[:20]
 
     seller_profile = getattr(user, "seller_profile", None) if user.is_seller else None
     context = {
@@ -59,7 +61,9 @@ def my_ratings_view(request):
 @require_http_methods(["GET", "POST"])
 def rate_sale_view(request, sale_id):
     """Rate the other side of a sale, once, while the window is open."""
-    sale = get_object_or_404(Sale.objects.select_related("seller", "buyer"), pk=sale_id)
+    sale = get_object_or_404(
+        Sale.objects.select_related("seller__user", "buyer"), pk=sale_id
+    )
     direction = rating_direction(sale, request.user)
     if direction is None:
         raise PermissionDenied
@@ -98,7 +102,7 @@ def rate_sale_view(request, sale_id):
         "page_title": "Ocenite prodaju",
         "sale": sale,
         "form": form,
-        "other_name": sale.seller.shop_name if is_buyer else sale.buyer.email,
+        "other_name": sale.seller.display_name if is_buyer else sale.buyer.email,
     }
     return render(request, "ratings/rate_sale.html", context)
 

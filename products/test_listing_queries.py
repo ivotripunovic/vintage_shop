@@ -19,7 +19,6 @@ class ListingQueryCountTests(TestCase):
             email="seller@test.com",
             username="seller@test.com",
             password="testpass123",
-            is_seller=True,
         )
         self.seller, _ = Seller.objects.get_or_create(
             user=user, defaults={"shop_name": "Shop", "shop_slug": "shop"}
@@ -61,7 +60,7 @@ class ListingQueryCountTests(TestCase):
         with_ten, response = self.count_queries(url)
         self.assertEqual(with_one, with_ten)
         self.assertContains(response, "products/p")  # images still rendered
-        self.assertContains(response, self.seller.shop_name)  # seller rendered
+        self.assertContains(response, self.seller.display_name)  # seller rendered
 
     def test_browse_page(self):
         self.assert_constant_queries(reverse("products_browse"))

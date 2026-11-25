@@ -5,12 +5,18 @@ Forms for seller onboarding and account management.
 from django import forms
 from django.core.exceptions import ValidationError
 
-
-from .models import TRADER_STATEMENT, Seller, SellerSubscription
+from .models import (
+    DEFAULT_SHOP_NAME,
+    TRADER_STATEMENT,
+    Seller,
+    free_shop_slug,
+    is_shop_slug_free,
+    shop_slug_from_name,
+)
 
 
 class ShopSetupForm(forms.ModelForm):
-    """Form for seller to set up their shop."""
+    """Open a shop or edit it. Left empty, the URL comes from the shop name."""
 
     class Meta:
         model = Seller
@@ -58,23 +64,47 @@ class ShopSetupForm(forms.ModelForm):
             ),
         }
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["shop_slug"].required = False
+        self.fields["shop_slug"].widget.attrs[
+            "placeholder"
+        ] = "Prazno: pravi se od naziva prodavnice"
+
+    def clean_shop_name(self):
+        """The default name marks a store that was never set up."""
+        name = (self.cleaned_data.get("shop_name") or "").strip()
+        if name.casefold() == DEFAULT_SHOP_NAME.casefold():
+            raise ValidationError("Izaberite naziv prodavnice.")
+        return name
+
     def clean_shop_slug(self):
-        """Validate shop slug is unique and properly formatted."""
-        shop_slug = self.cleaned_data.get("shop_slug")
+        """A typed slug must be free; an empty one is filled in clean()."""
+        typed = self.cleaned_data.get("shop_slug") or ""
+        if not typed:
+            return ""
+        # Validate what will be saved, e.g. "my_shop_" is saved as "my_shop"
+        shop_slug = shop_slug_from_name(typed)
         if not shop_slug:
-            raise ValidationError("Shop slug is required.")
+            raise ValidationError("Unesite slova ili brojeve.")
+        if not is_shop_slug_free(shop_slug, exclude_pk=self.instance.pk):
+            raise ValidationError("Ova adresa prodavnice je zauzeta.")
+        return shop_slug
 
-        # Check if slug already exists
-        if Seller.objects.filter(shop_slug=shop_slug).exists():
-            raise ValidationError("This shop name is already taken.")
-
-        # Validate slug format (lowercase, no spaces, alphanumeric + hyphens)
-        if not shop_slug.replace("-", "").replace("_", "").isalnum():
-            raise ValidationError(
-                "Shop name can only contain letters, numbers, hyphens, and underscores."
-            )
-
-        return shop_slug.lower()
+    def clean(self):
+        cleaned = super().clean()
+        if not cleaned.get("shop_slug") and "shop_slug" not in self.errors:
+            # The instance still holds the saved name here (_post_clean
+            # comes later); a never set-up store gets its URL from the name
+            never_named = self.instance.shop_name == DEFAULT_SHOP_NAME
+            if self.instance.pk and not never_named:
+                cleaned["shop_slug"] = self.instance.shop_slug
+            else:
+                cleaned["shop_slug"] = free_shop_slug(
+                    shop_slug_from_name(cleaned.get("shop_name")),
+                    exclude_pk=self.instance.pk,
+                )
+        return cleaned
 
 
 class BankDetailsForm(forms.ModelForm):
@@ -115,8 +145,11 @@ class BankDetailsForm(forms.ModelForm):
         return account_number
 
 
+STORE_FIELDS = ("shop_name", "shop_description", "shop_image")
+
+
 class SellerAccountSettingsForm(forms.ModelForm):
-    """Form for seller to update their account settings."""
+    """Seller settings. The store fields only for a seller with a store."""
 
     is_trader = forms.BooleanField(
         required=False,
@@ -159,6 +192,9 @@ class SellerAccountSettingsForm(forms.ModelForm):
         """Initialize form with user instance."""
         self.user = user
         super().__init__(*args, **kwargs)
+        if not self.instance.has_store:
+            for name in STORE_FIELDS:
+                del self.fields[name]
         # An outdated confirmation starts unticked so the seller re-confirms
         self.fields["is_trader"].initial = (
             self.instance.is_trader and not self.instance.trader_statement_outdated

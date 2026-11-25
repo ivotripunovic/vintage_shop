@@ -24,7 +24,6 @@ class SellerAccountSettingsFormTests(TestCase):
             email="test@example.com",
             username="test@example.com",
             password="testpass123",
-            is_seller=True,
         )
         self.seller, _ = Seller.objects.get_or_create(
             user=self.user,
@@ -125,11 +124,15 @@ class SellerAccountSettingsFormCommitTests(TestCase):
             email="commit@example.com",
             username="commit@example.com",
             password="testpass123",
-            is_seller=True,
         )
         self.seller, _ = Seller.objects.get_or_create(
             user=self.user,
-            defaults={"shop_name": "Commit Shop", "shop_slug": "commit-shop"},
+            defaults={
+                "shop_name": "Commit Shop",
+                "shop_slug": "commit-shop",
+                # The shop name is a store field (paid tiers)
+                "tier": "odrzivo",
+            },
         )
         self.original_name = self.seller.shop_name
 
@@ -164,7 +167,6 @@ class SellerTraderConfirmationFormTests(TestCase):
             email="trader@example.com",
             username="trader@example.com",
             password="testpass123",
-            is_seller=True,
         )
         self.seller, _ = Seller.objects.get_or_create(
             user=self.user,

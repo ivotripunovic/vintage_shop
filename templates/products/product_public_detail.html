@@ -87,6 +87,7 @@
         <div class="border-t border-neutral-200 py-5">
             <p class="text-xs uppercase tracking-widest text-stone-400 mb-4">Prodavac</p>
             <div class="flex items-center gap-4">
+                {% if product.seller.has_store %}
                 {% if product.seller.shop_image %}
                     <img src="{{ product.seller.shop_image.url }}" alt="{{ product.seller.shop_name }}" class="w-14 h-14 object-cover">
                 {% else %}
@@ -94,10 +95,11 @@
                         <span class="text-xs text-neutral-400">Prodavnica</span>
                     </div>
                 {% endif %}
+                {% endif %}
                 <div>
-                    <p class="text-sm text-stone-900 mb-1">{{ product.seller.shop_name }}</p>
+                    <p class="text-sm text-stone-900 mb-1">{{ product.seller.display_name }}</p>
                     {% if product.seller.location %}<p class="text-xs text-stone-400 mb-2">{{ product.seller.location }}</p>{% endif %}
-                    <a href="{% url 'shop_detail' product.seller.shop_slug %}" class="text-xs uppercase tracking-widest text-stone-400 hover:text-stone-900 transition-colors">Poseti prodavnicu</a>
+                    {% if product.seller.has_store %}<a href="{% url 'shop_detail' product.seller.shop_slug %}" class="text-xs uppercase tracking-widest text-stone-400 hover:text-stone-900 transition-colors">Poseti prodavnicu</a>{% endif %}
                 </div>
             </div>
         </div>
@@ -126,8 +128,8 @@
 {% if related_products %}
 <div class="border-t border-neutral-200 pt-12">
     <div class="flex justify-between items-baseline mb-8">
-        <h2 class="font-serif text-2xl font-light">Još iz {{ product.seller.shop_name }}</h2>
-        <a href="{% url 'shop_detail' product.seller.shop_slug %}" class="text-xs uppercase tracking-widest text-stone-400 hover:text-stone-900 transition-colors">Pogledaj prodavnicu</a>
+        <h2 class="font-serif text-2xl font-light">{% if product.seller.has_store %}Još iz {{ product.seller.shop_name }}{% else %}Još od prodavca {{ product.seller.display_name }}{% endif %}</h2>
+        {% if product.seller.has_store %}<a href="{% url 'shop_detail' product.seller.shop_slug %}" class="text-xs uppercase tracking-widest text-stone-400 hover:text-stone-900 transition-colors">Pogledaj prodavnicu</a>{% endif %}
     </div>
     <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
         {% for related in related_products %}

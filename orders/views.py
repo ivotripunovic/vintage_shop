@@ -60,7 +60,7 @@ def _record_sale(product_id, buyer):
 def product_mark_sold_view(request, product_id):
     """Pick the buyer from chat and record the sale."""
     product = get_object_or_404(
-        Product.objects.select_related("seller"), pk=product_id, is_deleted=False
+        Product.objects.select_related("seller__user"), pk=product_id, is_deleted=False
     )
     if product.seller.user_id != request.user.id:
         raise PermissionDenied

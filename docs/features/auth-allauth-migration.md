@@ -17,7 +17,9 @@ other. This page records what is wrong, the options, and the recommended plan.
   `is_buyer = True` / `is_seller = True`, and the `post_save` signal therefore no
   longer creates a `Seller` profile for every signup. Users become sellers
   through `/seller/register/` or the social "become seller" step. Existing
-  users keep their flags.
+  users keep their flags. *Superseded by #89
+  ([everyone-can-sell.md](everyone-can-sell.md)): the roles, the signal and the
+  "become seller" step are gone; the first listing opens the shop.*
 - **Sign-in by email code:** not decided; can be added after the move.
 - **Outstanding links:** no count needed. Custom tokens expire after 24 h
   (verification) and 1 h (reset), so the old-URL redirects only need to cover
@@ -257,4 +259,4 @@ a separate decision.
 - `is_buyer` gates nothing: it is only a label in
   `templates/users/account_settings.html` and an admin filter. The model
   default stays `True`, so signup does not need to touch it. Whether to drop
-  the field entirely is a later cleanup.
+  the field entirely is a later cleanup. *Dropped in #89.*

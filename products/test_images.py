@@ -61,7 +61,6 @@ class SellerMixin:
             username="photos",
             email="photos@example.com",
             password="pass12345",
-            is_seller=True,
         )
         seller, _ = Seller.objects.get_or_create(
             user=user, defaults={"shop_name": "Foto", "shop_slug": "foto"}

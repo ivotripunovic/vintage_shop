@@ -1,20 +1,20 @@
 import random
-from datetime import timedelta
 from decimal import Decimal
 from pathlib import Path
 
 from django.conf import settings
 from django.core.files import File
 from django.core.management.base import BaseCommand
-from django.utils import timezone
-from django.utils.text import slugify
 
 from products.management.seed_data import CONDITIONS, PRODUCTS, SELLERS
 from products.models import Product, ProductCategory, ProductCondition, ProductImage
-from sellers.models import Seller, SellerSubscription
+from sellers.models import Seller
 from users.models import User
 
 SEED_IMAGES_DIR = Path(settings.BASE_DIR) / "seed_data" / "product_images"
+
+
+SEED_TIERS = ("premijum", "odrzivo", "garazna")
 
 
 class Command(BaseCommand):
@@ -86,7 +86,6 @@ class Command(BaseCommand):
                     "username": email,
                     "first_name": data["shop_name"].split()[0],
                     "last_name": "Seed",
-                    "is_seller": True,
                 },
             )
             if user_created:
@@ -94,33 +93,21 @@ class Command(BaseCommand):
                 user.save()
                 user.mark_email_verified()
 
-            # Signal auto-creates a Seller — update it with proper shop data.
-            seller = Seller.objects.get(user=user)
-            seller_created = not bool(seller.shop_name)
-            Seller.objects.filter(pk=seller.pk).update(
+            if not user.is_seller:
+                created += 1
+            # Existing shops are returned unchanged
+            seller = Seller.open_for(
+                user,
                 shop_name=data["shop_name"],
-                shop_slug=slugify(data["shop_name"]),
                 shop_description="Pažljivo odabrani vintage predmeti sa garancijom autentičnosti.",
                 location=data["location"],
-                status="active",
+                # Mixed tiers: only the paid ones have a store page (#89)
+                tier=SEED_TIERS[i % len(SEED_TIERS)],
                 bank_account_holder=data["shop_name"],
                 bank_name="Banka",
                 bank_account_number=f"RS35000000000000000{i:02d}",
             )
-            seller.refresh_from_db()
-            SellerSubscription.objects.get_or_create(
-                seller=seller,
-                defaults={
-                    "plan_type": "monthly",
-                    "start_date": timezone.now().date(),
-                    "status": "active",
-                    "amount": Decimal("999"),
-                    "renewal_date": (timezone.now() + timedelta(days=30)).date(),
-                },
-            )
             sellers.append(seller)
-            if seller_created:
-                created += 1
 
         self.stdout.write(
             f"Prodavci: {created} kreirani, {len(SELLERS) - created} već postoje."

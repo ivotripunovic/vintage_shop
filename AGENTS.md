@@ -45,8 +45,8 @@ on `PATH`), so bare `pytest`, `flake8`, `runserver`, etc. work without paths.
 ### Django Apps
 
 - **config/** - Project settings, root URL conf, WSGI/ASGI. Database auto-switches: SQLite when `DEBUG=True`, PostgreSQL otherwise.
-- **users/** - Custom `User` model (`AUTH_USER_MODEL = "users.User"`) with email-based auth through django-allauth (`users/adapters.py`, `users/allauth_forms.py`). `is_buyer`/`is_seller` role flags (signup sets neither; sellers opt in from the welcome page). Email verification lives only in allauth's `EmailAddress`; `User.email_verified` is a read-only property over it, and `User.mark_email_verified()` records a verified address (seeding, tests, provider-proven emails).
-- **sellers/** - `Seller` (OneToOne with User) for shop profiles. `SellerSubscription` for billing. Post-save signal (`sellers/signals.py`) auto-creates Seller profile + subscription when User with `is_seller=True` is created.
+- **users/** - Custom `User` model (`AUTH_USER_MODEL = "users.User"`) with email-based auth through django-allauth (`users/adapters.py`, `users/allauth_forms.py`). There are no buyer/seller roles: every account can buy, and anyone can list. `User.is_seller` is a read-only property meaning "has a `Seller` row" (#89). Email verification lives only in allauth's `EmailAddress`; `User.email_verified` is a read-only property over it, and `User.mark_email_verified()` records a verified address (seeding, tests, provider-proven emails).
+- **sellers/** - `Seller` (OneToOne with User) for shop profiles. `SellerSubscription` for billing. A seller profile is opened only by `Seller.open_for(user, shop_name)` (slug from the shop name, never the email; free starting subscription), quietly when a user saves their first listing. Only the paid tiers (`STORE_TIERS`: Održivo, Premijum) have a store, meaning a shop name, a public page and a place in the shops list (`Seller.has_store`); free sellers are shown by their full name (`Seller.display_name`). Tests use `sellers.testing.make_seller` (pass `tier="odrzivo"` for a store).
 - **products/** - `Product` (soft-deletable), `ProductImage` (multiple per product, ordered), `ProductCategory`, `ProductCondition`. Products have status workflow: draft → published → sold/archived.
 - **orders/** - `Sale`: there is no cart or checkout. Buyer and seller agree in chat, then the seller marks the product sold to that buyer (stock drops by one; the last unit marks the product sold).
 - **billing/** - `Invoice`, `Payment` (OneToOne with Invoice), `BillingPlan` (uses JSONField for flexible config supporting subscription/commission/hybrid/per-listing/freemium models).
@@ -56,8 +56,8 @@ on `PATH`), so bare `pytest`, `flake8`, `runserver`, etc. work without paths.
 
 URLs have no language prefix and `USE_I18N = False`: pages are written in Serbian directly, and allauth's pages and emails are overridden in `templates/account/`, `templates/socialaccount/` and `templates/account/email/`.
 
-- `/auth/` - django-allauth (signup, login, logout, email verification and change, password reset/change) plus the users app (account settings, welcome page, become seller). Social login is under `/auth/social/`.
-- `/seller/` - sellers app (dashboard, shop pages, product management; `register/` redirects into the allauth signup)
+- `/auth/` - django-allauth (signup, login, logout, email verification and change, password reset/change) plus the users app (account settings). The old welcome page `/auth/social/welcome/` redirects to `/`. Social login is under `/auth/social/`.
+- `/seller/` - sellers app (dashboard, shop setup and shop pages for paid tiers, product management; `register/` sends visitors to signup and then their first listing)
 - `/products/` - products app (browse, create, edit, images)
 - `/admin/` - Django admin (non-i18n)
 
@@ -68,7 +68,7 @@ Pre-launch gate in `core.middleware.ComingSoonMiddleware`, toggled by `COMING_SO
 ### Key Patterns
 
 - **Soft deletes**: Products use `SoftDeleteModel` — call `soft_delete()` instead of `delete()`.
-- **Signal-driven seller creation**: Creating a User with `is_seller=True` automatically creates a Seller profile and initial SellerSubscription via post_save signal.
+- **Lazy sellers**: no signal creates `Seller` rows. Saving a first listing (or uploading its first photo) opens one with `Seller.open_for`, never just viewing the form; other seller pages send a user without one to the listing form. Show sellers with `display_name`, and link `shop_detail` only when `has_store`.
 - **Environment config**: Uses `python-decouple` — settings read from `.env` file (see `.env.example`).
 - **Forms**: Use django-crispy-forms with Tailwind template pack.
 - **Email**: Console backend in development, SendGrid in production.

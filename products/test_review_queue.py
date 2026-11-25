@@ -10,6 +10,7 @@ from django.urls import reverse
 
 from chat.models import Conversation
 from products.models import Product
+from sellers.models import Seller
 from users.models import User
 
 QUEUE_URL = reverse("admin:products_newad_changelist")
@@ -32,10 +33,9 @@ def seller(db):
         email="seller@test.com",
         username="seller",
         password="pass",
-        is_seller=True,
     )
     user.mark_email_verified()
-    return user.seller_profile
+    return Seller.open_for(user, shop_name="seller")
 
 
 def _product(seller, title, status="published"):

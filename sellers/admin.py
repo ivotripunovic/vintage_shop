@@ -1,8 +1,16 @@
 """Admin configuration for sellers app."""
 
 from django.contrib import admin
+from django.db import transaction
 
-from .models import TIER_CHOICES, Seller, SellerSubscription, SellerTier
+from .models import (
+    TIER_CHOICES,
+    Seller,
+    SellerSubscription,
+    SellerTier,
+    free_shop_slug,
+    shop_slug_from_name,
+)
 
 
 def _move_to_tier_action(tier, label):
@@ -85,6 +93,16 @@ class SellerAdmin(admin.ModelAdmin):
         ),
         ("Metadata", {"fields": ("created_at", "updated_at")}),
     )
+
+    def save_model(self, request, obj, form, change):
+        """A shop added here gets what Seller.open_for gives one: a slug from
+        its name (the field is read-only here) and a starting subscription."""
+        if change:
+            return super().save_model(request, obj, form, change)
+        with transaction.atomic():
+            obj.shop_slug = free_shop_slug(shop_slug_from_name(obj.shop_name))
+            super().save_model(request, obj, form, change)
+            obj.create_initial_subscription()
 
     @admin.action(description="Clear trader confirmation")
     def clear_trader_confirmation(self, request, queryset):

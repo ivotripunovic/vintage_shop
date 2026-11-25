@@ -6,8 +6,9 @@ from datetime import timedelta
 from decimal import Decimal
 
 from django.contrib import admin
-from django.db import models, transaction
+from django.db import IntegrityError, models, transaction
 from django.utils import timezone
+from django.utils.text import slugify
 
 from core.models import TimeStampedModel
 
@@ -48,8 +49,66 @@ TRADER_STATEMENT = (
 )
 
 
+# Used when a shop is opened without a name
+DEFAULT_SHOP_NAME = "Prodavnica"
+
+# Tiers that come with a store: a shop name, a public page and a place in the
+# shops list. Garazna sellers just list, under their own name.
+STORE_TIERS = frozenset({"odrzivo", "premijum"})
+
+# Shown for a seller without a store whose user has no name
+ANONYMOUS_SELLER_NAME = "Prodavac"
+
+# Paths under /seller/ that a shop slug would shadow (sellers/urls.py)
+RESERVED_SHOP_SLUGS = frozenset(
+    {"register", "shop-setup", "bank-details", "dashboard", "settings", "products"}
+)
+
+# Serbian Latin letters that slugify would drop instead of transliterating
+_SLUG_TRANSLITERATION = str.maketrans({"đ": "dj", "Đ": "Dj"})
+
+
+def shop_slug_from_name(name):
+    """A URL slug for a shop name; empty if the name has no usable letters."""
+    slug = slugify((name or "").translate(_SLUG_TRANSLITERATION))
+    max_length = Seller._meta.get_field("shop_slug").max_length
+    return slug[:max_length].strip("-")
+
+
+def is_shop_slug_free(slug, exclude_pk=None):
+    """The slug is not reserved and no other shop uses it."""
+    if slug in RESERVED_SHOP_SLUGS:
+        return False
+    taken = Seller.objects.filter(shop_slug=slug)
+    if exclude_pk is not None:
+        taken = taken.exclude(pk=exclude_pk)
+    return not taken.exists()
+
+
+def free_shop_slug(base, exclude_pk=None):
+    """``base``, or ``base-2``, ``base-3``... whichever is free first.
+
+    One query, however many are taken: every default-named shop starts
+    from "prodavnica".
+    """
+    base = base or slugify(DEFAULT_SHOP_NAME)
+    max_length = Seller._meta.get_field("shop_slug").max_length
+    # Suffixed candidates may cut base short, so match on a shorter stem
+    stem = base[: max_length - 8].rstrip("-")
+    taken = Seller.objects.filter(shop_slug__startswith=stem)
+    if exclude_pk is not None:
+        taken = taken.exclude(pk=exclude_pk)
+    taken = set(taken.values_list("shop_slug", flat=True)) | RESERVED_SHOP_SLUGS
+    candidate, n = base, 1
+    while candidate in taken:
+        n += 1
+        suffix = f"-{n}"
+        candidate = base[: max_length - len(suffix)].rstrip("-") + suffix
+    return candidate
+
+
 class Seller(TimeStampedModel):
-    """Seller profile linked to User."""
+    """A user's shop. A user with a Seller row is a seller (User.is_seller)."""
 
     STATUS_CHOICES = (
         ("active", "Active"),
@@ -88,6 +147,58 @@ class Seller(TimeStampedModel):
 
     def __str__(self):
         return self.shop_name
+
+    @property
+    def has_store(self):
+        """The seller's tier comes with a store (STORE_TIERS)."""
+        return self.tier in STORE_TIERS
+
+    @property
+    def display_name(self):
+        """What buyers see: the shop name, or the user's name without a store."""
+        if self.has_store:
+            return self.shop_name
+        return self.user.get_full_name() or ANONYMOUS_SELLER_NAME
+
+    @property
+    def needs_store_setup(self):
+        """Moved up to a store tier but the store has no name yet."""
+        return self.has_store and self.shop_name == DEFAULT_SHOP_NAME
+
+    @classmethod
+    def open_for(cls, user, shop_name=None, shop_slug=None, **fields):
+        """Open ``user``'s shop with its free starting subscription.
+
+        The only way a shop is created. Idempotent: a user who already has a
+        shop gets it back unchanged. The slug comes from ``shop_slug`` or the
+        shop name, with a numeric suffix if taken, never from the email.
+        """
+        existing = cls.objects.filter(user=user).first()
+        if existing is not None:
+            existing.user = user  # caches user.seller_profile
+            return existing
+        name = (shop_name or "").strip() or DEFAULT_SHOP_NAME
+        base = shop_slug_from_name(shop_slug or name)
+        attempts = 5
+        for attempt in range(attempts):
+            slug = free_shop_slug(base)
+            try:
+                with transaction.atomic():
+                    seller = cls(user=user, shop_name=name, shop_slug=slug, **fields)
+                    seller.save()
+                    seller.create_initial_subscription()
+                return seller
+            except IntegrityError:
+                # Building the Seller cached it on user.seller_profile
+                user._state.fields_cache.pop("seller_profile", None)
+                existing = cls.objects.filter(user=user).first()
+                if existing is not None:
+                    # A concurrent request opened this user's shop first
+                    existing.user = user
+                    return existing
+                slug_lost = cls.objects.filter(shop_slug=slug).exists()
+                if not slug_lost or attempt == attempts - 1:
+                    raise
 
     @property
     def is_suspended(self):

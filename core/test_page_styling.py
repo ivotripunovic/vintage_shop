@@ -107,7 +107,6 @@ def test_permission_denied_uses_site_layout(client):
         email="buyer@example.com",
         username="buyer@example.com",
         password="pw-12345678",
-        is_buyer=True,
     )
     buyer.mark_email_verified()
     client.force_login(buyer)

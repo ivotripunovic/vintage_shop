@@ -151,6 +151,7 @@
                     <h3 id="preview-title" class="text-sm text-stone-900 mb-1 truncate">{{ form.title.value|default:"Naziv proizvoda" }}</h3>
                     <p id="preview-price" class="text-sm font-light text-stone-600"></p>
                     <p class="text-xs text-stone-400 mt-0.5">{{ shop_name }}</p>
+                    {% if shop_name_is_generic %}<p class="text-xs text-stone-400 mt-1"><a href="{% url 'account-settings' %}" class="underline hover:text-stone-900">Dodajte ime</a> da bi kupci znali od koga kupuju.</p>{% endif %}
                 </div>
                 <div class="flex-1 min-w-0">
                     <p class="text-xs uppercase tracking-widest text-stone-500 mb-2">Saveti za bolji oglas</p>
